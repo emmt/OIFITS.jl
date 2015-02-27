@@ -44,7 +44,7 @@ export oifits_get_logical, oifits_get_integer, oifits_get_real,
 
 include("oidata.jl")
 include("oifile.jl")
-include("format-v1.jl")
+include("oiformat1.jl")
 
 end # module
 

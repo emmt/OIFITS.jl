@@ -1,5 +1,5 @@
 #
-# format-v1.jl --
+# oiformat1.jl --
 #
 # Define 1st revision of OI-FITS format.
 #
