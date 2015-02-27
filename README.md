@@ -21,6 +21,16 @@ The objective of the `OIFITS.jl` package is to provide support of
 OI-FITS data in Julia language.
 
 
+## Prerequisites
+
+You need the [`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package
+installed to use `OIFITS.jl`:
+```julia
+Pkg.add("FITSIO")
+Pkg.update()
+```
+
+
 ## Typical Usage
 
 ```julia
@@ -108,7 +118,7 @@ Available data-block constructors are:
 When defining a new data-block, all mandatory fields must be provided.
 For instance, to create an `OI_WAVELENGTH` data-block:
 ```julia
-µm = 1e-6
+µm = 1e-6  # all values are in SI units in OI-FITS
 db = oifits_new_wavelength(insname="Amber",
                            eff_wave=[1.4µm,1.6µm,1.8µm],
                            eff_band=[0.2µm,0.2µm,0.2µm])
