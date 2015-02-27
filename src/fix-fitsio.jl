@@ -6,9 +6,23 @@
 # ----------------------------------------------------------------------------
 
 using FITSIO
-const libcfitsio = FITSIO.libcfitsio
 
-export fits_datatype, fits_bitpix;
+import FITSIO: libcfitsio, fits_assert_ok, fits_assert_open, fits_get_errstatus
+
+# The exported functions fits_datatype and fits_bitpix deal with conversion
+# between CFITSIO type code or BITPIX value and actual Julia data types.
+# They can be used as follows (assuming `T` is a Julia data type, while
+# `code` and `bitpix` are integers):
+#
+#     fits_datatype(T) --------> code (e.g., TBYTE, TFLOAT, etc.)
+#     fits_datatype(code) -----> T
+#
+#     fits_bitpix(T) ----------> bitpix (e.g., BYTE_IMG, FLOAT_IMG, etc.)
+#     fits_datatype(bitpix) ---> T
+#
+export fits_datatype, fits_bitpix
+
+export fits_read_tdim, fits_get_coltype, fits_get_eqcoltype
 
 # The following table gives the correspondances between CFITSIO "types",
 # the BITPIX keyword and Julia types.
@@ -44,11 +58,12 @@ export fits_datatype, fits_bitpix;
 #              TDBLCOMPLEX     Complex{Cdouble}
 #     -------------------------------------------------
 
-
+# Conversion to a C `int`:
 cint(x) = convert(Cint, x)
 cint(x::Cint) = x
 
-const _BITPIX_TABLE = Dict{Cint, DataType}()
+# BITPIX routines and table.
+const _BITPIX = Dict{Cint, DataType}()
 for (sym, val, T) in ((:BYTE_IMG,        8,       Uint8),
                       (:SHORT_IMG,      16,       Int16),
                       (:LONG_IMG,       32,       Int32),
@@ -56,15 +71,16 @@ for (sym, val, T) in ((:BYTE_IMG,        8,       Uint8),
                       (:FLOAT_IMG,     -32,       Float32),
                       (:DOUBLE_IMG,    -64,       Float64))
     val = cint(val)
-    _BITPIX_TABLE[val] = T
+    _BITPIX[val] = T
     @eval begin
         const $sym = $val
         fits_bitpix(::Type{$T}) = $val
     end
 end
-fits_bitpix(code::Integer) = get(_BITPIX_TABLE, cint(code), Nothing)
+fits_bitpix(code::Integer) = get(_BITPIX, cint(code), Nothing)
 
-const _DATATYPE_TABLE = Dict{Cint, DataType}()
+# Data type routines and table.
+const _DATATYPE = Dict{Cint, DataType}()
 for (sym, val, T) in ((:TBIT       ,   1, Nothing),
                       (:TBYTE      ,  11, Uint8),
                       (:TSBYTE     ,  12, Int8),
@@ -82,7 +98,7 @@ for (sym, val, T) in ((:TBIT       ,   1, Nothing),
                       (:TCOMPLEX   ,  83, Complex{Cfloat}),  # Complex64
                       (:TDBLCOMPLEX, 163, Complex{Cdouble})) # Complex128
     val = cint(val)
-    _DATATYPE_TABLE[val] = T
+    _DATATYPE[val] = T
     @eval const $sym = $val
     if T == String
         @eval fits_datatype{S<:String}(::Type{S}) = $val
@@ -90,7 +106,7 @@ for (sym, val, T) in ((:TBIT       ,   1, Nothing),
         @eval fits_datatype(::Type{$T}) = $val
     end
 end
-fits_datatype(code::Integer) = get(_DATATYPE_TABLE, cint(code), Nothing)
+fits_datatype(code::Integer) = get(_DATATYPE, cint(code), Nothing)
 
 # The function `fits_read_tdim()` returns the dimensions of a table column
 # in a binary table. Normally this information is given by the TDIMn
@@ -111,25 +127,25 @@ let fn, T
     @eval begin
         function fits_get_coltype(ff::FITSFile, colnum::Integer)
             typecode = Cint[0]
-            repeat = $T[0]
+            repcnt = $T[0]
             width = $T[0]
             status = Cint[0]
             ccall(($ffgtcl,libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Ptr{$T}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
-                  ff.ptr, colnum, typecode, repeat, width, status)
+                  (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
+                  ff.ptr, colnum, typecode, repcnt, width, status)
             fits_assert_ok(status[1])
-            return (Int(typecode[1]), Int(repeat[1]), Int(width[1]))
+            return (int(typecode[1]), int(repcnt[1]), int(width[1]))
         end
         function fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
             typecode = Cint[0]
-            repeat = $T[0]
+            repcnt = $T[0]
             width = $T[0]
             status = Cint[0]
             ccall(($ffeqty,libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Ptr{$T}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
-                  ff.ptr, colnum, typecode, repeat, width, status)
+                  (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
+                  ff.ptr, colnum, typecode, repcnt, width, status)
             fits_assert_ok(status[1])
-            return (Int(typecode[1]), Int(repeat[1]), Int(width[1]))
+            return (int(typecode[1]), int(repcnt[1]), int(width[1]))
         end
         function fits_read_tdim(ff::FITSFile, colnum::Integer)
             naxes = Array($T, 99)
