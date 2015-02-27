@@ -153,7 +153,7 @@ The contents associated with a keyword are `(val,cmt)` tuples with `val`
 the value of the keyword (in a suitable Julia type) and `cmt` the
 associated comment.   An exemple to iterate over all keys is:
 ```julia
-for key, (value, comment) in hdr
+for (key, (value, comment)) in hdr
     println("$key = $value / $comment")
 end
 ```
