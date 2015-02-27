@@ -51,19 +51,17 @@ end
 
 Any OI-FITS field (keyword/column) of a given data-block can be retrieved
 via an accessor whose name has suffix `oifits_get_` followed by the name of
-the field (in lower case letters and whith all non-letter and all non-digit
-letters replaced by the underscore character `_`).  A notable exception is
+the field (in lower case letters and with all non-letter and all non-digit
+letters replaced by the underscore character `'_'`).  A notable exception is
 the revision number corresponding to the keyword "OI_REVN" which is
 retrived with the method `oifits_get_revn()`.  For instance:
 
 ```julia
-oifits_get_revn(db)      # get the revison number of the format
-oifits_get_eff_wave(db)  # get effective wavelengths
-oifits_get_eff_band(db)  # get effective bandwidths
-oifits_get_uccord(db)    # get the U coordinates of the data
-...
+oifits_get_revn(db)      # get the revison number of the format (OI_REVN)
+oifits_get_eff_wave(db)  # get effective wavelengths (EFF_WAVE)
+oifits_get_eff_band(db)  # get effective bandwidths (EFF_BAND)
+oifits_get_ucoord(db)    # get the U coordinates of the data (UCOORD)
 ```
-
 Of course, getting a given field must make sense.  For instance,
 `oifits_get_eff_wave()` can be applied on any `OI_WAVELENGTH` data-blocks
 but also on data-blocks which contains interferometric data such as
@@ -94,7 +92,7 @@ syntax is:
 ```julia
 oifits_new_XXX(KEY1=VAL1, KEY2=VAL2, ...)
 ```
-where `XXX` is the type of the data-block and `KEYn`=`VALn` constructions
+where `XXX` is the type of the data-block and `KEYn=VALn` constructions
 give the fields of the data-block and their values.  The names of the
 fields follow the same convention as for the field accessors.
 
@@ -108,7 +106,7 @@ Available data-block constructors are:
 * `oifits_new_t3`   => `OI_T3`
 
 When defining a new data-block, all mandatory fields must be provided.
-For instance to create an `OI_WAVELENGTH` data-block:
+For instance, to create an `OI_WAVELENGTH` data-block:
 ```julia
 µm = 1e-6
 db = oifits_new_wavelength(insname="Amber",
@@ -132,22 +130,24 @@ oifits_detach(db)
 ## Miscellaneous functions
 
 OI-FITS implements some useful functions which can be used to deal with
-FITS file.  These functions may be part of `FITSIO` package.
+FITS file (not just OI-FITS ones).  These functions could be part of `FITSIO`
+package.
 
 
 ### Reading the header of a FITS HDU
 
 The header of a FITS HDU can be read with the function:
 ```julia
-oifits_read_header(ff::FITSFile)
+hdr = oifits_read_header(ff::FITSFile)
 ```
-which returns an indexable and iterable object, say `hdr`.  The keys of
+which returns an indexable and iterable object, here `hdr`.  The keys of
 `hdr` are the FITS keywords of the header.  For instance:
 ```julia
 hdr = oifits_read_header(ff)
-keys(hdr)        # yield an iterators on the keys of hdr
-haskey(hdr, key) # check whether key is present
-hdr[key]         # retrieve the contents associated with the key
+keys(hdr)          # yield an iterator on the keys of hdr
+collect(keys(hdr)) # yield all the keys of hdr
+haskey(hdr, key)   # check whether key is present
+hdr[key]           # retrieve the contents associated with the key
 ```
 The contents associated with a keyword are `(val,cmt)` tuples with `val`
 the value of the keyword (in a suitable Julia type) and `cmt` the
@@ -157,10 +157,11 @@ for key, (value, comment) in hdr
     println("$key = $value / $comment")
 end
 ```
-For commentary FITS keywords (HISTORY or COMMENT), the value and comment
-are identical (in the sense that they are references to the same object)
-and are a vector of strings (one for each commentary card of the given
-keyword).  Other keywords should be unique and thus have a scalar value.
+For commentary FITS keywords (`"HISTORY"` or `"COMMENT"`), the value and
+the comment are identical (in the sense that they are references to the
+same object) and are a vector of strings (one for each commentary card of
+the given keyword).  Other keywords must be unique and thus have a scalar
+value.
 
 In addition to the indexation, the specific value of a keyword can be
 retrieved by one of the following four different methods:
@@ -180,7 +181,7 @@ xtension = oifits_get_string(hdr, "XTENSION", "IMAGE")
 ```
 
 Retrieving the comment part is done with the `oifits_get_comment()` method
-which also accept a default value provided if the keyword is not present:
+which also accepts a default value provided if the keyword is not present:
 ```julia
 com = oifits_get_comment(hdr, key)
 com = oifits_get_comment(hdr, key, def)
@@ -195,5 +196,5 @@ oifits_read_column(ff::FITSFile, colnum::Integer)
 ```
 returns a Julia array with the contents of the `colnum`-th column of the
 current HDU in FITS file handle `ff`.  The current HDU must be a FITS table
-(and ASCII or a binary one).  The last dimension of the result corresponds
+(an ASCII or a binary one).  The last dimension of the result corresponds
 to the rows of the table.
