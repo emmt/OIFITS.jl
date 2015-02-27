@@ -3,16 +3,28 @@
 #
 # Define 1st revision of OI-FITS format.
 #
-# ----------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+#
+# This file is part of OIFITS.jl which is licensed under the MIT "Expat"
+# License:
+#
+# Copyright (C) 2015, Éric Thiébaut.
+#
+#------------------------------------------------------------------------------
+
+
 # OI-FITS FORMAT DESCRIPTION TABLES
 #
-# The format of the OI-FITS data block is described in what follows by
-# a vector of strings like:
+# The format of the OI-FITS data block is described by a vector of strings
+# like:
 #
 #   ["KEYWORD FORMAT UNITS DESCR",
 #     ...,
+#     ...,
 #    "---------------------------",
 #    "COLUMN  FORMAT UNITS DESCR",
+#     ...,
+#     ...,
 #     ...]
 #
 # where:
