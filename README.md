@@ -136,6 +136,13 @@ To detach a data-block from its OI-FITS container:
 oifits_detach(db)
 ```
 
+To read an OI-FITS data-block from the current HDU of a FITS file:
+```julia
+db = oifits_read_datablock(ff)
+```
+where `ff` is a `FITSFile` handle.  The result may be `nothing` if the
+current HDU does not contain an OI-FITS data-block.
+
 
 ## Miscellaneous functions
 
@@ -237,3 +244,34 @@ returns a Julia array with the contents of the `colnum`-th column of the
 current HDU in FITS file handle `ff`.  The current HDU must be a FITS table
 (an ASCII or a binary one).  The last dimension of the result corresponds
 to the rows of the table.
+
+
+### FITS and Julia types conversion
+
+The functions `fits_datatype()` and `fits_bitpix()` deal with conversion
+between CFITSIO type code or BITPIX value and actual Julia data types.
+They can be used as follows (assuming `T` is a Julia data type, while
+`code` and `bitpix` are integers):
+```julia
+fits_datatype(T) --------> code (e.g., TBYTE, TFLOAT, etc.)
+fits_datatype(code) -----> T
+
+fits_bitpix(T) ----------> bitpix (e.g., BYTE_IMG, FLOAT_IMG, etc.)
+fits_datatype(bitpix) ---> T
+```
+
+The functions `fits_get_coltype()` and `fits_get_eqcoltype()` yield the
+type, repeat count and width of a given column, their prototypes are:
+```julia
+(code, repcnt, width) = fits_get_coltype(ff::FITSFile, colnum::Integer)
+(code, repcnt, width) = fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
+```
+with `colnum` the column number, `code` the CFITSIO type code (call
+`fits_datatype(code)` to convert it to a Julia type) of the elements in
+this column, `repcnt` and `width` the repeat count and width of a cell in
+this column.  To retrieve the dimensions of the cells in a given column,
+call the function `fits_read_tdim()`, its prototype is:
+```julia
+dims = fits_read_tdim(ff::FITSFile, colnum::Integer)
+```
+where `dims` is vector of integer dimensions.
