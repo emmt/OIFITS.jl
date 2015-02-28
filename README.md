@@ -159,8 +159,8 @@ collect(keys(hdr)) # yield all the keys of hdr
 haskey(hdr, key)   # check whether key is present
 hdr[key]           # retrieve the contents associated with the key
 ```
-The contents associated with a keyword are `(val,cmt)` tuples with `val`
-the value of the keyword (in a suitable Julia type) and `cmt` the
+The contents associated with a keyword are `(val,com)` tuples with `val`
+the value of the keyword (in a suitable Julia type) and `com` the
 associated comment.   An exemple to iterate over all keys is:
 ```julia
 for (key, (value, comment)) in hdr
@@ -173,8 +173,20 @@ same object) and are a vector of strings (one for each commentary card of
 the given keyword).  Other keywords must be unique and thus have a scalar
 value.
 
-In addition to the indexation, the specific value of a keyword can be
-retrieved by one of the following four different methods:
+Retrieving only the value or the comment part is done with the
+`oifits_get_value()` or the `oifits_get_comment()` methods which also
+accept a default value provided if the keyword is not present:
+```julia
+val = oifits_get_value(hdr, key)
+val = oifits_get_value(hdr, key, def)
+com = oifits_get_comment(hdr, key)
+com = oifits_get_comment(hdr, key, def)
+```
+
+In addition to the indexation, *e.g.,* `hdr[key]`, to the
+`oifits_get_value()` or the `oifits_get_comment()` methods, the specific
+value of a keyword can be retrieved by one of the following four different
+methods:
 ```julia
 oifits_get_logical(hdr, "SIMPLE")
 oifits_get_integer(hdr, "BITPIX")
@@ -182,19 +194,12 @@ oifits_get_real(hdr, "BSCALE")
 oifits_get_string(hdr, "XTENSION")
 ```
 which throw an error if the keyword is not present and perform type
-checking.  It is also possible to supply a default value to return if the
-keyword is not present:
+checking and conversion if allowed.  It is also possible to supply a
+default value to return if the keyword is not present:
 ```julia
 bscale = oifits_get_real(hdr, "BSCALE", 1.0)
 bzero = oifits_get_real(hdr, "BZERO", 0.0)
 xtension = oifits_get_string(hdr, "XTENSION", "IMAGE")
-```
-
-Retrieving the comment part is done with the `oifits_get_comment()` method
-which also accepts a default value provided if the keyword is not present:
-```julia
-com = oifits_get_comment(hdr, key)
-com = oifits_get_comment(hdr, key, def)
 ```
 
 The function:
