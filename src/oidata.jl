@@ -63,6 +63,14 @@ type OIT3 <: OIDataBlock
     OIT3(data::OIContents) = new(nothing, nothing, nothing, data)
 end
 
+_DATABLOCKS = Dict{ASCIIString,DataType}(["OI_TARGET" => OITarget,
+                                          "OI_WAVELENGTH" => OIWavelength,
+                                          "OI_ARRAY" => OIArray,
+                                          "OI_SPECTRUM" => OISpectrum,
+                                          "OI_VIS" => OIVis,
+                                          "OI_VIS2" => OIVis2,
+                                          "OI_T3" => OIT3])
+
 # OIData is any OI-FITS data-block that contain interferometric data.
 typealias OIData Union(OIVis,OIVis2,OIT3)
 
@@ -74,8 +82,8 @@ typealias OIData Union(OIVis,OIVis2,OIT3)
 # replaced by a single ordinary space).
 type OIMaster
     target::OITarget
-    array::Dict{String,OIArray}
-    wavelength::Dict{String,OIWavelength}
+    array::Dict{ASCIIString,OIArray}
+    wavelength::Dict{ASCIIString,OIWavelength}
     vis::Vector{OIVis}
     vis2::Vector{OIVis2}
     t3::Vector{OIT3}
@@ -97,67 +105,22 @@ oifits_t3(master::OIMaster, k::Integer) = master.t3[k]
 getindex(db::OIDataBlock, key::Symbol) = get(db.data, key, nothing)
 getindex(db::OIDataBlock, key::String) = getindex(db, symbol(key))
 
-function oifits_new_target(master::Union(OIMaster, Nothing)=nothing;
-                           revn::Integer=default_revision(), args...)
-    db = OITarget(build_contents(:OI_TARGET, revn, args))
-    if master != nothing
-        oifits_insert(master, db)
-    end
-    return db
-end
-
-function oifits_new_array(master::Union(OIMaster, Nothing)=nothing;
-                          revn::Integer=default_revision(), args...)
-    db = OIArray(build_contents(:OI_ARRAY, revn, args))
-    if master != nothing
-        oifits_insert(master, db)
-    end
-    return db
-end
-
-function oifits_new_wavelength(master::Union(OIMaster, Nothing)=nothing;
-                               revn::Integer=default_revision(), args...)
-    db = OIWavelength(build_contents(:OI_WAVELENGTH, revn, args))
-    if master != nothing
-        oifits_insert(master, db)
-    end
-    return db
-end
-
-function oifits_new_spectrum(master::Union(OIMaster, Nothing)=nothing;
-                             revn::Integer=default_revision(), args...)
-    db = OISpectrum(build_contents(:OI_SPECTRUM, revn, args))
-    if master != nothing
-        oifits_insert(master, db)
-    end
-    return db
-end
-
-function oifits_new_vis(master::Union(OIMaster, Nothing)=nothing;
-                        revn::Integer=default_revision(), args...)
-    db = OIVis(build_contents(:OI_VIS, revn, args))
-    if master != nothing
-        oifits_insert(master, db)
-    end
-    return db
-end
-
-function oifits_new_vis2(master::Union(OIMaster, Nothing)=nothing;
-                         revn::Integer=default_revision(), args...)
-    db = OIVis2(build_contents(:OI_VIS2, revn, args))
-    if master != nothing
-        oifits_insert(master, db)
-    end
-    return db
-end
-
-function oifits_new_t3(master::Union(OIMaster, Nothing)=nothing;
+for (func, name) in ((:oifits_new_target,     "OI_TARGET"),
+                     (:oifits_new_array,      "OI_ARRAY"),
+                     (:oifits_new_wavelength, "OI_WAVELENGTH"),
+                     (:oifits_new_spectrum,   "OI_SPECTRUM"),
+                     (:oifits_new_vis,        "OI_VIS"),
+                     (:oifits_new_vis2,       "OI_VIS2"))
+    @eval begin
+        function $func(master::Union(OIMaster, Nothing)=nothing;
                        revn::Integer=default_revision(), args...)
-    db = OIT3(build_contents(:OI_T3, revn, args))
-    if master != nothing
-        oifits_insert(master, db)
+            db = build_datablock($name, revn, args)
+            if master != nothing
+                oifits_attach(master, db)
+            end
+            return db
+        end
     end
-    return db
 end
 
 #------------------------------------------------------------------------------
@@ -225,43 +188,44 @@ end
 
 # OIDataBlockDef is used to store the definition of data-block.
 type OIDataBlockDef
-    symb::Vector{Symbol}          # ordered field symbolic names
-    dict::Dict{Symbol,OIFieldDef} # dictionary of field specifications
-    function OIDataBlockDef(vect::Vector{OIFieldDef})
-        dict = Dict{Symbol,OIFieldDef}()
-        symb = Array(Symbol, length(vect))
+    dbname::ASCIIString
+    fields::Vector{Symbol}        # ordered field symbolic names
+    spec::Dict{Symbol,OIFieldDef} # dictionary of field specifications
+    function OIDataBlockDef(dbname::ASCIIString, vect::Vector{OIFieldDef})
+        spec = Dict{Symbol,OIFieldDef}()
+        fields = Array(Symbol, length(vect))
         for j in 1:length(vect)
             entry = vect[j]
-            symb[j] = entry.symb
-            dict[entry.symb] = entry
+            fields[j] = entry.symb
+            spec[entry.symb] = entry
         end
-        new(symb, dict)
+        new(dbname, fields, spec)
     end
 end
 
 # OIFormatDef is used to store all the data-block definitions
 # for a given revision number.
-typealias OIFormatDef Dict{Symbol,OIDataBlockDef}
+typealias OIFormatDef Dict{ASCIIString,OIDataBlockDef}
 
 # _FORMATS array is indexed by the revision number.
 _FORMATS = Array(OIFormatDef, 0)
 
-# _DATABLOCKS is a dictionary indexed by the data-block symbolic name (e,g.,
-# :OI_VIS), each entry stores a set of its fields.
-_DATABLOCKS = Dict{Symbol,Set{Symbol}}()
+# _FIELDS is a dictionary indexed by the data-block name (e,g., "OI_VIS"), each
+# entry stores a set of its fields.
+_FIELDS = Dict{ASCIIString,Set{Symbol}}()
 
 # get_def(db, revn) -- yields the OIDataBlockDef for datablock of type `db`
-#                      (e.g., :OI_TARGET or "OI_TARGET")  in revison
-#                      `revn` of OI-FITS standard.
+#                      (e.g., "OI_TARGET") in revison `revn` of OI-FITS
+#                      standard.
 #
-function get_def(db::Symbol, revn::Integer)
+function get_def(dbname::ASCIIString, revn::Integer)
     if revn < 0 || revn > length(_FORMATS)
         error("unsupported revision number: $revn")
     end
-    if ! haskey(_FORMATS[revn], db)
-        error("unkown data-block: $db")
+    if ! haskey(_FORMATS[revn], dbname)
+        error("unknown data-block: $db")
     end
-    _FORMATS[revn][db]
+    _FORMATS[revn][dbname]
 end
 
 function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
@@ -272,8 +236,7 @@ function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
         error("invalid revision number: $revn")
     end
 
-    dbsymb = symbol(dbname)
-    set = get(_DATABLOCKS, dbsymb, Set{Symbol}())
+    fields = get(_FIELDS, dbname, Set{Symbol}())
     def = Array(OIFieldDef, 0)
     keyword = true
     for j in 1:length(tbl)
@@ -304,16 +267,17 @@ function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
                 error("invalid multiplier in OI_FITS definition: \"$row\"")
             end
         end
-        push!(def, OIFieldDef(name, symb, keyword, multiplier, dtype, units, descr))
-        union!(set, (symb,))
+        push!(def, OIFieldDef(name, symb, keyword, multiplier,
+                              dtype, units, descr))
+        push!(fields, symb)
     end
 
     # Insert the data-block definition in the global table.
     while revn > length(_FORMATS)
         push!(_FORMATS, OIFormatDef())
     end
-    _FORMATS[revn][dbsymb] = OIDataBlockDef(def)
-    _DATABLOCKS[dbsymb] = set
+    _FORMATS[revn][dbname] = OIDataBlockDef(dbname, def)
+    _FIELDS[dbname] = fields
 end
 
 # The default format version number is the highest registered one.
@@ -340,10 +304,10 @@ end
 
 # Automatically define getters from all members of a data-block.
 let dbtype
-    for db in keys(_DATABLOCKS)
+    for db in keys(_FIELDS)
         dbtype = "OI"*ucfirst(lowercase(string(db)[4:end]))
         println("key = $db => type = $dbtype")
-        for symb in _DATABLOCKS[db]
+        for symb in _FIELDS[db]
             eval(parse("oifits_get_$symb(db::$dbtype) = db.data[:$symb]"))
         end
     end
@@ -355,37 +319,37 @@ oifits_get_eff_band(db::Union(OIVis,OIVis2,OIT3)) = db.__ins[:eff_band]
 
 #------------------------------------------------------------------------------
 
-function build_contents(symb::Symbol, revn::Integer, args)
-    def = get_def(symb, revn)
-    data = OIContents([(:revn, revn)])
+function build_datablock(dbname::ASCIIString, revn::Integer, args)
+    def = get_def(dbname, revn)
+    data = OIContents([:revn => revn])
     nrows = -1     # number of measurements
     ncols = -1     # number of spectral channels
     nerrs = 0      # number of errors so far
-    for (key, value) in args
+    for (field, value) in args
         # Check whether this field exists.
-        spec = get(def.dict, key, nothing)
+        spec = get(def.spec, field, nothing)
         if spec == nothing
-            error("data-block $symb has no field \"$key\"")
+            error("data-block $dbname has no field \"$field\"")
         end
 
         # Check value type.
         if spec.dtype == _DTYPE_LOGICAL
             if ! is_logical(value)
-                error("expecting boolean value for field \"$key\" in $symb")
+                error("expecting boolean value for field \"$field\" in $dbname")
             end
         elseif spec.dtype == _DTYPE_INTEGER
             if ! is_integer(value)
-                error("expecting integer value for field \"$key\" in $symb")
+                error("expecting integer value for field \"$field\" in $dbname")
             end
             value = int(value)
         elseif spec.dtype == _DTYPE_REAL
             if ! is_real(value)
-                error("expecting real value for field \"$key\" in $symb")
+                error("expecting real value for field \"$field\" in $dbname")
             end
             value = oifits_real(value)
         elseif spec.dtype == _DTYPE_STRING
             if ! is_string(value)
-                error("expecting string value for field \"$key\" in $symb")
+                error("expecting string value for field \"$field\" in $dbname")
             end
         else
             error("*** CORRUPTED WORKSPACE ***")
@@ -396,44 +360,44 @@ function build_contents(symb::Symbol, revn::Integer, args)
         rank = length(dims)
         if spec.keyword
             if rank != 0
-                error("expecting a scalar value for field \"$key\" in $symb")
+                error("expecting a scalar value for field \"$field\" in $dbname")
             end
         else
             n = (spec.multiplier == 1 ? 1 : 2)
             if rank != n
-                error("expecting a $n-D array value for field \"$key\" in $symb")
+                error("expecting a $n-D array value for field \"$field\" in $dbname")
             end
             if nrows == -1
-                nrows = dims[1]
-            elseif nrows != dims[1]
-                error("incompatible number of rows for value of field \"$key\" in $symb")
+                nrows = dims[end]
+            elseif nrows != dims[end]
+                error("incompatible number of rows for value of field \"$field\" in $dbname")
             end
             if spec.multiplier < 0
                 if ncols == -1
                     ncols = dims[2]
                 elseif ncols != dims[2]
-                    error("incompatible number of columns for value of field \"$key\" in $symb")
+                    error("incompatible number of columns for value of field \"$field\" in $dbname")
                 end
             end
         end
 
         # Store value.
-        data[key] = value
+        data[field] = value
     end
 
     # Check that all mandatory fields have been given.
     nerrs = 0
-    for key in def.symb
-        spec = def.dict[key]
-        if ! haskey(data, key) && spec.multiplier != 0
-            warn("missing value for field \"$key\" in $symb")
+    for field in def.fields
+        spec = def.spec[field]
+        if ! haskey(data, field) && spec.multiplier != 0
+            warn("missing value for field \"$field\" in $dbname")
             nerrs += 1
         end
     end
     if nerrs > 0
-        error("some fields are missing in $symb")
+        error("some fields are missing in $dbname")
     end
-    return data
+    return _DATABLOCKS[dbname](data)
 end
 
 # Local Variables:
