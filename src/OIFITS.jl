@@ -38,9 +38,10 @@ export oifits_get_time, oifits_get_mjd, oifits_get_int_time,
 export oifits_new_target, oifits_new_array, oifits_new_wavelength,
        oifits_new_vis, oifits_new_vis2, oifits_new_t3
 
-export oifits_get_logical, oifits_get_integer, oifits_get_real,
-       oifits_get_string, oifits_get_comment,
-       oifits_read_column, oifits_read_header, oifits_read_datablock
+export oifits_read_header, oifits_get_hdutype, oifits_get_colnum,
+       oifits_get_dbtype, oifits_get_logical, oifits_get_integer,
+       oifits_get_real, oifits_get_string,  oifits_get_comment,
+       oifits_read_column, oifits_read_datablock
 
 include("oidata.jl")
 include("oifile.jl")

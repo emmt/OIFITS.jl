@@ -16,9 +16,11 @@ using FITSIO
 
 include("fix-fitsio.jl")
 
+fixname(name::String) = uppercase(rstrip(name))
+
 # Read a column from a table.
 function oifits_read_column(ff::FITSFile, colnum::Integer)
-    # Make sure FIT file is still open.
+    # Make sure FIT file is open.
     fits_assert_open(ff)
 
     # Get the type and the dimensions of the data stored in the column.
@@ -69,7 +71,7 @@ immutable OIHeader
     columns::Dict{ASCIIString,Int}   # dictionary of column indexes
 end
 
-# Make `OIHeader` indexable although read-only.
+# Make `OIHeader` indexable.
 getindex(hdr::OIHeader, key) = get(hdr.contents, key, (nothing,))
 function setindex!(hdr::OIHeader, key::ASCIIString, value, comment::ASCIIString)
     setindex!(hdr.contents, key, (value, comment))
@@ -84,6 +86,25 @@ keys(hdr::OIHeader) = keys(hdr.contents)
 start(hdr::OIHeader) = start(hdr.contents)
 done(hdr::OIHeader, state) = done(hdr.contents, state)
 next(hdr::OIHeader, state) = next(hdr.contents, state)
+
+# Get the type of the HDU.
+oifits_get_hdutype(hdr::OIHeader) = hdr.hdutype
+
+# Get the column number, return -1 if keyword not present.
+function oifits_get_colnum(hdr::OIHeader, colname::String)
+    get(hdr.columns, fixname(colname), -1)
+end
+
+# Get the type of the data-block.
+function oifits_get_dbtype(hdr::OIHeader)
+    if hdr.hdutype == :binary_table
+        extname = uppercase(oifits_get_string(hdr, "EXTNAME", ""))
+        if beginswith(extname, "OI_")
+            return symbol(replace(extname, r"[^A-Z0-9_]", '_'))
+        end
+    end
+    :unknown
+end
 
 const _COMMENT = Set(["HISTORY", "COMMENT"])
 
@@ -170,7 +191,7 @@ function oifits_read_header(ff::FITSFile)
         ncols = oifits_get_integer(hdr, "TFIELDS") # fits_get_num_cols(ff)
         for k in 1:ncols
             ttype = oifits_get_string(hdr, "TTYPE$k")
-            columns[uppercase(strip(ttype))] = k
+            columns[fixname(ttype)] = k
         end
     end
     return hdr

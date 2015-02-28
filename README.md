@@ -75,7 +75,7 @@ oifits_get_ucoord(db)    # get the U coordinates of the data (UCOORD)
 Of course, getting a given field must make sense.  For instance,
 `oifits_get_eff_wave()` can be applied on any `OI_WAVELENGTH` data-blocks
 but also on data-blocks which contains interferometric data such as
-`OI_VIS`, `OI_VIS2`, `OI_T3`, etc. but not on other data-blocks like
+`OI_VIS`, `OI_VIS2`, `OI_T3`, *etc.* but not on other data-blocks like
 `OI_TARGET`.
 
 
@@ -196,6 +196,30 @@ which also accepts a default value provided if the keyword is not present:
 com = oifits_get_comment(hdr, key)
 com = oifits_get_comment(hdr, key, def)
 ```
+
+The function:
+```julia
+oifits_get_hdutype(hdr)
+```
+returns the HDU type as a symbol, `:image_hdu` for an image, `:ascii_table`
+for an ASCII table, `:binary_table` for a binary table, and `:unknown`
+otherwise.
+
+For a FITS table, the function:
+```julia
+oifits_get_colnum(hdr, colname)
+```
+returns the index of the column whose name is `colname`; -1 is returned if
+the column is not present or if the HDU is not a table.  Column names
+should be given in uppercase letters and without trailing spaces (according
+to FITS convention, letter case and trailing spaces are insignificant).
+
+For a FITS table, the function:
+```julia
+oifits_get_dbtype(hdr)
+```
+returns the OI-FITS data-block type as a symbol like `:OI_TARGET`,
+`:OI_WAVELENGTH`, *etc.*
 
 
 ### Reading a given column from a FITS table
