@@ -98,7 +98,7 @@ end
 # Get the type of the data-block.
 function oifits_get_dbtype(hdr::OIHeader)
     if hdr.hdutype == :binary_table
-        extname = uppercase(oifits_get_string(hdr, "EXTNAME", ""))
+        extname = fixname(oifits_get_string(hdr, "EXTNAME", ""))
         if beginswith(extname, "OI_")
             return symbol(replace(extname, r"[^A-Z0-9_]", '_'))
         end
@@ -197,41 +197,121 @@ function oifits_read_header(ff::FITSFile)
     return hdr
 end
 
-for (fn, T, chk) in ((:oifits_get_integer, Integer, :is_integer),
-                     (:oifits_get_real,    Real,    :is_real),
-                     (:oifits_get_logical, Bool,    :is_logical),
-                     (:oifits_get_string,  String,  :is_string))
+function get_part(hdr::OIHeader, key::String, idx::Integer, def)
+    haskey(hdr.contents, key) ? hdr.contents[key][idx] : def
+end
+
+function get_part(hdr::OIHeader, key::String, idx::Integer)
+    haskey(hdr.contents, key) || error("missing FITS keyword $key")
+    hdr.contents[key][idx]
+end
+
+oifits_get_value(hdr::OIHeader, key::String) = get_part(hdr, key, 1)
+oifits_get_value(hdr::OIHeader, key::String, def) = get_part(hdr, key, 1, def)
+oifits_get_comment(hdr::OIHeader, key::String) = get_part(hdr, key, 2)
+oifits_get_comment(hdr::OIHeader, key::String,
+                   def::String) = get_part(hdr, key, 2, def)
+
+for (fn, T, S) in ((:oifits_get_integer, Integer, Int),
+                   (:oifits_get_real,    Real,    Cdouble),
+                   (:oifits_get_logical, Bool,    Bool),
+                   (:oifits_get_string,  String,  ASCIIString))
     @eval begin
         function $fn(hdr::OIHeader, key::String, def::$T)
-            haskey(hdr.contents, key) || return def
-            val = hdr.contents[key][1]
-            $chk(val) || error("bad type for FITS keyword $key")
-            return val
+            val = get_part(hdr, key, 1, def)
+            isa(val, $T) || error("bad type for FITS keyword $key")
+            return typeof(val) != $S ? convert($S, val) : val
         end
         function $fn(hdr::OIHeader, key::String)
-            haskey(hdr.contents, key) || error("missing FITS keyword $key")
-            val = hdr.contents[key][1]
-            $chk(val) || error("bad type for FITS keyword $key")
-            return val
+            val = get_part(hdr, key, 1)
+            isa(val, $T) || error("bad type for FITS keyword $key")
+            return typeof(val) != $S ? convert($S, val) : val
         end
     end
 end
-function oifits_get_comment(hdr::OIHeader, key::String, def::String)
-    haskey(hdr.contents, key) ? hdr.contents[key][2] : def
+
+# Returns invalid result if not a valid OI-FITS data-block.
+# Unless quiet is true, print warn message.
+function check_datablock(hdr::OIHeader; quiet::Bool=false)
+    # Values returned in case of error.
+    dbname = ""
+    dbrevn = -1
+    dbdefn = nothing
+
+    # Use a while loop to break out whenever an error occurs.
+    while hdr.hdutype == :binary_table
+        # Get extension name.
+        extname = oifits_get_value(hdr, "EXTNAME", nothing)
+        if ! isa(extname, String)
+            quiet || warn(extname == nothing ? "missing keyword EXTNAME"
+                                             : "EXTNAME value is not a string")
+            break
+        end
+        extname = fixname(extname)
+        beginswith(extname, "OI_") || break
+        dbname = extname
+        if ! haskey(_DATABLOCKS, dbname)
+            quiet || warn("unknown OI-FITS data-block \"$extname\"")
+            break
+        end
+
+        # Get revision number.
+        revn = oifits_get_value(hdr, "OI_REVN", nothing)
+        if ! isa(revn, Integer)
+            quiet || warn(revn == nothing ? "missing keyword OI_REVN"
+                                          : "OI_REVN value is not an integer")
+            break
+        end
+        dbrevn = revn
+        if dbrevn <= 0
+            quiet || warn("invalid OI_REVN value ($dbrevn)")
+            break
+        end
+        if dbrevn > length(_FORMATS)
+            quiet || warn("unsupported OI_REVN value ($dbrevn)")
+            break
+        end
+        if ! haskey(_FORMATS[dbrevn], dbname)
+            quiet || warn("unknown OI-FITS data-block \"$extname\"")
+        end
+        dbdefn = _FORMATS[dbrevn][dbname]
+        break
+    end
+    return (dbname, dbrevn, dbdefn)
 end
-function oifits_get_comment(hdr::OIHeader, key::String)
-    haskey(hdr.contents, key) || error("missing FITS keyword $key")
-    hdr.contents[key][2]
+
+function oifits_read_datablock(ff::FITSFile; quiet::Bool=false)
+    oifits_read_datablock(ff, oifits_read_header(ff), quiet=quiet)
 end
 
-function oifits_read_datablock(ff::FITSFile, hdr::OIHeader)
-    # Column contains an array of strings.  Strip the leading dimension
-    # which is the maximum length of each strings.  On return trailing
-    # spaces are removed (they are insignificant according to the FITS
-    # norm).
-
-    ncols = fits_get_num_cols(ff)
-
+function oifits_read_datablock(ff::FITSFile, hdr::OIHeader; quiet::Bool=false)
+    (dbtype, revn, defn) = check_datablock(hdr, quiet=quiet)
+    defn == nothing && return nothing
+    nerrs = 0
+    data = Dict{Symbol,Any}([:revn => revn])
+    for field in defn.fields
+        spec = defn.spec[field]
+        name = spec.name
+        if spec.keyword
+            value = oifits_get_value(hdr, name, nothing)
+            if value == nothing
+                warn("missing keyword \"$name\" in OI-FITS $dbtype data-block")
+                ++nerrs
+            else
+                data[field] = value
+            end
+        else
+            colnum = oifits_get_colnum(hdr, name)
+            if colnum < 1
+                warn("missing column \"$name\" in OI-FITS $dbtype data-block")
+                ++nerrs
+            else
+                data[field] = oifits_read_column(ff, colnum)
+            end
+        end
+    end
+    nerrs > 0 && error("bad OI-FITS $dbtype data-block")
+    return build_datablock(dbtype, revn, data)
 end
 
 # Local Variables:
