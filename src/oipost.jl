@@ -1,0 +1,39 @@
+#
+# oipost.jl --
+#
+# Post-processing of OI-FITS data-block definitions.  Must be the last
+# file included by the main OIFITS.jl source file.
+#
+#------------------------------------------------------------------------------
+#
+# This file is part of OIFITS.jl which is licensed under the MIT "Expat"
+# License:
+#
+# Copyright (C) 2015, Éric Thiébaut.
+#
+#------------------------------------------------------------------------------
+
+# Automatically define getters from all members of a data-block.
+let dbtype
+    for db in keys(_FIELDS)
+        dbtype = "OI"*ucfirst(lowercase(string(db)[4:end]))
+        println("key = $db => type = $dbtype")
+        for symb in _FIELDS[db]
+            eval(parse("oifits_get_$symb(db::$dbtype) = db.data[:$symb]"))
+        end
+    end
+end
+
+# Define getters which rely on indirections.
+oifits_get_eff_wave(db::Union(OIVis,OIVis2,OIT3)) = db.ins[:eff_wave]
+oifits_get_eff_band(db::Union(OIVis,OIVis2,OIT3)) = db.ins[:eff_band]
+
+
+# Local Variables:
+# mode: Julia
+# tab-width: 8
+# indent-tabs-mode: nil
+# fill-column: 79
+# coding: utf-8
+# ispell-local-dictionary: "american"
+# End:

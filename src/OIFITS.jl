@@ -47,6 +47,7 @@ export oifits_read_header, oifits_get_hdutype, oifits_get_colnum,
 include("oidata.jl")
 include("oifile.jl")
 include("oiformat1.jl")
+include("oipost.jl") # must be the last one
 
 end # module
 
