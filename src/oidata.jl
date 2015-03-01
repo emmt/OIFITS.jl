@@ -16,49 +16,49 @@ typealias OIContents Dict{Symbol,Any}
 
 abstract OIDataBlock
 type OITarget <: OIDataBlock
-    __owner
+    owner
     data::OIContents
     OITarget(data::OIContents) = new(nothing, data)
 end
 
 type OIArray <: OIDataBlock
-    __owner
+    owner
     data::OIContents
     OIArray(data::OIContents) = new(nothing, data)
 end
 
 type OIWavelength <: OIDataBlock
-    __owner
+    owner
     data::OIContents
     OIWavelength(data::OIContents) = new(nothing, data)
 end
 
 type OISpectrum <: OIDataBlock
-    __owner
+    owner
     data::OIContents
     OISpectrum(data::OIContents) = new(nothing, data)
 end
 
 type OIVis <: OIDataBlock
-    __owner
-    __arr::Union(OIArray,Nothing)
-    __ins::Union(OIWavelength,Nothing)
+    owner
+    arr::Union(OIArray,Nothing)
+    ins::Union(OIWavelength,Nothing)
     data::OIContents
     OIVis(data::OIContents) = new(nothing, nothing, nothing, data)
 end
 
 type OIVis2 <: OIDataBlock
-    __owner
-    __arr::Union(OIArray,Nothing)
-    __ins::Union(OIWavelength,Nothing)
+    owner
+    arr::Union(OIArray,Nothing)
+    ins::Union(OIWavelength,Nothing)
     data::OIContents
     OIVis2(data::OIContents) = new(nothing, nothing, nothing, data)
 end
 
 type OIT3 <: OIDataBlock
-    __owner
-    __arr::Union(OIArray,Nothing)
-    __ins::Union(OIWavelength,Nothing)
+    owner
+    arr::Union(OIArray,Nothing)
+    ins::Union(OIWavelength,Nothing)
     data::OIContents
     OIT3(data::OIContents) = new(nothing, nothing, nothing, data)
 end
@@ -74,6 +74,11 @@ _DATABLOCKS = Dict{ASCIIString,DataType}(["OI_TARGET" => OITarget,
 # OIData is any OI-FITS data-block that contain interferometric data.
 typealias OIData Union(OIVis,OIVis2,OIT3)
 
+# OIDataBlock can be indexed by the name (either as a string or as a
+# symbol) of the field.
+getindex(db::OIDataBlock, key::Symbol) = get(db.data, key, nothing)
+getindex(db::OIDataBlock, key::String) = getindex(db, symbol(key))
+
 # OIMaster stores the contents of an OI-FITS file.  Data-blocks containing
 # measurements (OI_VIS, OI_VIS2 and OI_T3) are stored into a vector and
 # thus indexed by an integer.  Named data-blocks (OI_ARRAY and
@@ -81,29 +86,12 @@ typealias OIData Union(OIVis,OIVis2,OIT3)
 # letters, with leading and trailing spaces stripped, multiple spaces
 # replaced by a single ordinary space).
 type OIMaster
-    target::OITarget
-    array::Dict{ASCIIString,OIArray}
-    wavelength::Dict{ASCIIString,OIWavelength}
-    vis::Vector{OIVis}
-    vis2::Vector{OIVis2}
-    t3::Vector{OIT3}
-    update::Bool
+    all::Vector{OIDataBlock}            # All data-blocks
+    update::Bool                        # Update is needed?
+    target::Union(OITarget,Nothing)
+    arr::Dict{ASCIIString,OIArray}
+    ins::Dict{ASCIIString,OIWavelength}
 end
-
-oifits_target(master::OIMaster) = master.target
-oifits_array(master::OIMaster) = master.array
-oifits_wavelength(master::OIMaster, insname::String) = master.wavelength[insname]
-oifits_vis(master::OIMaster) = master.vis
-oifits_vis(master::OIMaster, k::Integer) = master.vis[k]
-oifits_vis2(master::OIMaster) = master.vis2
-oifits_vis2(master::OIMaster, k::Integer) = master.vis2[k]
-oifits_t3(master::OIMaster) = master.t3
-oifits_t3(master::OIMaster, k::Integer) = master.t3[k]
-
-# OIDataBlock can be indexed by the name (either as a string or as a
-# symbol) of the field.
-getindex(db::OIDataBlock, key::Symbol) = get(db.data, key, nothing)
-getindex(db::OIDataBlock, key::String) = getindex(db, symbol(key))
 
 for (func, name) in ((:oifits_new_target,     "OI_TARGET"),
                      (:oifits_new_array,      "OI_ARRAY"),
@@ -116,7 +104,7 @@ for (func, name) in ((:oifits_new_target,     "OI_TARGET"),
                        revn::Integer=default_revision(), args...)
             db = build_datablock($name, revn, args)
             if master != nothing
-                oifits_attach(master, db)
+                oifits_attach!(master, db)
             end
             return db
         end
@@ -300,24 +288,6 @@ function name2symbol(name::String)
 end
 
 #------------------------------------------------------------------------------
-# Define getter functions.
-
-# Automatically define getters from all members of a data-block.
-let dbtype
-    for db in keys(_FIELDS)
-        dbtype = "OI"*ucfirst(lowercase(string(db)[4:end]))
-        println("key = $db => type = $dbtype")
-        for symb in _FIELDS[db]
-            eval(parse("oifits_get_$symb(db::$dbtype) = db.data[:$symb]"))
-        end
-    end
-end
-
-# Define getters which rely on indirections.
-oifits_get_eff_wave(db::Union(OIVis,OIVis2,OIT3)) = db.__ins[:eff_wave]
-oifits_get_eff_band(db::Union(OIVis,OIVis2,OIT3)) = db.__ins[:eff_band]
-
-#------------------------------------------------------------------------------
 
 function build_datablock(dbname::ASCIIString, revn::Integer, args)
     def = get_def(dbname, revn)
@@ -398,6 +368,68 @@ function build_datablock(dbname::ASCIIString, revn::Integer, args)
         error("some fields are missing in $dbname")
     end
     return _DATABLOCKS[dbname](data)
+end
+
+#------------------------------------------------------------------------------
+
+#oifits_target(master::OIMaster) = master.target
+#oifits_array(master::OIMaster) = master.array
+#oifits_wavelength(master::OIMaster, insname::String) = master.wavelength[insname]
+#oifits_vis(master::OIMaster) = master.vis
+#oifits_vis(master::OIMaster, k::Integer) = master.vis[k]
+#oifits_vis2(master::OIMaster) = master.vis2
+#oifits_vis2(master::OIMaster, k::Integer) = master.vis2[k]
+#oifits_t3(master::OIMaster) = master.t3
+#oifits_t3(master::OIMaster, k::Integer) = master.t3[k]
+
+function oifits_attach!(master::OIMaster, db::OIDataBlock)
+    db.owner == nothing || error("data-block already attached")
+    if isa(db, OITarget)
+        if master.target != nothing
+            error("only one OI_TARGET data-block can be attached")
+        end
+        master.target = db
+    elseif isa(db, OIWavelength)
+        insname = fixname(db[:insname])
+        if haskey(insname, master.ins)
+            error("master already have an OI_WAVELENGTH data-block with INSNAME=\"$insname\"")
+        end
+        master.ins[insname] = db
+    elseif isa(db, OIArray)
+        arrname = fixname(db[:arrname])
+        if haskey(insname, master.arr)
+            error("master already have an OI_ARRAY data-block with ARRNAME=\"$insname\"")
+        end
+        master.arr[arrname] = db
+    end
+    push!(master.all, db)
+    master.update = true
+    db.owner = master
+    nothing
+end
+
+function update(master::OIMaster)
+    if master.update
+        if master.target == nothing
+            error("missing mandatory OI_TARGET data-block")
+        end
+        for db in master.all
+            if isa(db, OIData)
+                insname = fixname(db[:insname])
+                arrname = fixname(db[:arrname])
+                db.ins = get(master.ins, insname, nothing)
+                db.arr = get(master.arr, arrname, nothing)
+                if db.ins == nothing
+                    error("OI_WAVELENGTH data-block with INSNAME=\"$insname\" not found in master")
+                end
+                if dn.arr
+                    warn("OI_ARRAY data-block with ARRNAME=\"$arrname\" not found in master")
+                end
+            end
+        end
+        master.update = false
+    end
+    return master
 end
 
 # Local Variables:
