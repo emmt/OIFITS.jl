@@ -261,16 +261,25 @@ fits_datatype(bitpix) ---> T
 ```
 
 The functions `fits_get_coltype()` and `fits_get_eqcoltype()` yield the
-type, repeat count and width of a given column, their prototypes are:
+data type, repeat count and width in bytes of a given column, their
+prototypes are:
 ```julia
 (code, repcnt, width) = fits_get_coltype(ff::FITSFile, colnum::Integer)
 (code, repcnt, width) = fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
 ```
-with `colnum` the column number, `code` the CFITSIO type code (call
+with `colnum` the column number, `code` the CFITSIO column type (call
 `fits_datatype(code)` to convert it to a Julia type) of the elements in
 this column, `repcnt` and `width` the repeat count and width of a cell in
-this column.  To retrieve the dimensions of the cells in a given column,
-call the function `fits_read_tdim()`, its prototype is:
+this column.  The difference between `fits_get_coltype()` and
+`fits_get_eqcoltype()` is that the former yields the column type as it is
+stored in the file, while the latter yields the column type after automatic
+scaling by the values `"TSCALn"` and `"TZEROn"` keywods if present (with
+`n` the column number).  Note that reading the column data with
+`fits_read_col()` or `fitsio_read_column()` automatically apply this kind
+of scaling.
+
+To retrieve the dimensions of the cells in a given column, call the
+function `fits_read_tdim()`, its prototype is:
 ```julia
 dims = fits_read_tdim(ff::FITSFile, colnum::Integer)
 ```
