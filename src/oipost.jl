@@ -13,14 +13,11 @@
 #
 #------------------------------------------------------------------------------
 
-# Automatically define getters from all members of a data-block.
-let dbtype
-    for db in keys(_FIELDS)
-        dbtype = "OI"*ucfirst(lowercase(string(db)[4:end]))
-        println("key = $db => type = $dbtype")
-        for symb in _FIELDS[db]
-            eval(parse("oifits_get_$symb(db::$dbtype) = db.data[:$symb]"))
-        end
+# Automatically define getters from all fields of a data-block.
+for dbname in keys(_FIELDS)
+    local dbtype = _DATABLOCKS[dbname]
+    for symb in _FIELDS[dbname]
+        eval(parse("oifits_get_$symb(db::$dbtype) = db.contents[:$symb]"))
     end
 end
 
