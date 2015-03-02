@@ -331,7 +331,7 @@ function oifits_load(ff::FITSFile; quiet::Bool=false, update::Bool=true)
         quiet || println("reading OI-FITS $dbname in HDU $hdu")
         oifits_attach!(master, db)
     end
-    update && oifits_update!(master)
+    update && oifits_update(master)
     return master
 end
 

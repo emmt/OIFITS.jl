@@ -143,11 +143,6 @@ haskey(db::OIDataBlock, key::Symbol) = haskey(db.contents, key)
 haskey(db::OIDataBlock, key::String) = haskey(db.contents, symbol(key))
 keys(db::OIDataBlock) = keys(db.contents)
 
-# OIDataBlock can be used as iterators.
-start(db::OIDataBlock) = start(db.contents)
-done(db::OIDataBlock, state) = done(db.contents, state)
-next(db::OIDataBlock, state) = next(db.contents, state)
-
 # OIMaster stores the contents of an OI-FITS file.  Data-blocks containing
 # measurements (OI_VIS, OI_VIS2 and OI_T3) are stored into a vector and
 # thus indexed by an integer.  Named data-blocks (OI_ARRAY and
@@ -416,6 +411,12 @@ end
 # conventions.
 fixname(name::String) = uppercase(rstrip(name))
 
+# Make OIMaster an iterator.
+start(master::OIMaster) = start(oifits_update(master).all)
+done(master::OIMaster, state) = done(master.all, state)
+next(master::OIMaster, state) = next(master.all, state)
+
+
 oifits_target(master::OIMaster) = master.target
 oifits_array(master::OIMaster, arrname::String) = master.array[fixname(arrname)]
 oifits_wavelength(master::OIMaster, insname::String) = master.wavelength[fixname(insname)]
@@ -468,7 +469,7 @@ function oifits_attach!(master::OIMaster, db::OIDataBlock)
     nothing
 end
 
-function oifits_update!(master::OIMaster)
+function oifits_update(master::OIMaster)
     if master.update_pending
         if master.target == nothing
             error("missing mandatory OI_TARGET data-block")
