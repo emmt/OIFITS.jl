@@ -16,8 +16,6 @@ using FITSIO
 
 include("fix-fitsio.jl")
 
-fixname(name::String) = uppercase(rstrip(name))
-
 # Read a column from a table.
 function oifits_read_column(ff::FITSFile, colnum::Integer)
     # Make sure FIT file is open.
