@@ -312,6 +312,29 @@ function oifits_read_datablock(ff::FITSFile, hdr::OIHeader; quiet::Bool=false)
     return build_datablock(dbtype, revn, data)
 end
 
+function oifits_load(filename::String; quiet::Bool=false, update::Bool=true)
+    return oifits_load(fits_open_file(filename), quiet=quiet, update=update)
+end
+
+function oifits_load(ff::FITSFile; quiet::Bool=false, update::Bool=true)
+    master = oifits_new_master()
+
+    # Read all contents, skipping first HDU.
+    for hdu in 2:fits_get_num_hdus(ff)
+        fits_movabs_hdu(ff, hdu)
+        db = oifits_read_datablock(ff, quiet=quiet)
+        if db == nothing
+            quiet || println("skipping HDU $hdu (no OI-FITS data)")
+            continue
+        end
+        dbname = _EXTNAMES[typeof(db)]
+        quiet || println("reading OI-FITS $dbname in HDU $hdu")
+        oifits_attach!(master, db)
+    end
+    update && oifits_update!(master)
+    return master
+end
+
 # Local Variables:
 # mode: Julia
 # tab-width: 8
