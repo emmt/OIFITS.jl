@@ -126,6 +126,11 @@ _DATABLOCKS = Dict{ASCIIString,DataType}(["OI_TARGET"     => OITarget,
                                           "OI_VIS"        => OIVis,
                                           "OI_VIS2"       => OIVis2,
                                           "OI_T3"         => OIT3])
+_EXTNAMES = Dict{DataType,ASCIIString}()
+
+for (key, val) in _DATABLOCKS
+    _EXTNAMES[val] = key
+end
 
 # OIData is any OI-FITS data-block which contains interferometric data.
 typealias OIData Union(OIVis,OIVis2,OIT3)
@@ -151,10 +156,17 @@ next(db::OIDataBlock, state) = next(db.contents, state)
 # replaced by a single ordinary space).
 type OIMaster
     all::Vector{OIDataBlock}            # All data-blocks
-    update::Bool                        # Update is needed?
+    update_pending::Bool                # Update is needed?
     target::Union(OITarget,Nothing)
     arr::Dict{ASCIIString,OIArray}
     ins::Dict{ASCIIString,OIWavelength}
+    function OIMaster()
+        new(Array(OIDataBlock, 0),
+            false,
+            nothing,
+            Dict{ASCIIString,OIArray}(),
+            Dict{ASCIIString,OIWavelength}())
+    end
 end
 
 
@@ -358,7 +370,7 @@ function build_datablock(dbname::ASCIIString, revn::Integer, args)
                 error("expecting a scalar value for field \"$field\" in $dbname")
             end
         else
-            n = (spec.multiplier == 1 ? 1 : 2)
+            n = (spec.multiplier == 1 || spec.dtype == _DTYPE_STRING ? 1 : 2)
             if rank != n
                 error("expecting a $n-D array value for field \"$field\" in $dbname")
             end
@@ -414,6 +426,22 @@ oifits_wavelength(master::OIMaster, insname::String) = master.wavelength[fixname
 #oifits_t3(master::OIMaster) = master.t3
 #oifits_t3(master::OIMaster, k::Integer) = master.t3[k]
 
+function oifits_new_master(datablocks::OIDataBlock...)
+    master = OIMaster()
+    for db in datablocks
+        oifits_attach!(master, db)
+    end
+    master
+end
+
+function oifits_new_master(datablocks::Array{OIDataBlock})
+    master = OIMaster()
+    for db in datablocks
+        oifits_attach!(master, db)
+    end
+    master
+end
+
 function oifits_attach!(master::OIMaster, db::OIDataBlock)
     db.owner == nothing || error("data-block already attached")
     if isa(db, OITarget)
@@ -423,25 +451,25 @@ function oifits_attach!(master::OIMaster, db::OIDataBlock)
         master.target = db
     elseif isa(db, OIWavelength)
         insname = fixname(db[:insname])
-        if haskey(insname, master.ins)
+        if haskey(master.ins, insname)
             error("master already have an OI_WAVELENGTH data-block with INSNAME=\"$insname\"")
         end
         master.ins[insname] = db
     elseif isa(db, OIArray)
         arrname = fixname(db[:arrname])
-        if haskey(insname, master.arr)
-            error("master already have an OI_ARRAY data-block with ARRNAME=\"$insname\"")
+        if haskey(master.arr, arrname)
+            error("master already have an OI_ARRAY data-block with ARRNAME=\"$arrname\"")
         end
         master.arr[arrname] = db
     end
     push!(master.all, db)
-    master.update = true
+    master.update_pending = true
     db.owner = master
     nothing
 end
 
-function update(master::OIMaster)
-    if master.update
+function oifits_update!(master::OIMaster)
+    if master.update_pending
         if master.target == nothing
             error("missing mandatory OI_TARGET data-block")
         end
@@ -454,12 +482,12 @@ function update(master::OIMaster)
                 if db.ins == nothing
                     error("OI_WAVELENGTH data-block with INSNAME=\"$insname\" not found in master")
                 end
-                if dn.arr
+                if db.arr == nothing
                     warn("OI_ARRAY data-block with ARRNAME=\"$arrname\" not found in master")
                 end
             end
         end
-        master.update = false
+        master.update_pending = false
     end
     return master
 end
