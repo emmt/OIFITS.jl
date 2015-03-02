@@ -132,6 +132,8 @@ for (key, val) in _DATABLOCKS
     _EXTNAMES[val] = key
 end
 
+oifits_dbname(db::OIDataBlock) = _EXTNAMES[typeof(db)]
+
 # OIData is any OI-FITS data-block which contains interferometric data.
 typealias OIData Union(OIVis,OIVis2,OIT3)
 
@@ -142,6 +144,11 @@ getindex(db::OIDataBlock, key::String) = getindex(db, symbol(key))
 haskey(db::OIDataBlock, key::Symbol) = haskey(db.contents, key)
 haskey(db::OIDataBlock, key::String) = haskey(db.contents, symbol(key))
 keys(db::OIDataBlock) = keys(db.contents)
+
+# OIDataBlock can be used as iterators.
+start(db::OIDataBlock) = start(db.contents)
+done(db::OIDataBlock, state) = done(db.contents, state)
+next(db::OIDataBlock, state) = next(db.contents, state)
 
 # OIMaster stores the contents of an OI-FITS file.  Data-blocks containing
 # measurements (OI_VIS, OI_VIS2 and OI_T3) are stored into a vector and
@@ -416,6 +423,15 @@ start(master::OIMaster) = start(oifits_update(master).all)
 done(master::OIMaster, state) = done(master.all, state)
 next(master::OIMaster, state) = next(master.all, state)
 
+function oifits_select(master::OIMaster, args::String...)
+    datablocks = Array(OIDataBlock, 0)
+    for db in master
+        if oifits_dbname(db) ∈ args
+            push!(datablocks, db)
+        end
+    end
+    return datablocks
+end
 
 oifits_target(master::OIMaster) = master.target
 oifits_array(master::OIMaster, arrname::String) = master.array[fixname(arrname)]
