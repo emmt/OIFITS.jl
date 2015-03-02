@@ -12,106 +12,10 @@
 #
 #------------------------------------------------------------------------------
 
-typealias OIContents Dict{Symbol,Any}
+###############
+# BASIC TYPES #
+###############
 
-abstract OIDataBlock
-type OITarget <: OIDataBlock
-    owner
-    data::OIContents
-    OITarget(data::OIContents) = new(nothing, data)
-end
-
-type OIArray <: OIDataBlock
-    owner
-    data::OIContents
-    OIArray(data::OIContents) = new(nothing, data)
-end
-
-type OIWavelength <: OIDataBlock
-    owner
-    data::OIContents
-    OIWavelength(data::OIContents) = new(nothing, data)
-end
-
-type OISpectrum <: OIDataBlock
-    owner
-    data::OIContents
-    OISpectrum(data::OIContents) = new(nothing, data)
-end
-
-type OIVis <: OIDataBlock
-    owner
-    arr::Union(OIArray,Nothing)
-    ins::Union(OIWavelength,Nothing)
-    data::OIContents
-    OIVis(data::OIContents) = new(nothing, nothing, nothing, data)
-end
-
-type OIVis2 <: OIDataBlock
-    owner
-    arr::Union(OIArray,Nothing)
-    ins::Union(OIWavelength,Nothing)
-    data::OIContents
-    OIVis2(data::OIContents) = new(nothing, nothing, nothing, data)
-end
-
-type OIT3 <: OIDataBlock
-    owner
-    arr::Union(OIArray,Nothing)
-    ins::Union(OIWavelength,Nothing)
-    data::OIContents
-    OIT3(data::OIContents) = new(nothing, nothing, nothing, data)
-end
-
-_DATABLOCKS = Dict{ASCIIString,DataType}(["OI_TARGET" => OITarget,
-                                          "OI_WAVELENGTH" => OIWavelength,
-                                          "OI_ARRAY" => OIArray,
-                                          "OI_SPECTRUM" => OISpectrum,
-                                          "OI_VIS" => OIVis,
-                                          "OI_VIS2" => OIVis2,
-                                          "OI_T3" => OIT3])
-
-# OIData is any OI-FITS data-block that contain interferometric data.
-typealias OIData Union(OIVis,OIVis2,OIT3)
-
-# OIDataBlock can be indexed by the name (either as a string or as a
-# symbol) of the field.
-getindex(db::OIDataBlock, key::Symbol) = get(db.data, key, nothing)
-getindex(db::OIDataBlock, key::String) = getindex(db, symbol(key))
-
-# OIMaster stores the contents of an OI-FITS file.  Data-blocks containing
-# measurements (OI_VIS, OI_VIS2 and OI_T3) are stored into a vector and
-# thus indexed by an integer.  Named data-blocks (OI_ARRAY and
-# OI_WAVELENGTH) are indexed by their names (converted to upper case
-# letters, with leading and trailing spaces stripped, multiple spaces
-# replaced by a single ordinary space).
-type OIMaster
-    all::Vector{OIDataBlock}            # All data-blocks
-    update::Bool                        # Update is needed?
-    target::Union(OITarget,Nothing)
-    arr::Dict{ASCIIString,OIArray}
-    ins::Dict{ASCIIString,OIWavelength}
-end
-
-for (func, name) in ((:oifits_new_target,     "OI_TARGET"),
-                     (:oifits_new_array,      "OI_ARRAY"),
-                     (:oifits_new_wavelength, "OI_WAVELENGTH"),
-                     (:oifits_new_spectrum,   "OI_SPECTRUM"),
-                     (:oifits_new_vis,        "OI_VIS"),
-                     (:oifits_new_vis2,       "OI_VIS2"))
-    @eval begin
-        function $func(master::Union(OIMaster, Nothing)=nothing;
-                       revn::Integer=default_revision(), args...)
-            db = build_datablock($name, revn, args)
-            if master != nothing
-                oifits_attach!(master, db)
-            end
-            return db
-        end
-    end
-end
-
-#------------------------------------------------------------------------------
 # The default floating point type corresponds to C double precision.
 typealias OIReal Cdouble
 
@@ -158,7 +62,105 @@ is_real(::Any) = false
 is_real(::Real) = true
 is_real{T<:Real}(::Array{T}) = true
 
-#------------------------------------------------------------------------------
+
+#################
+# OI-FITS TYPES #
+#################
+
+typealias OIContents Dict{Symbol,Any}
+
+abstract OIDataBlock
+type OITarget <: OIDataBlock
+    owner
+    contents::OIContents
+    OITarget(contents::OIContents) = new(nothing, contents)
+end
+
+type OIArray <: OIDataBlock
+    owner
+    contents::OIContents
+    OIArray(contents::OIContents) = new(nothing, contents)
+end
+
+type OIWavelength <: OIDataBlock
+    owner
+    contents::OIContents
+    OIWavelength(contents::OIContents) = new(nothing, contents)
+end
+
+type OISpectrum <: OIDataBlock
+    owner
+    contents::OIContents
+    OISpectrum(contents::OIContents) = new(nothing, contents)
+end
+
+type OIVis <: OIDataBlock
+    owner
+    arr::Union(OIArray,Nothing)
+    ins::Union(OIWavelength,Nothing)
+    contents::OIContents
+    OIVis(contents::OIContents) = new(nothing, nothing, nothing, contents)
+end
+
+type OIVis2 <: OIDataBlock
+    owner
+    arr::Union(OIArray,Nothing)
+    ins::Union(OIWavelength,Nothing)
+    contents::OIContents
+    OIVis2(contents::OIContents) = new(nothing, nothing, nothing, contents)
+end
+
+type OIT3 <: OIDataBlock
+    owner
+    arr::Union(OIArray,Nothing)
+    ins::Union(OIWavelength,Nothing)
+    contents::OIContents
+    OIT3(contents::OIContents) = new(nothing, nothing, nothing, contents)
+end
+
+# Correspondance between OI-FITS data-block names and Julia types.
+_DATABLOCKS = Dict{ASCIIString,DataType}(["OI_TARGET"     => OITarget,
+                                          "OI_WAVELENGTH" => OIWavelength,
+                                          "OI_ARRAY"      => OIArray,
+                                          "OI_SPECTRUM"   => OISpectrum,
+                                          "OI_VIS"        => OIVis,
+                                          "OI_VIS2"       => OIVis2,
+                                          "OI_T3"         => OIT3])
+
+# OIData is any OI-FITS data-block which contains interferometric data.
+typealias OIData Union(OIVis,OIVis2,OIT3)
+
+# OIDataBlock can be indexed by the name (either as a string or as a
+# symbol) of the field.
+getindex(db::OIDataBlock, key::Symbol) = get(db.contents, key, nothing)
+getindex(db::OIDataBlock, key::String) = getindex(db, symbol(key))
+haskey(db::OIDataBlock, key::Symbol) = haskey(db.contents, key)
+haskey(db::OIDataBlock, key::String) = haskey(db.contents, symbol(key))
+keys(db::OIDataBlock) = keys(db.contents)
+
+# OIDataBlock can be used as iterators.
+start(db::OIDataBlock) = start(db.contents)
+done(db::OIDataBlock, state) = done(db.contents, state)
+next(db::OIDataBlock, state) = next(db.contents, state)
+
+# OIMaster stores the contents of an OI-FITS file.  Data-blocks containing
+# measurements (OI_VIS, OI_VIS2 and OI_T3) are stored into a vector and
+# thus indexed by an integer.  Named data-blocks (OI_ARRAY and
+# OI_WAVELENGTH) are indexed by their names (converted to upper case
+# letters, with leading and trailing spaces stripped, multiple spaces
+# replaced by a single ordinary space).
+type OIMaster
+    all::Vector{OIDataBlock}            # All data-blocks
+    update::Bool                        # Update is needed?
+    target::Union(OITarget,Nothing)
+    arr::Dict{ASCIIString,OIArray}
+    ins::Dict{ASCIIString,OIWavelength}
+end
+
+
+####################################
+# PARSING OF DATABLOCK DEFINITIONS #
+####################################
 
 # OIFieldDef is used to store the definition of a keyword/column field.
 type OIFieldDef
@@ -197,6 +199,9 @@ typealias OIFormatDef Dict{ASCIIString,OIDataBlockDef}
 
 # _FORMATS array is indexed by the revision number.
 _FORMATS = Array(OIFormatDef, 0)
+
+# The default format version number is the highest registered one.
+default_revision() = length(_FORMATS)
 
 # _FIELDS is a dictionary indexed by the data-block name (e,g., "OI_VIS"), each
 # entry stores a set of its fields.
@@ -268,9 +273,6 @@ function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
     _FIELDS[dbname] = fields
 end
 
-# The default format version number is the highest registered one.
-default_revision() = length(_FORMATS)
-
 # This version takes care of converting the string into a symbol.
 get_def(db::String, revn::Integer) =  get_def(symbol(db), revn)
 
@@ -287,11 +289,34 @@ function name2symbol(name::String)
     end
 end
 
-#------------------------------------------------------------------------------
+
+#########################
+# BUILDING OF DATABLOCK #
+#########################
+
+# Build constructors for the various data-blocks types.
+for (func, name) in ((:oifits_new_target,     "OI_TARGET"),
+                     (:oifits_new_array,      "OI_ARRAY"),
+                     (:oifits_new_wavelength, "OI_WAVELENGTH"),
+                     (:oifits_new_spectrum,   "OI_SPECTRUM"),
+                     (:oifits_new_vis,        "OI_VIS"),
+                     (:oifits_new_vis2,       "OI_VIS2"),
+                     (:oifits_new_t3,         "OI_T3"))
+    @eval begin
+        function $func(master::Union(OIMaster, Nothing)=nothing;
+                       revn::Integer=default_revision(), args...)
+            db = build_datablock($name, revn, args)
+            if master != nothing
+                oifits_attach!(master, db)
+            end
+            return db
+        end
+    end
+end
 
 function build_datablock(dbname::ASCIIString, revn::Integer, args)
     def = get_def(dbname, revn)
-    data = OIContents([:revn => revn])
+    contents = OIContents([:revn => revn])
     nrows = -1     # number of measurements
     ncols = -1     # number of spectral channels
     nerrs = 0      # number of errors so far
@@ -352,14 +377,14 @@ function build_datablock(dbname::ASCIIString, revn::Integer, args)
         end
 
         # Store value.
-        data[field] = value
+        contents[field] = value
     end
 
     # Check that all mandatory fields have been given.
     nerrs = 0
     for field in def.fields
         spec = def.spec[field]
-        if ! haskey(data, field) && spec.multiplier != 0
+        if ! haskey(contents, field) && spec.multiplier != 0
             warn("missing value for field \"$field\" in $dbname")
             nerrs += 1
         end
@@ -367,14 +392,21 @@ function build_datablock(dbname::ASCIIString, revn::Integer, args)
     if nerrs > 0
         error("some fields are missing in $dbname")
     end
-    return _DATABLOCKS[dbname](data)
+    return _DATABLOCKS[dbname](contents)
 end
 
-#------------------------------------------------------------------------------
 
-#oifits_target(master::OIMaster) = master.target
-#oifits_array(master::OIMaster) = master.array
-#oifits_wavelength(master::OIMaster, insname::String) = master.wavelength[insname]
+###################################################
+# MANAGING THE DATABLOCK CONTAINER (THE "MASTER") #
+###################################################
+
+# Letter case and trailing spaces are insignificant according to FITS
+# conventions.
+fixname(name::String) = uppercase(rstrip(name))
+
+oifits_target(master::OIMaster) = master.target
+oifits_array(master::OIMaster, arrname::String) = master.array[fixname(arrname)]
+oifits_wavelength(master::OIMaster, insname::String) = master.wavelength[fixname(insname)]
 #oifits_vis(master::OIMaster) = master.vis
 #oifits_vis(master::OIMaster, k::Integer) = master.vis[k]
 #oifits_vis2(master::OIMaster) = master.vis2
