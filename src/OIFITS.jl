@@ -36,9 +36,10 @@ export oifits_get_time, oifits_get_mjd, oifits_get_int_time,
        oifits_get_para_err, oifits_get_spectyp
 
 export oifits_new_target, oifits_new_array, oifits_new_wavelength,
-       oifits_new_vis, oifits_new_vis2, oifits_new_t3
+       oifits_new_vis, oifits_new_vis2, oifits_new_t3,
+       oifits_dbname
 
-export oifits_new_master, oifits_attach!, oifits_update
+export oifits_new_master, oifits_attach!, oifits_update, oifits_select
 
 export oifits_read_header, oifits_get_hdutype, oifits_get_colnum,
        oifits_get_dbtype, oifits_get_value, oifits_get_comment,
