@@ -33,26 +33,30 @@ Pkg.update()
 
 ## Typical Usage
 
+Loading an OI-FITS data file:
 ```julia
 using OIFITS
 master = oifits_load("testdata.oifits")
-for db in master
-    dbtype = oifits_dbtype(db)
-    revn = oifits_get_revn(db)
-    println("Data block is $dbtype, revision $revn")
-    eff_wave = oifits_get_eff_wave
-    println("Data block is $dbtype, revision $revn")
 end
 ```
 
 To iterate through all data-blocks:
 ```julia
-for db in oifits_select(master, :OI_WAVELENGTH)
-    dbtype = oifits_dbtype(db)
+using OIFITS
+master = oifits_load("testdata.oifits")
+for db in master
+    dbname = oifits_dbname(db)
     revn = oifits_get_revn(db)
-    println("Data block is $dbtype, revision $revn")
-    eff_wave = oifits_get_eff_wave
-    println("Data block is $dbtype, revision $revn")
+    println("Data block is $dbname, revision $revn")
+end
+```
+
+To iterate through a sub-set of the data-blocks:
+```julia
+for db in oifits_select(master, "OI_VIS", "OI_VIS2", "OI_T3")
+    dbname = oifits_dbname(db)
+    n = length(oifits_get_time(db))
+    println("Data block is $dbname, number of exposures is $n")
 end
 ```
 
