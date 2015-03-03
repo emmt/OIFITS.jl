@@ -31,19 +31,16 @@ Pkg.update()
 ```
 
 
-## Typical Usage
+## Typical usage
 
 Loading an OI-FITS data file:
 ```julia
 using OIFITS
 master = oifits_load("testdata.oifits")
-end
 ```
 
 To iterate through all data-blocks:
 ```julia
-using OIFITS
-master = oifits_load("testdata.oifits")
 for db in master
     dbname = oifits_dbname(db)
     revn = oifits_get_revn(db)
@@ -51,7 +48,8 @@ for db in master
 end
 ```
 
-To iterate through a sub-set of the data-blocks:
+To iterate through a sub-set of the data-blocks (here the complex visibility
+data, the powerspectrum data and the bispectrum data):
 ```julia
 for db in oifits_select(master, "OI_VIS", "OI_VIS2", "OI_T3")
     dbname = oifits_dbname(db)
@@ -68,7 +66,7 @@ via an accessor whose name has suffix `oifits_get_` followed by the name of
 the field (in lower case letters and with all non-letter and all non-digit
 letters replaced by the underscore character `'_'`).  A notable exception is
 the revision number corresponding to the keyword "OI_REVN" which is
-retrived with the method `oifits_get_revn()`.  For instance:
+retrieved with the method `oifits_get_revn()`.  For instance:
 
 ```julia
 oifits_get_revn(db)      # get the revison number of the format (OI_REVN)
@@ -83,7 +81,7 @@ but also on data-blocks which contains interferometric data such as
 `OI_TARGET`.
 
 
-## Reading/writing
+## Reading data
 
 To load the contents of an OI-FITS file in memory, use:
 ```julia
@@ -91,12 +89,6 @@ master = oifits_load(filename)
 ```
 where `filename` is the name of the file and the returned value, `master`,
 contains all the OI-FITS data-blocks of the file.
-
-Conversely:
-```julia
-oifits_save(master, filename)
-```
-can be used to save the contents of `master` into the file `filename`.
 
 
 ## Constructors
@@ -130,15 +122,29 @@ db = oifits_new_wavelength(insname="Amber",
 Note that the revision number (`revn=...`) can be omitted; by default, the
 highest defined revision will be used.
 
-To attach a data-block to an OI-FITS container:
+A consistent set of OI-FITS data-blocks is made of: exactly one `OI_TARGET`
+data-block, one or more `OI_WAVELENGTH` data-block, one or more `OI_ARRAY`
+data-block and any number of data-blocks with interferometric data
+(`OI_VIS`, `OI_VIS2` or `OI_T3`).  These data-blocks must be stored in a
+container created by:
+```julia
+master = oifits_new_master()
+```
+Then, call:
 ```julia
 oifits_attach(master, db)
 ```
+to attach all data-block `db` to the OI-FITS container (in any order).
+Finally, you must call:
 
-To detach a data-block from its OI-FITS container:
 ```julia
-oifits_detach(db)
+oifits_update(master)
 ```
+to update internal information such as links between data-blocks with
+interferometric data and the related instrument (`OI_WAVELENGTH`
+data-block) and array of stations (`OI_ARRAY` data-block).  If you do not
+do that, then applying some accessors may not work, *e.g.*
+`oifits_get_eff_wave()` on a data-blocks with interferometric data.
 
 To read an OI-FITS data-block from the current HDU of a FITS file:
 ```julia
@@ -287,4 +293,4 @@ function `fits_read_tdim()`, its prototype is:
 ```julia
 dims = fits_read_tdim(ff::FITSFile, colnum::Integer)
 ```
-where `dims` is vector of integer dimensions.
+where `dims` is a vector of integer dimensions.
