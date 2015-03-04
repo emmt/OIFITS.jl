@@ -17,18 +17,20 @@ data-blocks are:
 
 These data-blocks, are stored as binary tables in a FITS data file.
 
-The objective of the `OIFITS.jl` package is to provide support of
-OI-FITS data in Julia language.
+The objective of the `OIFITS.jl` package is to provide support of OI-FITS
+data in Julia language.  The support for FITS files is provided by the
+[`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package.
 
 
-## Prerequisites
+## Installation
 
-You need the [`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package
-installed to use `OIFITS.jl`:
+OIFITS is a [registered Julia package](http://pkg.julialang.org/), the
+installation is as simple as:
 ```julia
-Pkg.add("FITSIO")
+Pkg.add("OIFITS")
 Pkg.update()
 ```
+The last command `Pkg.update()` may be unnecessary.
 
 
 ## Typical usage
