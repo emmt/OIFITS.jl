@@ -112,7 +112,7 @@ fits_datatype(code::Integer) = get(_DATATYPE, cint(code), Nothing)
 # in a binary table. Normally this information is given by the TDIMn
 # keyword, but if this keyword is not present then this routine returns [r]
 # with r equals to the repeat count in the TFORM keyword.
-let fn, T
+let fn, T, ffgtdm, ffgtcl, ffeqty
     if Int == Clong
         T = Clong
         ffgtdm = "ffgtdm"
