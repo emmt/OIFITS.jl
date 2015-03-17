@@ -22,8 +22,6 @@ import FITSIO: libcfitsio, fits_assert_ok, fits_assert_open, fits_get_errstatus
 #
 export fits_datatype, fits_bitpix
 
-export fits_read_tdim, fits_get_coltype, fits_get_eqcoltype
-
 # The following table gives the correspondances between CFITSIO "types",
 # the BITPIX keyword and Julia types.
 #
@@ -107,58 +105,6 @@ for (sym, val, T) in ((:TBIT       ,   1, Nothing),
     end
 end
 fits_datatype(code::Integer) = get(_DATATYPE, cint(code), Nothing)
-
-# The function `fits_read_tdim()` returns the dimensions of a table column in a
-# binary table. Normally this information is given by the TDIMn keyword, but if
-# this keyword is not present then this routine returns `[r]` with `r` equals
-# to the repeat count in the TFORM keyword.
-let fn, T, ffgtdm, ffgtcl, ffeqty
-    if promote_type(Int, Clong) == Clong
-        T = Clong
-        ffgtdm = "ffgtdm"
-        ffgtcl = "ffgtcl"
-        ffeqty = "ffeqty"
-    else
-        T = Int64
-        ffgtdm = "ffgtdmll"
-        ffgtcl = "ffgtclll"
-        ffeqty = "ffeqtyll"
-    end
-    @eval begin
-        function fits_get_coltype(ff::FITSFile, colnum::Integer)
-            typecode = Cint[0]
-            repcnt = $T[0]
-            width = $T[0]
-            status = Cint[0]
-            ccall(($ffgtcl,libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
-                  ff.ptr, colnum, typecode, repcnt, width, status)
-            fits_assert_ok(status[1])
-            return (int(typecode[1]), int(repcnt[1]), int(width[1]))
-        end
-        function fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
-            typecode = Cint[0]
-            repcnt = $T[0]
-            width = $T[0]
-            status = Cint[0]
-            ccall(($ffeqty,libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
-                  ff.ptr, colnum, typecode, repcnt, width, status)
-            fits_assert_ok(status[1])
-            return (int(typecode[1]), int(repcnt[1]), int(width[1]))
-        end
-        function fits_read_tdim(ff::FITSFile, colnum::Integer)
-            naxes = Array($T, 99)
-            naxis = Cint[0]
-            status = Cint[0]
-            ccall(($ffgtdm,libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Cint, Ptr{Cint}, Ptr{$T}, Ptr{Cint}),
-                  ff.ptr, colnum, length(naxes), naxis, naxes, status)
-            fits_assert_ok(status[1])
-            return naxes[1:naxis[1]]
-        end
-    end
-end
 
 # Local Variables:
 # mode: Julia
