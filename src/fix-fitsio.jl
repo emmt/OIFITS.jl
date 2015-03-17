@@ -108,18 +108,18 @@ for (sym, val, T) in ((:TBIT       ,   1, Nothing),
 end
 fits_datatype(code::Integer) = get(_DATATYPE, cint(code), Nothing)
 
-# The function `fits_read_tdim()` returns the dimensions of a table column
-# in a binary table. Normally this information is given by the TDIMn
-# keyword, but if this keyword is not present then this routine returns [r]
-# with r equals to the repeat count in the TFORM keyword.
+# The function `fits_read_tdim()` returns the dimensions of a table column in a
+# binary table. Normally this information is given by the TDIMn keyword, but if
+# this keyword is not present then this routine returns `[r]` with `r` equals
+# to the repeat count in the TFORM keyword.
 let fn, T, ffgtdm, ffgtcl, ffeqty
-    if Int == Clong
+    if promote_type(Int, Clong) == Clong
         T = Clong
         ffgtdm = "ffgtdm"
         ffgtcl = "ffgtcl"
         ffeqty = "ffeqty"
     else
-        T = Clonglong
+        T = Int64
         ffgtdm = "ffgtdmll"
         ffgtcl = "ffgtclll"
         ffeqty = "ffeqtyll"
