@@ -296,3 +296,10 @@ function `fits_read_tdim()`, its prototype is:
 dims = fits_read_tdim(ff::FITSFile, colnum::Integer)
 ```
 where `dims` is a vector of integer dimensions.
+
+
+## Credits
+
+The developments of this package has received funding from the European
+Community's Seventh Framework Programme (FP7/2013-2016) under Grant
+Agreement 312430 (OPTICON).
