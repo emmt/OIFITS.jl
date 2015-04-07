@@ -132,7 +132,7 @@ for (key, val) in _DATABLOCKS
     _EXTNAMES[val] = key
 end
 
-oifits_dbname(db::OIDataBlock) = _EXTNAMES[typeof(db)]
+get_dbname(db::OIDataBlock) = _EXTNAMES[typeof(db)]
 
 # OIData is any OI-FITS data-block which contains interferometric data.
 typealias OIData Union(OIVis,OIVis2,OIT3)
@@ -426,7 +426,7 @@ next(master::OIMaster, state) = next(master.all, state)
 function select(master::OIMaster, args::String...)
     datablocks = Array(OIDataBlock, 0)
     for db in master
-        if oifits_dbname(db) ∈ args
+        if get_dbname(db) ∈ args
             push!(datablocks, db)
         end
     end

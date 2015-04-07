@@ -44,7 +44,7 @@ master = OIFITS.load("testdata.oifits")
 To iterate through all data-blocks:
 ```julia
 for db in master
-    dbname = oifits_dbname(db)
+    dbname = OIFITS.get_dbname(db)
     revn = OIFITS.get_revn(db)
     println("Data block is $dbname, revision $revn")
 end
@@ -54,7 +54,7 @@ To iterate through a sub-set of the data-blocks (here the complex visibility
 data, the powerspectrum data and the bispectrum data):
 ```julia
 for db in OIFITS.select(master, "OI_VIS", "OI_VIS2", "OI_T3")
-    dbname = oifits_dbname(db)
+    dbname = OIFITS.get_dbname(db)
     n = length(OIFITS.get_time(db))
     println("Data block is $dbname, number of exposures is $n")
 end
