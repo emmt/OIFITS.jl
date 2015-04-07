@@ -58,42 +58,9 @@ function oifits_read_column(ff::FITSFile, colnum::Integer)
     end
 end
 
-# `OIHeader` is the type of the result returned by `oifits_read_header()`.
-# For commentary cards, the value and the comment are the same thing.
-immutable OIHeader
-    hdutype::Symbol                  # HDU type, one of :image_hdu,
-                                     # :ascii_table, :binary_table
-    contents::Dict{ASCIIString,Any}  # dictionary of (value, comment) tuples
-    columns::Dict{ASCIIString,Int}   # dictionary of column indexes
-end
-
-# Make `OIHeader` indexable.
-getindex(hdr::OIHeader, key) = get(hdr.contents, key, (nothing,))
-function setindex!(hdr::OIHeader, key::ASCIIString, value, comment::ASCIIString)
-    setindex!(hdr.contents, key, (value, comment))
-end
-function setindex!(hdr::OIHeader, key::ASCIIString, value::(Any,ASCIIString))
-    setindex!(hdr.contents, key, value)
-end
-haskey(hdr::OIHeader, key) = haskey(hdr.contents, key)
-keys(hdr::OIHeader) = keys(hdr.contents)
-
-# Make `OIHeader` a valid iterator.
-start(hdr::OIHeader) = start(hdr.contents)
-done(hdr::OIHeader, state) = done(hdr.contents, state)
-next(hdr::OIHeader, state) = next(hdr.contents, state)
-
-# Get the type of the HDU.
-oifits_get_hdutype(hdr::OIHeader) = hdr.hdutype
-
-# Get the column number, return -1 if keyword not present.
-function oifits_get_colnum(hdr::OIHeader, colname::String)
-    get(hdr.columns, fixname(colname), -1)
-end
-
 # Get the type of the data-block.
-function oifits_get_dbtype(hdr::OIHeader)
-    if hdr.hdutype == :binary_table
+function oifits_get_dbtype(hdr::FITSHeader)
+    if get_hdutype(hdr) == :binary_table
         extname = fixname(oifits_get_string(hdr, "EXTNAME", ""))
         if beginswith(extname, "OI_")
             return symbol(replace(extname, r"[^A-Z0-9_]", '_'))
@@ -104,122 +71,37 @@ end
 
 const _COMMENT = Set(["HISTORY", "COMMENT"])
 
-const _EXTENSION = ["IMAGE" => :image_hdu,
-                    "TABLE" => :ascii_table,
-                    "BINTABLE" => :binary_table]
-
-# The function `oifits_read_header()` reads the header of the current HDU
-# and returns it as a dictionary whose keys are the header keywords (into
-# upper case letters and leading/trailing white spaces removed) and values
-# are vectors of strings for commentary cards (e.g., "HISTORY", "COMMENT")
-# and 2-element tuples for other cards.  These tuples have the form
-# (`value`, `comment`) where `value` is the card value converted to a
-# suitable type (`Bool`, `Clong`, `Cdouble` or `ASCIIString` respectively
-# for FITS logical, integer, real or string cards) and `comment` is the
-# comment part.  According to FITS standard, trailing spaces are
-# insignificant in strings, thus string values and comments have their
-# trailing spaces removed, if any.
-function oifits_read_header(ff::FITSFile)
-    fits_assert_open(ff)
-    (nkeys,) = fits_get_hdrspace(ff)
-    contents = Dict{ASCIIString,Any}()
-    for k in 1:nkeys
-        (keyword, value, comment) = fits_read_keyn(ff, k)
-        keyword = uppercase(strip(keyword))
-        comment = rstrip(comment)
-        if keyword ∈ _COMMENT
-            if haskey(contents, keyword)
-                push!(contents[keyword][1], comment)
-            else
-                # Create a new entry, the tuple consists in two references to
-                # the same things.
-                entry = [comment]
-                contents[keyword] = (entry, entry)
-            end
-        elseif length(keyword) >= 1
-            # Guess the type of the valueaccording to its literal
-            # representation.
-            if haskey(contents, keyword)
-                warn("duplicate FITS keyword: $keyword")
-                continue
-            end
-            value = strip(value)
-            len = length(value)
-            val = nothing
-            if len >= 1
-                c = value[1]
-                if c == 'T' && len == 1
-                    val = true
-                elseif c == 'F' && len == 1
-                    val = false
-                elseif c == '\'' && len >= 2 && value[end] == '\''
-                    # This is a character string; according to FITS
-                    # standard, trailing spaces are insignificant, thus
-                    # we remove them.
-                    val = rstrip(value[2:end-1])
-                else
-                    try
-                        val = parseint(Clong, value)
-                    catch
-                        try
-                            val = parsefloat(Cdouble, value)
-                        catch
-                        end
-                    end
-                end
-            end
-            if val == nothing
-                warn("unexpected FITS value: $keyword = $value")
-            else
-                contents[keyword] = (val, comment)
-            end
-        end
-    end
-    if fits_get_hdu_num(ff) == 1
-        hdutype = _EXTENSION["IMAGE"]
-    else
-        xtension, = get(contents, "XTENSION", (nothing,))
-        hdutype = get(_EXTENSION, xtension, :unknown)
-    end
-    columns = Dict{ASCIIString,Int}()
-    hdr = OIHeader(hdutype, contents, columns)
-    if hdutype == :binary_table || hdutype == :ascii_table
-        ncols = oifits_get_integer(hdr, "TFIELDS") # fits_get_num_cols(ff)
-        for k in 1:ncols
-            ttype = oifits_get_string(hdr, "TTYPE$k")
-            columns[fixname(ttype)] = k
-        end
-    end
-    return hdr
+function oifits_get_value(hdr::FITSHeader, key::String)
+    haskey(hdr, key) || error("missing FITS keyword $key")
+    hdr[key]
 end
 
-function get_part(hdr::OIHeader, key::String, idx::Integer, def)
-    haskey(hdr.contents, key) ? hdr.contents[key][idx] : def
+function oifits_get_value(hdr::FITSHeader, key::String, def)
+    haskey(hdr, key) ? hdr[key] : def
 end
 
-function get_part(hdr::OIHeader, key::String, idx::Integer)
-    haskey(hdr.contents, key) || error("missing FITS keyword $key")
-    hdr.contents[key][idx]
+function oifits_get_comment(hdr::FITSHeader, key::String)
+    haskey(hdr, key) || error("missing FITS keyword $key")
+    getcomment(hdr, key)
 end
 
-oifits_get_value(hdr::OIHeader, key::String) = get_part(hdr, key, 1)
-oifits_get_value(hdr::OIHeader, key::String, def) = get_part(hdr, key, 1, def)
-oifits_get_comment(hdr::OIHeader, key::String) = get_part(hdr, key, 2)
-oifits_get_comment(hdr::OIHeader, key::String,
-                   def::String) = get_part(hdr, key, 2, def)
+function oifits_get_comment(hdr::FITSHeader, key::String, def::String)
+    haskey(hdr, key) ? getcomment(hdr, key) : def
+end
 
 for (fn, T, S) in ((:oifits_get_integer, Integer, Int),
-                   (:oifits_get_real,    Real,    Cdouble),
+                   (:oifits_get_real,    Real,    Float64),
                    (:oifits_get_logical, Bool,    Bool),
                    (:oifits_get_string,  String,  ASCIIString))
     @eval begin
-        function $fn(hdr::OIHeader, key::String, def::$T)
-            val = get_part(hdr, key, 1, def)
+        function $fn(hdr::FITSHeader, key::String, def::$T)
+            val = haskey(hdr, key) ? hdr[key] : def
             isa(val, $T) || error("bad type for FITS keyword $key")
             return typeof(val) != $S ? convert($S, val) : val
         end
-        function $fn(hdr::OIHeader, key::String)
-            val = get_part(hdr, key, 1)
+        function $fn(hdr::FITSHeader, key::String)
+            haskey(hdr, key) || error("missing FITS keyword $key")
+            val = hdr[key]
             isa(val, $T) || error("bad type for FITS keyword $key")
             return typeof(val) != $S ? convert($S, val) : val
         end
@@ -228,14 +110,14 @@ end
 
 # Returns invalid result if not a valid OI-FITS data-block.
 # Unless quiet is true, print warn message.
-function check_datablock(hdr::OIHeader; quiet::Bool=false)
+function check_datablock(hdr::FITSHeader; quiet::Bool=false)
     # Values returned in case of error.
     dbname = ""
     dbrevn = -1
     dbdefn = nothing
 
     # Use a while loop to break out whenever an error occurs.
-    while hdr.hdutype == :binary_table
+    while get_hdutype(hdr) == :binary_table
         # Get extension name.
         extname = oifits_get_value(hdr, "EXTNAME", nothing)
         if ! isa(extname, String)
@@ -276,13 +158,27 @@ function check_datablock(hdr::OIHeader; quiet::Bool=false)
     return (dbname, dbrevn, dbdefn)
 end
 
-function oifits_read_datablock(ff::FITSFile; quiet::Bool=false)
-    oifits_read_datablock(ff, oifits_read_header(ff), quiet=quiet)
+function hash_column_names(hdr::FITSHeader)
+    columns = Dict{ASCIIString,Int}()
+    hdutype = get_hdutype(hdr)
+    if hdutype == :binary_table || hdutype == :ascii_table
+        ncols = oifits_get_integer(hdr, "TFIELDS", 0)
+        for k in 1:ncols
+            ttype = oifits_get_string(hdr, "TTYPE$k")
+            columns[fixname(ttype)] = k
+        end
+    end
+    columns
 end
 
-function oifits_read_datablock(ff::FITSFile, hdr::OIHeader; quiet::Bool=false)
+function oifits_read_datablock(ff::FITSFile; quiet::Bool=false)
+    oifits_read_datablock(ff, readheader(ff), quiet=quiet)
+end
+
+function oifits_read_datablock(ff::FITSFile, hdr::FITSHeader; quiet::Bool=false)
     (dbtype, revn, defn) = check_datablock(hdr, quiet=quiet)
     defn == nothing && return nothing
+    columns = hash_column_names(hdr)
     nerrs = 0
     data = Dict{Symbol,Any}([:revn => revn])
     for field in defn.fields
@@ -297,7 +193,7 @@ function oifits_read_datablock(ff::FITSFile, hdr::OIHeader; quiet::Bool=false)
                 data[field] = value
             end
         else
-            colnum = oifits_get_colnum(hdr, name)
+            colnum = get(columns, name, 0)
             if colnum < 1
                 warn("missing column \"$name\" in OI-FITS $dbtype data-block")
                 ++nerrs
