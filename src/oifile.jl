@@ -14,11 +14,9 @@
 
 using FITSIO
 
-include("fix-fitsio.jl")
-
 # Read a column from a table.
 function oifits_read_column(ff::FITSFile, colnum::Integer)
-    # Make sure FIT file is open.
+    # Make sure FITS file is open.
     fits_assert_open(ff)
 
     # Get the type and the dimensions of the data stored in the column.
@@ -41,7 +39,7 @@ function oifits_read_column(ff::FITSFile, colnum::Integer)
             dims[end] = nrows
         end
         data = Array(T, dims...)
-        fits_read_col(ff, T, colnum, 1, 1, data)
+        fits_read_col(ff, colnum, 1, 1, data)
         return map(rstrip, data)
     elseif T == Nothing
         error("unsupported column data")
@@ -55,7 +53,7 @@ function oifits_read_column(ff::FITSFile, colnum::Integer)
             push!(dims, nrows)
         end
         data = Array(T, dims...)
-        fits_read_col(ff, T, colnum, 1, 1, data)
+        fits_read_col(ff, colnum, 1, 1, data)
         return data
     end
 end
