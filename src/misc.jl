@@ -40,15 +40,15 @@ function readtable(ff::FITSFile)
         error("this FITS HDU does not contain a table")
     end
     data = Dict{ASCIIString,Any}()
-    ncols = oifits_get_integer(hdr, "TFIELDS", 0) # FIXME:
+    ncols = get_integer(hdr, "TFIELDS", 0)
     for k in 1:ncols
-        name = uppercase(strip(oifits_get_string(hdr, "TTYPE$k", ""))) # FIXME:
+        name = uppercase(strip(get_string(hdr, "TTYPE$k", "")))
         if haskey(data, name)
             warn("duplicate column name: \"$name\"")
             continue
         end
-        data[name] = oifits_read_column(ff, k) # FIXME:
-        units = strip(oifits_get_string(hdr, "TUNIT$k", "")) # FIXME:
+        data[name] = read_column(ff, k)
+        units = strip(get_string(hdr, "TUNIT$k", ""))
         if length(units) > 0
             data[name*".units"] = units
         end

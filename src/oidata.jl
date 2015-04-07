@@ -20,10 +20,10 @@
 typealias OIReal Cdouble
 
 # Conversion to real type (no-op. if already of the correct type).
-oifits_real(x::OIReal) = x
-oifits_real(x::Array{OIReal}) = x
-oifits_real{T<:Real}(x::Array{T}) = convert(Array{OIReal}, x)
-oifits_real(x::Real) = convert(OIReal, x)
+to_real(x::OIReal) = x
+to_real(x::Array{OIReal}) = x
+to_real{T<:Real}(x::Array{T}) = convert(Array{OIReal}, x)
+to_real(x::Real) = convert(OIReal, x)
 
 # OI-FITS files stores the following 4 different data types:
 const _DTYPE_LOGICAL = 1 # for format letter 'L'
@@ -309,19 +309,19 @@ end
 #########################
 
 # Build constructors for the various data-blocks types.
-for (func, name) in ((:oifits_new_target,     "OI_TARGET"),
-                     (:oifits_new_array,      "OI_ARRAY"),
-                     (:oifits_new_wavelength, "OI_WAVELENGTH"),
-                     (:oifits_new_spectrum,   "OI_SPECTRUM"),
-                     (:oifits_new_vis,        "OI_VIS"),
-                     (:oifits_new_vis2,       "OI_VIS2"),
-                     (:oifits_new_t3,         "OI_T3"))
+for (func, name) in ((:new_target,     "OI_TARGET"),
+                     (:new_array,      "OI_ARRAY"),
+                     (:new_wavelength, "OI_WAVELENGTH"),
+                     (:new_spectrum,   "OI_SPECTRUM"),
+                     (:new_vis,        "OI_VIS"),
+                     (:new_vis2,       "OI_VIS2"),
+                     (:new_t3,         "OI_T3"))
     @eval begin
         function $func(master::Union(OIMaster, Nothing)=nothing;
                        revn::Integer=default_revision(), args...)
             db = build_datablock($name, revn, args)
             if master != nothing
-                oifits_attach!(master, db)
+                attach!(master, db)
             end
             return db
         end
@@ -355,7 +355,7 @@ function build_datablock(dbname::ASCIIString, revn::Integer, args)
             if ! is_real(value)
                 error("expecting real value for field \"$field\" in $dbname")
             end
-            value = oifits_real(value)
+            value = to_real(value)
         elseif spec.dtype == _DTYPE_STRING
             if ! is_string(value)
                 error("expecting string value for field \"$field\" in $dbname")
@@ -419,11 +419,11 @@ end
 fixname(name::String) = uppercase(rstrip(name))
 
 # Make OIMaster an iterator.
-start(master::OIMaster) = start(oifits_update(master).all)
+start(master::OIMaster) = start(update(master).all)
 done(master::OIMaster, state) = done(master.all, state)
 next(master::OIMaster, state) = next(master.all, state)
 
-function oifits_select(master::OIMaster, args::String...)
+function select(master::OIMaster, args::String...)
     datablocks = Array(OIDataBlock, 0)
     for db in master
         if oifits_dbname(db) ∈ args
@@ -443,23 +443,23 @@ oifits_wavelength(master::OIMaster, insname::String) = master.wavelength[fixname
 #oifits_t3(master::OIMaster) = master.t3
 #oifits_t3(master::OIMaster, k::Integer) = master.t3[k]
 
-function oifits_new_master(datablocks::OIDataBlock...)
+function new_master(datablocks::OIDataBlock...)
     master = OIMaster()
     for db in datablocks
-        oifits_attach!(master, db)
+        attach!(master, db)
     end
     master
 end
 
-function oifits_new_master(datablocks::Array{OIDataBlock})
+function new_master(datablocks::Array{OIDataBlock})
     master = OIMaster()
     for db in datablocks
-        oifits_attach!(master, db)
+        attach!(master, db)
     end
     master
 end
 
-function oifits_attach!(master::OIMaster, db::OIDataBlock)
+function attach!(master::OIMaster, db::OIDataBlock)
     db.owner == nothing || error("data-block already attached")
     if isa(db, OITarget)
         if master.target != nothing
@@ -485,7 +485,7 @@ function oifits_attach!(master::OIMaster, db::OIDataBlock)
     nothing
 end
 
-function oifits_update(master::OIMaster)
+function update(master::OIMaster)
     if master.update_pending
         if master.target == nothing
             error("missing mandatory OI_TARGET data-block")

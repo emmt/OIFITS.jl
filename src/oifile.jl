@@ -15,7 +15,7 @@
 using FITSIO
 
 # Read a column from a table.
-function oifits_read_column(ff::FITSFile, colnum::Integer)
+function read_column(ff::FITSFile, colnum::Integer)
     # Make sure FITS file is open.
     fits_assert_open(ff)
 
@@ -59,9 +59,9 @@ function oifits_read_column(ff::FITSFile, colnum::Integer)
 end
 
 # Get the type of the data-block.
-function oifits_get_dbtype(hdr::FITSHeader)
+function get_dbtype(hdr::FITSHeader)
     if get_hdutype(hdr) == :binary_table
-        extname = fixname(oifits_get_string(hdr, "EXTNAME", ""))
+        extname = fixname(get_string(hdr, "EXTNAME", ""))
         if beginswith(extname, "OI_")
             return symbol(replace(extname, r"[^A-Z0-9_]", '_'))
         end
@@ -71,28 +71,28 @@ end
 
 const _COMMENT = Set(["HISTORY", "COMMENT"])
 
-function oifits_get_value(hdr::FITSHeader, key::String)
+function get_value(hdr::FITSHeader, key::String)
     haskey(hdr, key) || error("missing FITS keyword $key")
     hdr[key]
 end
 
-function oifits_get_value(hdr::FITSHeader, key::String, def)
+function get_value(hdr::FITSHeader, key::String, def)
     haskey(hdr, key) ? hdr[key] : def
 end
 
-function oifits_get_comment(hdr::FITSHeader, key::String)
+function get_comment(hdr::FITSHeader, key::String)
     haskey(hdr, key) || error("missing FITS keyword $key")
     getcomment(hdr, key)
 end
 
-function oifits_get_comment(hdr::FITSHeader, key::String, def::String)
+function get_comment(hdr::FITSHeader, key::String, def::String)
     haskey(hdr, key) ? getcomment(hdr, key) : def
 end
 
-for (fn, T, S) in ((:oifits_get_integer, Integer, Int),
-                   (:oifits_get_real,    Real,    Float64),
-                   (:oifits_get_logical, Bool,    Bool),
-                   (:oifits_get_string,  String,  ASCIIString))
+for (fn, T, S) in ((:get_integer, Integer, Int),
+                   (:get_real,    Real,    Float64),
+                   (:get_logical, Bool,    Bool),
+                   (:get_string,  String,  ASCIIString))
     @eval begin
         function $fn(hdr::FITSHeader, key::String, def::$T)
             val = haskey(hdr, key) ? hdr[key] : def
@@ -119,7 +119,7 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
     # Use a while loop to break out whenever an error occurs.
     while get_hdutype(hdr) == :binary_table
         # Get extension name.
-        extname = oifits_get_value(hdr, "EXTNAME", nothing)
+        extname = get_value(hdr, "EXTNAME", nothing)
         if ! isa(extname, String)
             quiet || warn(extname == nothing ? "missing keyword EXTNAME"
                                              : "EXTNAME value is not a string")
@@ -134,7 +134,7 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
         end
 
         # Get revision number.
-        revn = oifits_get_value(hdr, "OI_REVN", nothing)
+        revn = get_value(hdr, "OI_REVN", nothing)
         if ! isa(revn, Integer)
             quiet || warn(revn == nothing ? "missing keyword OI_REVN"
                                           : "OI_REVN value is not an integer")
@@ -162,20 +162,20 @@ function hash_column_names(hdr::FITSHeader)
     columns = Dict{ASCIIString,Int}()
     hdutype = get_hdutype(hdr)
     if hdutype == :binary_table || hdutype == :ascii_table
-        ncols = oifits_get_integer(hdr, "TFIELDS", 0)
+        ncols = get_integer(hdr, "TFIELDS", 0)
         for k in 1:ncols
-            ttype = oifits_get_string(hdr, "TTYPE$k")
+            ttype = get_string(hdr, "TTYPE$k")
             columns[fixname(ttype)] = k
         end
     end
     columns
 end
 
-function oifits_read_datablock(ff::FITSFile; quiet::Bool=false)
-    oifits_read_datablock(ff, readheader(ff), quiet=quiet)
+function read_datablock(ff::FITSFile; quiet::Bool=false)
+    read_datablock(ff, readheader(ff), quiet=quiet)
 end
 
-function oifits_read_datablock(ff::FITSFile, hdr::FITSHeader; quiet::Bool=false)
+function read_datablock(ff::FITSFile, hdr::FITSHeader; quiet::Bool=false)
     (dbtype, revn, defn) = check_datablock(hdr, quiet=quiet)
     defn == nothing && return nothing
     columns = hash_column_names(hdr)
@@ -185,7 +185,7 @@ function oifits_read_datablock(ff::FITSFile, hdr::FITSHeader; quiet::Bool=false)
         spec = defn.spec[field]
         name = spec.name
         if spec.keyword
-            value = oifits_get_value(hdr, name, nothing)
+            value = get_value(hdr, name, nothing)
             if value == nothing
                 warn("missing keyword \"$name\" in OI-FITS $dbtype data-block")
                 ++nerrs
@@ -198,7 +198,7 @@ function oifits_read_datablock(ff::FITSFile, hdr::FITSHeader; quiet::Bool=false)
                 warn("missing column \"$name\" in OI-FITS $dbtype data-block")
                 ++nerrs
             else
-                data[field] = oifits_read_column(ff, colnum)
+                data[field] = read_column(ff, colnum)
             end
         end
     end
@@ -206,26 +206,26 @@ function oifits_read_datablock(ff::FITSFile, hdr::FITSHeader; quiet::Bool=false)
     return build_datablock(dbtype, revn, data)
 end
 
-function oifits_load(filename::String; quiet::Bool=false, update::Bool=true)
-    return oifits_load(fits_open_file(filename), quiet=quiet, update=update)
+function load(filename::String; quiet::Bool=false)
+    return load(fits_open_file(filename), quiet=quiet)
 end
 
-function oifits_load(ff::FITSFile; quiet::Bool=false, update::Bool=true)
-    master = oifits_new_master()
+function load(ff::FITSFile; quiet::Bool=false)
+    master = new_master()
 
     # Read all contents, skipping first HDU.
     for hdu in 2:fits_get_num_hdus(ff)
         fits_movabs_hdu(ff, hdu)
-        db = oifits_read_datablock(ff, quiet=quiet)
+        db = read_datablock(ff, quiet=quiet)
         if db == nothing
             quiet || println("skipping HDU $hdu (no OI-FITS data)")
             continue
         end
         dbname = _EXTNAMES[typeof(db)]
         quiet || println("reading OI-FITS $dbname in HDU $hdu")
-        oifits_attach!(master, db)
+        attach!(master, db)
     end
-    update && oifits_update(master)
+    update(master)
     return master
 end
 
