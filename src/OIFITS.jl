@@ -41,13 +41,14 @@ export oifits_new_target, oifits_new_array, oifits_new_wavelength,
 
 export oifits_new_master, oifits_attach!, oifits_update, oifits_select
 
-export oifits_read_header, oifits_get_hdutype, oifits_get_colnum,
-       oifits_get_dbtype, oifits_get_value, oifits_get_comment,
+export oifits_get_dbtype, oifits_get_value, oifits_get_comment,
        oifits_get_logical, oifits_get_integer,
        oifits_get_real, oifits_get_string,
        oifits_read_column, oifits_read_datablock, oifits_load
 
 include("oidata.jl")
+include("fix-fitsio.jl")
+include("misc.jl")
 include("oifile.jl")
 include("oiformat1.jl")
 include("oipost.jl") # must be the last one
