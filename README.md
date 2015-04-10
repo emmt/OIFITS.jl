@@ -261,16 +261,16 @@ to the rows of the table.
 
 ### FITS and Julia types conversion
 
-The functions `fits_datatype()` and `fits_bitpix()` deal with conversion
+The functions `cfitsio_datatype()` and `fits_bitpix()` deal with conversion
 between CFITSIO type code or BITPIX value and actual Julia data types.
 They can be used as follows (assuming `T` is a Julia data type, while
 `code` and `bitpix` are integers):
 ```julia
-fits_datatype(T) --------> code (e.g., TBYTE, TFLOAT, etc.)
-fits_datatype(code) -----> T
+cfitsio_datatype(T) --------> code (e.g., TBYTE, TFLOAT, etc.)
+cfitsio_datatype(code) -----> T
 
-fits_bitpix(T) ----------> bitpix (e.g., BYTE_IMG, FLOAT_IMG, etc.)
-fits_datatype(bitpix) ---> T
+fits_bitpix(T) -------------> bitpix (e.g., BYTE_IMG, FLOAT_IMG, etc.)
+fits_bitpix(bitpix) --------> T
 ```
 
 The functions `fits_get_coltype()` and `fits_get_eqcoltype()` yield the
@@ -281,7 +281,7 @@ prototypes are:
 (code, repcnt, width) = fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
 ```
 with `colnum` the column number, `code` the CFITSIO column type (call
-`fits_datatype(code)` to convert it to a Julia type) of the elements in
+`cfitsio_datatype(code)` to convert it to a Julia type) of the elements in
 this column, `repcnt` and `width` the repeat count and width of a cell in
 this column.  The difference between `fits_get_coltype()` and
 `fits_get_eqcoltype()` is that the former yields the column type as it is
