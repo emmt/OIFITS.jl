@@ -147,11 +147,11 @@ data-block) and array of stations (`OI_ARRAY` data-block).  If you do not
 do that, then applying some accessors may not work, *e.g.*
 `OIFITS.get_eff_wave()` on a data-blocks with interferometric data.
 
-To read an OI-FITS data-block from the current HDU of a FITS file:
+To read an OI-FITS data-block from the HDU of a FITS file:
 ```julia
-db = OIFITS.read_datablock(ff)
+db = OIFITS.read_datablock(hdu)
 ```
-where `ff` is a `FITSFile` handle.  The result may be `nothing` if the
+where `hdu` is a `HDU` handle.  The result may be `nothing` if the
 current HDU does not contain an OI-FITS data-block.
 
 
