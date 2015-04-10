@@ -14,11 +14,9 @@
 
 using FITSIO
 
-# Read a column from a table.
+# Read a column from a table (this is low-level API, it is expected that the
+# FITS file is open, this must be done by the caller with fits_assert_open).
 function read_column(ff::FITSFile, colnum::Integer)
-    # Make sure FITS file is open.
-    fits_assert_open(ff)
-
     # Get the type and the dimensions of the data stored in the column.
     (typecode, repcnt, width) = fits_get_eqcoltype(ff, colnum)
     dims = fits_read_tdim(ff, colnum)
@@ -171,11 +169,18 @@ function hash_column_names(hdr::FITSHeader)
     columns
 end
 
-function read_datablock(ff::FITSFile; quiet::Bool=false)
-    read_datablock(ff, readheader(ff), quiet=quiet)
+function get_file_handle(hdu::HDU)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    return hdu.fitsfile
 end
 
-function read_datablock(ff::FITSFile, hdr::FITSHeader; quiet::Bool=false)
+function read_datablock(hdu::HDU; quiet::Bool=false)
+    read_datablock(hdu, readheader(hdu), quiet=quiet)
+end
+
+function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
+    ff = get_file_handle(hdu)
     (dbtype, revn, defn) = check_datablock(hdr, quiet=quiet)
     defn == nothing && return nothing
     columns = hash_column_names(hdr)
@@ -207,16 +212,15 @@ function read_datablock(ff::FITSFile, hdr::FITSHeader; quiet::Bool=false)
 end
 
 function load(filename::String; quiet::Bool=false)
-    return load(fits_open_file(filename), quiet=quiet)
+    return load(FITS(filename, "r"), quiet=quiet)
 end
 
-function load(ff::FITSFile; quiet::Bool=false)
+function load(f::FITS; quiet::Bool=false)
     master = new_master()
 
     # Read all contents, skipping first HDU.
-    for hdu in 2:fits_get_num_hdus(ff)
-        fits_movabs_hdu(ff, hdu)
-        db = read_datablock(ff, quiet=quiet)
+    for hdu in 2:length(f)
+        db = read_datablock(f[hdu], quiet=quiet)
         if db == nothing
             quiet || println("skipping HDU $hdu (no OI-FITS data)")
             continue
