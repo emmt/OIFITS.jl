@@ -23,7 +23,7 @@ function read_column(ff::FITSFile, colnum::Integer)
     nrows = fits_get_num_rows(ff)
 
     # Allocate the array and read the column contents.
-    T = fits_datatype(typecode)
+    T = cfitsio_datatype(typecode)
     if T <: String
         # Column contains an array of strings.  Strip the leading dimension
         # which is the maximum length of each strings.  On return trailing

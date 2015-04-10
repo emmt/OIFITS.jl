@@ -9,18 +9,18 @@ using FITSIO
 
 import FITSIO: libcfitsio, fits_assert_ok, fits_assert_open, fits_get_errstatus
 
-# The exported functions fits_datatype and fits_bitpix deal with conversion
+# The exported functions cfitsio_datatype and fits_bitpix deal with conversion
 # between CFITSIO type code or BITPIX value and actual Julia data types.
 # They can be used as follows (assuming `T` is a Julia data type, while
 # `code` and `bitpix` are integers):
 #
-#     fits_datatype(T) --------> code (e.g., TBYTE, TFLOAT, etc.)
-#     fits_datatype(code) -----> T
+#     cfitsio_datatype(T) --------> code (e.g., TBYTE, TFLOAT, etc.)
+#     cfitsio_datatype(code) -----> T
 #
-#     fits_bitpix(T) ----------> bitpix (e.g., BYTE_IMG, FLOAT_IMG, etc.)
-#     fits_datatype(bitpix) ---> T
+#     fits_bitpix(T) -------------> bitpix (e.g., BYTE_IMG, FLOAT_IMG, etc.)
+#     fits_bitpix(bitpix) --------> T
 #
-export fits_datatype, fits_bitpix
+export cfitsio_datatype, fits_bitpix
 
 # The following table gives the correspondances between CFITSIO "types",
 # the BITPIX keyword and Julia types.
@@ -99,12 +99,12 @@ for (sym, val, T) in ((:TBIT       ,   1, Nothing),
     _DATATYPE[val] = T
     @eval const $sym = $val
     if T == String
-        @eval fits_datatype{S<:String}(::Type{S}) = $val
+        @eval cfitsio_datatype{S<:String}(::Type{S}) = $val
     elseif T != Nothing
-        @eval fits_datatype(::Type{$T}) = $val
+        @eval cfitsio_datatype(::Type{$T}) = $val
     end
 end
-fits_datatype(code::Integer) = get(_DATATYPE, cint(code), Nothing)
+cfitsio_datatype(code::Integer) = get(_DATATYPE, cint(code), Nothing)
 
 # Local Variables:
 # mode: Julia
