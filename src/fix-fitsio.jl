@@ -71,7 +71,6 @@ for (sym, val, T) in ((:BYTE_IMG,        8,       Uint8),
     val = cint(val)
     _BITPIX[val] = T
     @eval begin
-        const $sym = $val
         fits_bitpix(::Type{$T}) = $val
     end
 end
@@ -97,7 +96,6 @@ for (sym, val, T) in ((:TBIT       ,   1, Nothing),
                       (:TDBLCOMPLEX, 163, Complex{Cdouble})) # Complex128
     val = cint(val)
     _DATATYPE[val] = T
-    @eval const $sym = $val
     if T == String
         @eval cfitsio_datatype{S<:String}(::Type{S}) = $val
     elseif T != Nothing
