@@ -8,12 +8,14 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015, Éric Thiébaut.
+# Copyright (C) 2015: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
 using FITSIO
-import FITSIO: TableHDU, AsciiHDU
+using FITSIO.Libcfitsio
+
+import FITSIO: TableHDU, ASCIITableHDU
 import Base: read
 
 const _EXTENSION = ["IMAGE" => :image_hdu,
@@ -33,7 +35,7 @@ function get_hdutype(hdr::FITSHeader)
 end
 
 # Low level version.
-function readtable(ff::FITSFile)
+function read_table(ff::FITSFile)
     hdr = readheader(ff) # This also make sure FITS file is open.
     hdutype = get_hdutype(hdr)
     if hdutype != :binary_table && hdutype != :ascii_table
@@ -57,8 +59,8 @@ function readtable(ff::FITSFile)
 end
 
 # Read the entire table from disk. (High level version.)
-function read(hdu::Union(TableHDU,AsciiHDU))
-    readtable(hdu.fitsfile)
+function read(hdu::Union(TableHDU,ASCIITableHDU))
+    read_table(hdu.fitsfile)
 end
 
 # Local Variables:

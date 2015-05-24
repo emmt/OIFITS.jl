@@ -8,11 +8,12 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015, Éric Thiébaut.
+# Copyright (C) 2015: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
 using FITSIO
+using FITSIO.Libcfitsio
 
 # Read a column from a table (this is low-level API, it is expected that the
 # FITS file is open, this must be done by the caller with fits_assert_open).
@@ -176,7 +177,7 @@ function get_file_handle(hdu::HDU)
 end
 
 function read_datablock(hdu::HDU; quiet::Bool=false)
-    read_datablock(hdu, readheader(hdu), quiet=quiet)
+    read_datablock(hdu, read_header(hdu), quiet=quiet)
 end
 
 function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)

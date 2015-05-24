@@ -6,8 +6,10 @@
 # ----------------------------------------------------------------------------
 
 using FITSIO
+using FITSIO.Libcfitsio
 
-import FITSIO: libcfitsio, fits_assert_ok, fits_assert_open, fits_get_errstatus
+import FITSIO: libcfitsio, fits_assert_ok, fits_assert_open
+import FITSIO.Libcfitsio: fits_get_errstatus
 
 # The exported functions cfitsio_datatype and fits_bitpix deal with conversion
 # between CFITSIO type code or BITPIX value and actual Julia data types.
