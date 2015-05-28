@@ -71,7 +71,7 @@ end
 const _COMMENT = Set(["HISTORY", "COMMENT"])
 
 function get_value(hdr::FITSHeader, key::String)
-    haskey(hdr, key) || error("missing FITS keyword $key")
+    haskey(hdr, key) || error("missing FITS keyword \"$key\"")
     hdr[key]
 end
 
@@ -80,12 +80,12 @@ function get_value(hdr::FITSHeader, key::String, def)
 end
 
 function get_comment(hdr::FITSHeader, key::String)
-    haskey(hdr, key) || error("missing FITS keyword $key")
-    getcomment(hdr, key)
+    haskey(hdr, key) || error("missing FITS keyword \"$key\"")
+    FITSIO.get_comment(hdr, key)
 end
 
 function get_comment(hdr::FITSHeader, key::String, def::String)
-    haskey(hdr, key) ? getcomment(hdr, key) : def
+    haskey(hdr, key) ? get_comment(hdr, key) : def
 end
 
 for (fn, T, S) in ((:get_integer, Integer, Int),
@@ -95,13 +95,13 @@ for (fn, T, S) in ((:get_integer, Integer, Int),
     @eval begin
         function $fn(hdr::FITSHeader, key::String, def::$T)
             val = haskey(hdr, key) ? hdr[key] : def
-            isa(val, $T) || error("bad type for FITS keyword $key")
+            isa(val, $T) || error("bad type for FITS keyword \"$key\"")
             return typeof(val) != $S ? convert($S, val) : val
         end
         function $fn(hdr::FITSHeader, key::String)
-            haskey(hdr, key) || error("missing FITS keyword $key")
+            haskey(hdr, key) || error("missing FITS keyword \"$key\"")
             val = hdr[key]
-            isa(val, $T) || error("bad type for FITS keyword $key")
+            isa(val, $T) || error("bad type for FITS keyword \"$key\"")
             return typeof(val) != $S ? convert($S, val) : val
         end
     end
@@ -120,7 +120,7 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
         # Get extension name.
         extname = get_value(hdr, "EXTNAME", nothing)
         if ! isa(extname, String)
-            quiet || warn(extname == nothing ? "missing keyword EXTNAME"
+            quiet || warn(extname == nothing ? "missing keyword \"EXTNAME\""
                                              : "EXTNAME value is not a string")
             break
         end
@@ -135,17 +135,17 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
         # Get revision number.
         revn = get_value(hdr, "OI_REVN", nothing)
         if ! isa(revn, Integer)
-            quiet || warn(revn == nothing ? "missing keyword OI_REVN"
-                                          : "OI_REVN value is not an integer")
+            quiet || warn(revn == nothing ? "missing keyword \"OI_REVN\""
+                                          : "\"OI_REVN\" value is not an integer")
             break
         end
         dbrevn = revn
         if dbrevn <= 0
-            quiet || warn("invalid OI_REVN value ($dbrevn)")
+            quiet || warn("invalid \"OI_REVN\" value ($dbrevn)")
             break
         end
         if dbrevn > length(_FORMATS)
-            quiet || warn("unsupported OI_REVN value ($dbrevn)")
+            quiet || warn("unsupported \"OI_REVN\" value ($dbrevn)")
             break
         end
         if ! haskey(_FORMATS[dbrevn], dbname)
