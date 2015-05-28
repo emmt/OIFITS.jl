@@ -34,13 +34,27 @@ function get_hdutype(hdr::FITSHeader)
     end
 end
 
-# Low level version.
-function read_table(ff::FITSFile)
-    hdr = readheader(ff) # This also make sure FITS file is open.
-    hdutype = get_hdutype(hdr)
-    if hdutype != :binary_table && hdutype != :ascii_table
-        error("this FITS HDU does not contain a table")
+# Convert low-level handle into high level HDU type.
+function make_hdu(ff::FITSFile)
+    fits_assert_open(ff)
+    hdutype = fits_get_hdu_type(ff)
+    n = fits_get_hdu_num(ff)
+    if hdutype == :image_hdu
+        return ImageHDU(ff, n)
+    elseif hdutype == :binary_table
+        return TableHDU(ff, n)
+    elseif hdutype ==  :ascii_table
+        return ASCIITableHDU(ff, n)
+    else
+        error("current FITS HDU is not a table")
     end
+end
+
+# Low level version.
+read_table(ff::FITSFile) = read_table(make_hdu(ff))
+
+function read_table(hdu::Union(TableHDU,ASCIITableHDU))
+    hdr = read_header(hdu)
     data = Dict{ASCIIString,Any}()
     ncols = get_integer(hdr, "TFIELDS", 0)
     for k in 1:ncols
@@ -49,7 +63,7 @@ function read_table(ff::FITSFile)
             warn("duplicate column name: \"$name\"")
             continue
         end
-        data[name] = read_column(ff, k)
+        data[name] = read_column(hdu.fitsfile, k)
         units = strip(get_string(hdr, "TUNIT$k", ""))
         if length(units) > 0
             data[name*".units"] = units
@@ -59,9 +73,7 @@ function read_table(ff::FITSFile)
 end
 
 # Read the entire table from disk. (High level version.)
-function read(hdu::Union(TableHDU,ASCIITableHDU))
-    read_table(hdu.fitsfile)
-end
+read(hdu::Union(TableHDU,ASCIITableHDU)) = read_table(hdu)
 
 # Local Variables:
 # mode: Julia
