@@ -18,8 +18,8 @@ data-blocks are:
 These data-blocks, are stored as binary tables in a FITS data file.
 
 The objective of the `OIFITS.jl` package is to provide support of OI-FITS
-data in Julia language.  The support for FITS files is provided by the
-[`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package.
+data in Julia language.  The support for the actual FITS files is provided
+by the [`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package.
 
 
 ## Installation
@@ -90,7 +90,14 @@ To load the contents of an OI-FITS file in memory, use:
 master = OIFITS.load(filename)
 ```
 where `filename` is the name of the file and the returned value, `master`,
-contains all the OI-FITS data-blocks of the file.
+contains all the OI-FITS data-blocks of the file.  As the OI-FITS data are
+laoded, the names of the data blocks are printed.  If you find this
+annoying, add keyword `quiet=true` to the call to `OIFITS.load`:
+```julia
+master = OIFITS.load(filename, quiet=true)
+```
+If you already have a `FITS` handle to the data, you can use it as the
+argument to `OIFITS.load` in place of the file name.
 
 
 ## Constructors
@@ -162,51 +169,44 @@ FITS file (not just OI-FITS ones).  These functions could be part of `FITSIO`
 package.
 
 
-### Reading the header of a FITS HDU
-
-FIXME:
+### Retrieving information from the header of a FITS HDU
 
 The header of a FITS HDU can be read with the function:
 ```julia
-hdr = FITSIO.readheader(ff::FITSFile)
+fts = FITS(filename)
+hdr = FITSIO.read_header(fts[1])
 ```
 which returns an indexable and iterable object, here `hdr`.  The keys of
 `hdr` are the FITS keywords of the header.  For instance:
 ```julia
-hdr = FITSIO.readheader(ff)
 keys(hdr)          # yield an iterator on the keys of hdr
 collect(keys(hdr)) # yield all the keys of hdr
 haskey(hdr, key)   # check whether key is present
 hdr[key]           # retrieve the contents associated with the key
 ```
-The contents associated with a keyword are `(val,com)` tuples with `val`
-the value of the keyword (in a suitable Julia type) and `com` the
-associated comment.   An exemple to iterate over all keys is:
+For commentary FITS keywords (`"HISTORY"` or `"COMMENT"`), there is no
+value, just a comment but there may be any number of these *commentary*
+keywords.  Other keywords must be unique and thus have a scalar value.  Use
+`get_comment` to retrieve the comment of a FITS keyword:
 ```julia
-for (key, (value, comment)) in hdr
-    println("$key = $value / $comment")
-end
+get_comment(hdr, key)keys(hdr)          # yield an iterator on the keys of hdr
+collect(keys(hdr)) # yield all the keys of hdr
+haskey(hdr, key)   # check whether key is present
+hdr[key]           # retrieve the contents associated with the key
 ```
-For commentary FITS keywords (`"HISTORY"` or `"COMMENT"`), the value and
-the comment are identical (in the sense that they are references to the
-same object) and are a vector of strings (one for each commentary card of
-the given keyword).  Other keywords must be unique and thus have a scalar
-value.
 
-Retrieving only the value or the comment part is done with the
-`OIFITS.get_value()` or the `OIFITS.get_comment()` methods which also
-accept a default value provided if the keyword is not present:
+*OIFITS* provides method `OIFITS.get_value()` and `OIFITS.get_comment()`
+method to retrieve the value and comment (respectively) of a FITS keyword
+with type checking and, optionaly, let you provide a default value if the
+keyword is absent:
 ```julia
 val = OIFITS.get_value(hdr, key)
 val = OIFITS.get_value(hdr, key, def)
 com = OIFITS.get_comment(hdr, key)
 com = OIFITS.get_comment(hdr, key, def)
 ```
-
-In addition to the indexation, *e.g.,* `hdr[key]`, to the
-`OIFITS.get_value()` or the `OIFITS.get_comment()` methods, the specific
-value of a keyword can be retrieved by one of the following four different
-methods:
+To retrieve a value and make sure it has a specific type, the following
+methods are available:
 ```julia
 OIFITS.get_logical(hdr, "SIMPLE")
 OIFITS.get_integer(hdr, "BITPIX")
@@ -232,31 +232,37 @@ otherwise.
 
 For a FITS table, the function:
 ```julia
-OIFITS.get_colnum(hdr, colname)
-```
-returns the index of the column whose name is `colname`; -1 is returned if
-the column is not present or if the HDU is not a table.  Column names
-should be given in uppercase letters and without trailing spaces (according
-to FITS convention, letter case and trailing spaces are insignificant).
-
-For a FITS table, the function:
-```julia
 OIFITS.get_dbtype(hdr)
 ```
 returns the OI-FITS data-block type as a symbol like `:OI_TARGET`,
 `:OI_WAVELENGTH`, *etc.*
 
 
-### Reading a given column from a FITS table
+### Reading FITS tables
 
-The function
+In addition to the method `read(tbl::TableHDU, colname::ASCIIString)`
+provided by FITSIO for reading a specific column of a FITS table, the
+low-level function:
 ```julia
 OIFITS.read_column(ff::FITSFile, colnum::Integer)
 ```
 returns a Julia array with the contents of the `colnum`-th column of the
 current HDU in FITS file handle `ff`.  The current HDU must be a FITS table
 (an ASCII or a binary one).  The last dimension of the result corresponds
-to the rows of the table.
+to the rows of the table.  It is also possible to read all the table:
+```julia
+OIFITS.read_table(ff::FITSFile)
+OIFITS.read_table(hdu::Union(TableHDU,ASCIITableHDU))
+```
+or at high-level:
+```julia
+read(hdu::Union(TableHDU,ASCIITableHDU))
+```
+The result is a dictionary whose keys are the names of the columns (in
+uppercase letters and with trailing spaces removed).  If a column has given
+units, the units are stored in the dictionary with suffix `".units"`
+appended to the column name.  For instance, the units for column `"TIME"`
+are accessible with key `"TIME.units"`.
 
 
 ### FITS and Julia types conversion
