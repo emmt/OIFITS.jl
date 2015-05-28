@@ -91,7 +91,7 @@ master = OIFITS.load(filename)
 ```
 where `filename` is the name of the file and the returned value, `master`,
 contains all the OI-FITS data-blocks of the file.  As the OI-FITS data are
-laoded, the names of the data blocks are printed.  If you find this
+loaded, the names of the data blocks are printed.  If you find this
 annoying, add keyword `quiet=true` to the call to `OIFITS.load`:
 ```julia
 master = OIFITS.load(filename, quiet=true)
