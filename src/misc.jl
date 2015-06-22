@@ -39,15 +39,10 @@ function make_hdu(ff::FITSFile)
     fits_assert_open(ff)
     hdutype = fits_get_hdu_type(ff)
     n = fits_get_hdu_num(ff)
-    if hdutype == :image_hdu
-        return ImageHDU(ff, n)
-    elseif hdutype == :binary_table
-        return TableHDU(ff, n)
-    elseif hdutype ==  :ascii_table
-        return ASCIITableHDU(ff, n)
-    else
-        error("current FITS HDU is not a table")
-    end
+    hdutype == :image_hdu    ? ImageHDU(ff, n) :
+    hdutype == :binary_table ? TableHDU(ff, n) :
+    hdutype == :ascii_table  ? ASCIITableHDU(ff, n) :
+    error("current FITS HDU is not a table")
 end
 
 # Low level version.
