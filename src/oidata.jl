@@ -29,7 +29,8 @@ to_real(x::Real) = convert(OIReal, x)
 const _DTYPE_LOGICAL = 1 # for format letter 'L'
 const _DTYPE_INTEGER = 2 # for format letters 'I' or 'J'
 const _DTYPE_REAL    = 3 # for format letters 'D' or 'E'
-const _DTYPE_STRING  = 4 # for format letter 'A'
+const _DTYPE_COMPLEX = 4 # for format letter 'C'
+const _DTYPE_STRING  = 5 # for format letter 'A'
 
 # The following dictionary is used for quick conversion of FITS format
 # letter to data type.
@@ -43,6 +44,8 @@ const _DATATYPES = ['l' =>  _DTYPE_LOGICAL,
                     'E' =>  _DTYPE_REAL,
                     'd' =>  _DTYPE_REAL,
                     'D' =>  _DTYPE_REAL,
+                    'c' =>  _DTYPE_COMPLEX,
+                    'C' =>  _DTYPE_COMPLEX,
                     'a' =>  _DTYPE_STRING,
                     'A' =>  _DTYPE_STRING]
 
