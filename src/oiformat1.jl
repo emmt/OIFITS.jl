@@ -149,19 +149,6 @@ add_def("OI_T3", 1,
          "STA_INDEX  I(3)  station numbers contributing to the data",
          "FLAG       L(W)  flag"])
 
-# OI_SPECTRUM definition (1st revision):
-add_def("OI_SPECTRUM", 1,
-        ["OI_REVN     I    revision number of the table definition",
-         "DATE-OBS    A    UTC start date of observations",
-         "INSNAME     A    name of corresponding detector",
-        #"FOV         D    area of sky over which flux is integrated",
-         "------------------------------------------------------------",
-         "TARGET_ID  I(1)  target number as index into OI_TARGET table",
-         "MJD        D(1)  modified Julian Day [day]",
-         "INT_TIME   D(1)  integration time [s]",
-         "FLUXDATA   D(W)  flux",
-         "FLUXERR    D(W)  flux error"])
-
 # Local Variables:
 # mode: Julia
 # tab-width: 8
