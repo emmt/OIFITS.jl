@@ -14,8 +14,7 @@
 #------------------------------------------------------------------------------
 
 # Automatically define getters from all fields of a data-block.
-for dbname in keys(_FIELDS)
-    local dbtype = _DATABLOCKS[dbname]
+for (dbname, dbtype) in keys(_DATABLOCKS)
     for symb in _FIELDS[dbname]
         eval(parse("get_$symb(db::$dbtype) = db.contents[:$symb]"))
     end
@@ -24,7 +23,6 @@ end
 # Define getters which rely on indirections.
 get_eff_wave(db::Union(OIVis,OIVis2,OIT3)) = db.ins[:eff_wave]
 get_eff_band(db::Union(OIVis,OIVis2,OIT3)) = db.ins[:eff_band]
-
 
 # Local Variables:
 # mode: Julia
