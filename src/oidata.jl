@@ -211,11 +211,12 @@ end
 # for a given revision number.
 typealias OIFormatDef Dict{ASCIIString,OIDataBlockDef}
 
-# _FORMATS array is indexed by the revision number.
-_FORMATS = Array(OIFormatDef, 0)
+# _FORMATS table is indexed by the datablock name and then
+# by the revision number of the corresponding OI-FITS table.
+_FORMATS = Dict{ASCIIString,Vector{Union(OIDataBlockDef,Nothing)}}()
 
-# The default format version number is the highest registered one.
-default_revision() = length(_FORMATS)
+# The default format version number.
+default_revision() = 2
 
 # _FIELDS is a dictionary indexed by the data-block name (e,g., "OI_VIS"), each
 # entry stores a set of its fields.
@@ -226,20 +227,21 @@ _FIELDS = Dict{ASCIIString,Set{Symbol}}()
 #                      standard.
 #
 function get_def(dbname::ASCIIString, revn::Integer)
-    if revn < 0 || revn > length(_FORMATS)
-        error("unsupported revision number: $revn")
-    end
-    if ! haskey(_FORMATS[revn], dbname)
+    if ! haskey(_FORMATS, dbname)
         error("unknown data-block: $db")
     end
-    _FORMATS[revn][dbname]
+    v = _FORMATS[dbname]
+    if revn < 1 || revn > length(v)
+        error("unsupported revision number: $revn")
+    end
+    v[revn]
 end
 
 function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
     if ! beginswith(dbname, "OI_") || dbname != uppercase(dbname) || contains(dbname, " ")
         error("invalid data-block name: \"$db\"")
     end
-    if revn < 0 || revn > 2
+    if revn < 1
         error("invalid revision number: $revn")
     end
 
@@ -280,10 +282,16 @@ function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
     end
 
     # Insert the data-block definition in the global table.
-    while revn > length(_FORMATS)
-        push!(_FORMATS, OIFormatDef())
+    if haskey(_FORMATS, dbname)
+        v = _FORMATS[dbname]
+    else
+        v = Array(Union(OIDataBlockDef,Nothing), 0)
+        _FORMATS[dbname] = v
     end
-    _FORMATS[revn][dbname] = OIDataBlockDef(dbname, def)
+    while revn > length(v)
+        push!(v, nothing)
+    end
+    v[revn] = OIDataBlockDef(dbname, def)
     _FIELDS[dbname] = fields
 end
 

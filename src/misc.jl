@@ -26,7 +26,7 @@ const _EXTENSION = ["IMAGE" => :image_hdu,
 # header).
 function get_hdutype(hdr::FITSHeader)
     if haskey(hdr, "XTENSION")
-       return get(_EXTENSION, uppercase(rstrip(hdr["XTENSION"])), :unknown)
+        return get(_EXTENSION, uppercase(rstrip(hdr["XTENSION"])), :unknown)
     elseif haskey(hdr, "SIMPLE") && hdr["SIMPLE"] == true
         return :image_hdu
     else
