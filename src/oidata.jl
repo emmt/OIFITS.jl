@@ -91,44 +91,64 @@ type OIWavelength <: OIDataBlock
     OIWavelength(contents::OIContents) = new(nothing, contents)
 end
 
-type OISpectrum <: OIDataBlock
+type OICorrelation <: OIDataBlock
     owner
     contents::OIContents
-    OISpectrum(contents::OIContents) = new(nothing, contents)
+    OICorrelation(contents::OIContents) = new(nothing, contents)
+end
+
+type OIPolarization <: OIDataBlock
+    owner
+    contents::OIContents
+    OIPolarization(contents::OIContents) = new(nothing, contents)
 end
 
 type OIVis <: OIDataBlock
     owner
     arr::Union(OIArray,Nothing)
     ins::Union(OIWavelength,Nothing)
+    corr::Union(OICorrelation,Nothing)
     contents::OIContents
-    OIVis(contents::OIContents) = new(nothing, nothing, nothing, contents)
+    OIVis(contents::OIContents) = new(nothing, nothing, nothing, nothing, contents)
 end
 
 type OIVis2 <: OIDataBlock
     owner
     arr::Union(OIArray,Nothing)
     ins::Union(OIWavelength,Nothing)
+    corr::Union(OICorrelation,Nothing)
     contents::OIContents
-    OIVis2(contents::OIContents) = new(nothing, nothing, nothing, contents)
+    OIVis2(contents::OIContents) = new(nothing, nothing, nothing, nothing, contents)
 end
 
 type OIT3 <: OIDataBlock
     owner
     arr::Union(OIArray,Nothing)
     ins::Union(OIWavelength,Nothing)
+    corr::Union(OICorrelation,Nothing)
     contents::OIContents
-    OIT3(contents::OIContents) = new(nothing, nothing, nothing, contents)
+    OIT3(contents::OIContents) = new(nothing, nothing, nothing, nothing, contents)
+end
+
+type OISpectrum <: OIDataBlock
+    owner
+    arr::Union(OIArray,Nothing)
+    ins::Union(OIWavelength,Nothing)
+    corr::Union(OICorrelation,Nothing)
+    contents::OIContents
+    OISpectrum(contents::OIContents) = new(nothing, nothing, nothing, nothing, contents)
 end
 
 # Correspondance between OI-FITS data-block names and Julia types.
 _DATABLOCKS = Dict{ASCIIString,DataType}(["OI_TARGET"     => OITarget,
                                           "OI_WAVELENGTH" => OIWavelength,
                                           "OI_ARRAY"      => OIArray,
-                                          "OI_SPECTRUM"   => OISpectrum,
                                           "OI_VIS"        => OIVis,
                                           "OI_VIS2"       => OIVis2,
-                                          "OI_T3"         => OIT3])
+                                          "OI_T3"         => OIT3,
+                                          "OI_SPECTRUM"   => OISpectrum,
+                                          "OI_CORR"       => OICorrelation,
+                                          "OI_INSPOL"     => OIPolarization])
 _EXTNAMES = Dict{DataType,ASCIIString}()
 
 for (key, val) in _DATABLOCKS
@@ -165,6 +185,7 @@ type OIMaster
     target::Union(OITarget,Nothing)
     arr::Dict{ASCIIString,OIArray}
     ins::Dict{ASCIIString,OIWavelength}
+    corr::Dict{ASCIIString,OICorrelation}
     function OIMaster()
         new(Array(OIDataBlock, 0),
             false,
@@ -351,10 +372,12 @@ end
 for (func, name) in ((:new_target,     "OI_TARGET"),
                      (:new_array,      "OI_ARRAY"),
                      (:new_wavelength, "OI_WAVELENGTH"),
-                     (:new_spectrum,   "OI_SPECTRUM"),
                      (:new_vis,        "OI_VIS"),
                      (:new_vis2,       "OI_VIS2"),
-                     (:new_t3,         "OI_T3"))
+                     (:new_t3,         "OI_T3"),
+                     (:new_spectrum,   "OI_SPECTRUM"),
+                     (:new_corr,       "OI_CORR"),
+                     (:new_inspol,     "OI_INSPOL"))
     @eval begin
         function $func(master::Union(OIMaster, Nothing)=nothing;
                        revn::Integer=default_revision(), args...)
@@ -395,6 +418,11 @@ function build_datablock(dbname::ASCIIString, revn::Integer, args)
                 error("expecting real value for field \"$field\" in $dbname")
             end
             value = to_real(value)
+        elseif spec.dtype == _DTYPE_COMPLEX
+            if ! is_complex(value)
+                error("expecting complex value for field \"$field\" in $dbname")
+            end
+            value = to_complex(value)
         elseif spec.dtype == _DTYPE_STRING
             if ! is_string(value)
                 error("expecting string value for field \"$field\" in $dbname")
@@ -517,6 +545,12 @@ function attach!(master::OIMaster, db::OIDataBlock)
             error("master already have an OI_ARRAY data-block with ARRNAME=\"$arrname\"")
         end
         master.arr[arrname] = db
+    elseif isa(db, OICorrelation)
+        corrname = fixname(db[:corrname])
+        if haskey(master.corr, corrname)
+            error("master already have an OI_CORR data-block with CORRNAME=\"$corrname\"")
+        end
+        master.corr[corrname] = db
     end
     push!(master.all, db)
     master.update_pending = true
@@ -530,16 +564,25 @@ function update(master::OIMaster)
             error("missing mandatory OI_TARGET data-block")
         end
         for db in master.all
-            if isa(db, OIData)
+            if haskey(db, :insname) && ! isa(db, OIWavelength)
                 insname = fixname(db[:insname])
-                arrname = fixname(db[:arrname])
                 db.ins = get(master.ins, insname, nothing)
-                db.arr = get(master.arr, arrname, nothing)
                 if db.ins == nothing
                     error("OI_WAVELENGTH data-block with INSNAME=\"$insname\" not found in master")
                 end
+            end
+            if haskey(db, :arrname) && ! isa(db, OIArray)
+                arrname = fixname(db[:arrname])
+                db.arr = get(master.arr, arrname, nothing)
                 if db.arr == nothing
                     warn("OI_ARRAY data-block with ARRNAME=\"$arrname\" not found in master")
+                end
+            end
+            if haskey(db, :corrname) && ! isa(db, OICorrelation)
+                corrname = fixname(db[:corrname])
+                db.corr = get(master.corr, corrname, nothing)
+                if db.corr == nothing
+                    warn("OI_CORR data-block with CORRNAME=\"$corrname\" not found in master")
                 end
             end
         end
