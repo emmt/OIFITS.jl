@@ -181,10 +181,11 @@ type OIFieldDef
     name::ASCIIString    # keyword/column name as a string
     symb::Symbol         # keyword/column symbolic name
     keyword::Bool        # is keyword? (otherwise column)
-    multiplier::Int      # multiplier; for keywords, 0 means optional and 1
-                         # means required; for columns, a negative number
-                         # means abs(n) times the number of spectral
-                         # channels;
+    optional::Bool       # optional field?
+    multiplier::Int      # multiplier: 1 for keywords, number of cells for
+                         # columns (a negative number -N means an array of
+                         # N dimensions each equal to the number of spectral
+                         # channels
     dtype::Int           # data type
     units::ASCIIString   # units
     descr::ASCIIString   # description
@@ -222,16 +223,16 @@ default_revision() = 2
 # entry stores a set of its fields.
 _FIELDS = Dict{ASCIIString,Set{Symbol}}()
 
-# get_def(db, revn) -- yields the OIDataBlockDef for datablock of type `db`
-#                      (e.g., "OI_TARGET") in revison `revn` of OI-FITS
-#                      standard.
-#
+# get_def(dbname, revn) -- Yields the definition of datablock of type `dbname`
+#               (e.g., "OI_TARGET") of OI-FITS standard.  Argument `revn` is
+#               the revision number of the definition.  The type of the result
+#               is `OIDataBlockDef`.
 function get_def(dbname::ASCIIString, revn::Integer)
     if ! haskey(_FORMATS, dbname)
         error("unknown data-block: $db")
     end
     v = _FORMATS[dbname]
-    if revn < 1 || revn > length(v)
+    if revn < 1 || revn > length(v) || v[revn] == nothing
         error("unsupported revision number: $revn")
     end
     v[revn]
@@ -239,10 +240,14 @@ end
 
 function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
     if ! beginswith(dbname, "OI_") || dbname != uppercase(dbname) || contains(dbname, " ")
-        error("invalid data-block name: \"$db\"")
+        error("invalid data-block name: \"$dbname\"")
     end
     if revn < 1
         error("invalid revision number: $revn")
+    end
+    if haskey(_FORMATS, dbname) && revn <= length(_FORMATS[dbname]) &&
+        _FORMATS[dbname][revn] != nothing
+        error("data-block \"$dbname\" version $revn already defined")
     end
 
     fields = get(_FIELDS, dbname, Set{Symbol}())
@@ -250,7 +255,7 @@ function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
     keyword = true
     for j in 1:length(tbl)
         row = strip(tbl[j])
-        m = match(r"^([^ ]+) +([^ ]+) +([^ ]+) +(.*)$", row)
+        m = match(r"^([^ ]+) +([^ ]+) +(.*)$", row)
         if m == nothing
             if match(r"^-+$", row) == nothing
                 error("syntax error in OI_FITS definition: \"$row\"")
@@ -260,23 +265,46 @@ function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
         end
         name = uppercase(m.captures[1])
         symb = name2symbol(name)
-        dtype = get(_DATATYPES, m.captures[2][end], nothing)
+        format = m.captures[2]
+        descr = m.captures[3]
+        optional = (format[1] == '?')
+        i = (optional ? 2 : 1)
+        dtype = get(_DATATYPES, format[i], nothing)
         if dtype == nothing
             error("invalid format type in OI_FITS definition: \"$row\"")
         end
-        multiplier = int(m.captures[2][1:end-1])
-        units = m.captures[3]
-        descr = m.captures[4]
         if keyword
-            if ! (multiplier == 0 || multiplier == 1)
-                error("multiplier must be 0 or 1 in OI_FITS definition: \"$row\"")
+            if length(format) != i
+                error("invalid keyword format in OI_FITS definition: \"$row\"")
             end
+            multiplier = 1
         else
-            if ! (multiplier == -1 || multiplier > 0)
-                error("invalid multiplier in OI_FITS definition: \"$row\"")
+            # Very naive code to parse the dimension list of the column
+            # format.
+            if length(format) < i + 3 || format[i+1] != '(' ||
+                format[end] != ')'
+                error("missing column dimensions in OI_FITS definition: \"$row\"")
+            end
+            format = uppercase(format[i+2:end-1])
+            if format == "W"
+                multiplier = -1
+            elseif format == "W,W"
+                multiplier = -2
+            else
+                multiplier = int(format)
+                if multiplier <= 0
+                    error("invalid multiplier in OI_FITS definition: \"$row\"")
+                end
             end
         end
-        push!(def, OIFieldDef(name, symb, keyword, multiplier,
+        m = match(r"^(.*[^ ]) +\[([^\]])\]$", descr)
+        if m == nothing
+            units = ""
+        else
+            descr = m.captures[1]
+            units = m.captures[2]
+        end
+        push!(def, OIFieldDef(name, symb, keyword, optional, multiplier,
                               dtype, units, descr))
         push!(fields, symb)
     end
@@ -406,7 +434,7 @@ function build_datablock(dbname::ASCIIString, revn::Integer, args)
     nerrs = 0
     for field in def.fields
         spec = def.spec[field]
-        if ! haskey(contents, field) && spec.multiplier != 0
+        if ! haskey(contents, field) && ! spec.optional
             warn("missing value for field \"$field\" in $dbname")
             nerrs += 1
         end
