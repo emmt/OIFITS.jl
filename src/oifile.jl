@@ -194,7 +194,7 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
             value = get_value(hdr, name, nothing)
             if value == nothing
                 warn("missing keyword \"$name\" in OI-FITS $dbtype data-block")
-                ++nerrs
+                nerrs += 1
             else
                 data[field] = value
             end
@@ -202,7 +202,7 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
             colnum = get(columns, name, 0)
             if colnum < 1
                 warn("missing column \"$name\" in OI-FITS $dbtype data-block")
-                ++nerrs
+                nerrs += 1
             else
                 data[field] = read_column(ff, colnum)
             end
