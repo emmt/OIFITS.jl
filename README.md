@@ -247,7 +247,7 @@ OIFITS.read_column(ff::FITSFile, colnum::Integer)
 ```
 returns a Julia array with the contents of the `colnum`-th column of the
 current HDU in FITS file handle `ff`.  The current HDU must be a FITS table
-(an ASCII or a binary one).  The last dimension of the result corresponds
+(an ASCII or a binary one).  The first dimension of the result corresponds
 to the rows of the table.  It is also possible to read all the table:
 ```julia
 OIFITS.read_table(ff::FITSFile)
