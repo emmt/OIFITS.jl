@@ -393,9 +393,8 @@ end
 function build_datablock(dbname::ASCIIString, revn::Integer, args)
     def = get_def(dbname, revn)
     contents = OIContents([:revn => revn])
-    nrows = -1     # number of measurements
-    ncols = -1     # number of spectral channels
-    nerrs = 0      # number of errors so far
+    rows = -1         # number of rows in the OI-FITS table
+    channels = -1     # number of spectral channels
     for (field, value) in args
         # Check whether this field exists.
         spec = get(def.spec, field, nothing)
@@ -439,21 +438,41 @@ function build_datablock(dbname::ASCIIString, revn::Integer, args)
                 error("expecting a scalar value for field \"$field\" in $dbname")
             end
         else
-            n = (spec.multiplier == 1 || spec.dtype == _DTYPE_STRING ? 1 : 2)
-            if rank != n
-                error("expecting a $n-D array value for field \"$field\" in $dbname")
+            # Check array rank.
+            mult = spec.multiplier
+            maxrank = (spec.dtype == _DTYPE_STRING || mult == 1 ? 1 :
+                       mult == -2 ? 3 :
+                       2)
+            if rank > maxrank
+                error("bad number of dimensions for field \"$field\" in $dbname")
             end
-            if nrows == -1
-                nrows = dims[end]
-            elseif nrows != dims[end]
-                error("incompatible number of rows for value of field \"$field\" in $dbname")
+
+            # Fields may have up to 3 dimensions.  For now, the last dimension
+            # is the number of rows.  FIXME: The ordering of dimensions must
+            # be changed: the number of rows should be the frist dimension.
+            dim0 = (rank >= 1 ? dims[end] : 1)
+            dim1 = (rank >= 2 ? dims[1] : 1)
+            dim2 = (rank >= 3 ? dims[2] : 1)
+
+            if rows == -1
+                rows = dim0
+            elseif rows != dim0
+                error("incompatible number of rows for field \"$field\" in $dbname")
             end
-            if spec.multiplier < 0
-                if ncols == -1
-                    ncols = dims[2]
-                elseif ncols != dims[2]
-                    error("incompatible number of columns for value of field \"$field\" in $dbname")
+
+            if mult < 0
+                # Expecting an N-by-W or N-by-W-by-W array (N is the number of
+                # rows and W the number of channels).
+                if mult == -2 && dim1 != dim2
+                    error("bad dimensions for field \"$field\" in $dbname")
                 end
+                if channels == -1
+                    channels = dim1
+                elseif channels != dim1
+                    error("incompatible number of spectral channels for field \"$field\" in $dbname")
+                end
+            elseif spec.dtype != _DTYPE_STRING && dim1 != mult
+                error("bad dimensions for field \"$field\" in $dbname")
             end
         end
 
@@ -462,7 +481,7 @@ function build_datablock(dbname::ASCIIString, revn::Integer, args)
     end
 
     # Check that all mandatory fields have been given.
-    nerrs = 0
+    nerrs = 0      # number of errors so far
     for field in def.fields
         spec = def.spec[field]
         if ! haskey(contents, field) && ! spec.optional
