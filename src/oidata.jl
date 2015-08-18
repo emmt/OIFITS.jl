@@ -447,12 +447,11 @@ function build_datablock(dbname::ASCIIString, revn::Integer, args)
                 error("bad number of dimensions for field \"$field\" in $dbname")
             end
 
-            # Fields may have up to 3 dimensions.  For now, the last dimension
-            # is the number of rows.  FIXME: The ordering of dimensions must
-            # be changed: the number of rows should be the frist dimension.
-            dim0 = (rank >= 1 ? dims[end] : 1)
-            dim1 = (rank >= 2 ? dims[1] : 1)
-            dim2 = (rank >= 3 ? dims[2] : 1)
+            # Fields may have up to 3 dimensions.  The first dimension is the
+            # number of rows.
+            dim0 = (rank >= 1 ? dims[1] : 1)
+            dim1 = (rank >= 2 ? dims[2] : 1)
+            dim2 = (rank >= 3 ? dims[3] : 1)
 
             if rows == -1
                 rows = dim0

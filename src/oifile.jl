@@ -39,7 +39,7 @@ function read_column(ff::FITSFile, colnum::Integer)
         end
         data = Array(T, dims...)
         fits_read_col(ff, colnum, 1, 1, data)
-        return map(rstrip, data)
+        map!(rstrip, data)
     elseif T == Nothing
         error("unsupported column data")
     else
@@ -53,8 +53,18 @@ function read_column(ff::FITSFile, colnum::Integer)
         end
         data = Array(T, dims...)
         fits_read_col(ff, colnum, 1, 1, data)
-        return data
     end
+
+    # Make the row the first dimension (ordering of other dimensions left
+    # unchanged).
+    rank = ndims(data)
+    if rank > 1
+        perm = Array(Int, rank)
+        perm[1] = rank
+        perm[2:rank] = 1:rank-1
+        return permutedims(data, perm)
+    end
+    return data
 end
 
 # Get the type of the data-block.
