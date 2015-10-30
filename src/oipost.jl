@@ -22,8 +22,8 @@ for dbname in keys(_FIELDS)
 end
 
 # Define getters which rely on indirections.
-get_eff_wave(db::Union(OIVis,OIVis2,OIT3)) = db.ins[:eff_wave]
-get_eff_band(db::Union(OIVis,OIVis2,OIT3)) = db.ins[:eff_band]
+get_eff_wave(db::Union{OIVis,OIVis2,OIT3}) = db.ins[:eff_wave]
+get_eff_band(db::Union{OIVis,OIVis2,OIT3}) = db.ins[:eff_band]
 
 
 # Local Variables:

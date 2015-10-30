@@ -33,7 +33,7 @@ const _DTYPE_STRING  = 4 # for format letter 'A'
 
 # The following dictionary is used for quick conversion of FITS format
 # letter to data type.
-const _DATATYPES = ['l' =>  _DTYPE_LOGICAL,
+const _DATATYPES = Dict('l' =>  _DTYPE_LOGICAL,
                     'L' =>  _DTYPE_LOGICAL,
                     'i' =>  _DTYPE_INTEGER,
                     'I' =>  _DTYPE_INTEGER,
@@ -44,15 +44,15 @@ const _DATATYPES = ['l' =>  _DTYPE_LOGICAL,
                     'd' =>  _DTYPE_REAL,
                     'D' =>  _DTYPE_REAL,
                     'a' =>  _DTYPE_STRING,
-                    'A' =>  _DTYPE_STRING]
+                    'A' =>  _DTYPE_STRING)
 
 is_logical(::Any) = false
 is_logical(::Bool) = true
 is_logical(::Array{Bool}) = true
 
 is_string(::Any) = false
-is_string(::String) = true
-is_string{T<:String}(::Array{T}) = true
+is_string(::AbstractString) = true
+is_string{T<:AbstractString}(::Array{T}) = true
 
 is_integer(::Any) = false
 is_integer(::Integer) = true
@@ -96,36 +96,36 @@ end
 
 type OIVis <: OIDataBlock
     owner
-    arr::Union(OIArray,Nothing)
-    ins::Union(OIWavelength,Nothing)
+    arr::Union{OIArray,Void}
+    ins::Union{OIWavelength,Void}
     contents::OIContents
     OIVis(contents::OIContents) = new(nothing, nothing, nothing, contents)
 end
 
 type OIVis2 <: OIDataBlock
     owner
-    arr::Union(OIArray,Nothing)
-    ins::Union(OIWavelength,Nothing)
+    arr::Union{OIArray,Void}
+    ins::Union{OIWavelength,Void}
     contents::OIContents
     OIVis2(contents::OIContents) = new(nothing, nothing, nothing, contents)
 end
 
 type OIT3 <: OIDataBlock
     owner
-    arr::Union(OIArray,Nothing)
-    ins::Union(OIWavelength,Nothing)
+    arr::Union{OIArray,Void}
+    ins::Union{OIWavelength,Void}
     contents::OIContents
     OIT3(contents::OIContents) = new(nothing, nothing, nothing, contents)
 end
 
 # Correspondance between OI-FITS data-block names and Julia types.
-_DATABLOCKS = Dict{ASCIIString,DataType}(["OI_TARGET"     => OITarget,
+_DATABLOCKS = Dict{ASCIIString,DataType}("OI_TARGET"     => OITarget,
                                           "OI_WAVELENGTH" => OIWavelength,
                                           "OI_ARRAY"      => OIArray,
                                           "OI_SPECTRUM"   => OISpectrum,
                                           "OI_VIS"        => OIVis,
                                           "OI_VIS2"       => OIVis2,
-                                          "OI_T3"         => OIT3])
+                                          "OI_T3"         => OIT3)
 _EXTNAMES = Dict{DataType,ASCIIString}()
 
 for (key, val) in _DATABLOCKS
@@ -135,14 +135,14 @@ end
 get_dbname(db::OIDataBlock) = _EXTNAMES[typeof(db)]
 
 # OIData is any OI-FITS data-block which contains interferometric data.
-typealias OIData Union(OIVis,OIVis2,OIT3)
+typealias OIData Union{OIVis,OIVis2,OIT3}
 
 # OIDataBlock can be indexed by the name (either as a string or as a
 # symbol) of the field.
 getindex(db::OIDataBlock, key::Symbol) = get(db.contents, key, nothing)
-getindex(db::OIDataBlock, key::String) = getindex(db, symbol(key))
+getindex(db::OIDataBlock, key::AbstractString) = getindex(db, symbol(key))
 haskey(db::OIDataBlock, key::Symbol) = haskey(db.contents, key)
-haskey(db::OIDataBlock, key::String) = haskey(db.contents, symbol(key))
+haskey(db::OIDataBlock, key::AbstractString) = haskey(db.contents, symbol(key))
 keys(db::OIDataBlock) = keys(db.contents)
 
 # OIDataBlock can be used as iterators.
@@ -159,7 +159,7 @@ next(db::OIDataBlock, state) = next(db.contents, state)
 type OIMaster
     all::Vector{OIDataBlock}            # All data-blocks
     update_pending::Bool                # Update is needed?
-    target::Union(OITarget,Nothing)
+    target::Union{OITarget,Void}
     arr::Dict{ASCIIString,OIArray}
     ins::Dict{ASCIIString,OIWavelength}
     function OIMaster()
@@ -236,7 +236,7 @@ function get_def(dbname::ASCIIString, revn::Integer)
 end
 
 function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
-    if ! beginswith(dbname, "OI_") || dbname != uppercase(dbname) || contains(dbname, " ")
+    if ! startswith(dbname, "OI_") || dbname != uppercase(dbname) || contains(dbname, " ")
         error("invalid data-block name: \"$db\"")
     end
     if revn < 0 || revn > 2
@@ -262,7 +262,7 @@ function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
         if dtype == nothing
             error("invalid format type in OI_FITS definition: \"$row\"")
         end
-        multiplier = int(m.captures[2][1:end-1])
+        multiplier = parse(Int, m.captures[2][1:end-1])
         units = m.captures[3]
         descr = m.captures[4]
         if keyword
@@ -288,13 +288,13 @@ function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
 end
 
 # This version takes care of converting the string into a symbol.
-get_def(db::String, revn::Integer) =  get_def(symbol(db), revn)
+get_def(db::AbstractString, revn::Integer) =  get_def(symbol(db), revn)
 
 # get_def(db) -- returns the definition for the default format version.
 get_def(db) =  get_def(db, default_revision())
 
 # Convert the name of an OI-FITS keyword/column into a valid symbol.
-function name2symbol(name::String)
+function name2symbol(name::AbstractString)
     key = lowercase(name)
     if key == "oi_revn"
         return :revn
@@ -317,7 +317,7 @@ for (func, name) in ((:new_target,     "OI_TARGET"),
                      (:new_vis2,       "OI_VIS2"),
                      (:new_t3,         "OI_T3"))
     @eval begin
-        function $func(master::Union(OIMaster, Nothing)=nothing;
+        function $func(master::Union{OIMaster, Void}=nothing;
                        revn::Integer=default_revision(), args...)
             db = build_datablock($name, revn, args)
             if master != nothing
@@ -330,7 +330,7 @@ end
 
 function build_datablock(dbname::ASCIIString, revn::Integer, args)
     def = get_def(dbname, revn)
-    contents = OIContents([:revn => revn])
+    contents = OIContents(Dict(:revn => revn))
     nrows = -1     # number of measurements
     ncols = -1     # number of spectral channels
     nerrs = 0      # number of errors so far
@@ -416,14 +416,14 @@ end
 
 # Letter case and trailing spaces are insignificant according to FITS
 # conventions.
-fixname(name::String) = uppercase(rstrip(name))
+fixname(name::AbstractString) = uppercase(rstrip(name))
 
 # Make OIMaster an iterator.
 start(master::OIMaster) = start(update(master).all)
 done(master::OIMaster, state) = done(master.all, state)
 next(master::OIMaster, state) = next(master.all, state)
 
-function select(master::OIMaster, args::String...)
+function select(master::OIMaster, args::AbstractString...)
     datablocks = Array(OIDataBlock, 0)
     for db in master
         if get_dbname(db) ∈ args
@@ -434,8 +434,8 @@ function select(master::OIMaster, args::String...)
 end
 
 oifits_target(master::OIMaster) = master.target
-oifits_array(master::OIMaster, arrname::String) = master.array[fixname(arrname)]
-oifits_wavelength(master::OIMaster, insname::String) = master.wavelength[fixname(insname)]
+oifits_array(master::OIMaster, arrname::AbstractString) = master.array[fixname(arrname)]
+oifits_wavelength(master::OIMaster, insname::AbstractString) = master.wavelength[fixname(insname)]
 #oifits_vis(master::OIMaster) = master.vis
 #oifits_vis(master::OIMaster, k::Integer) = master.vis[k]
 #oifits_vis2(master::OIMaster) = master.vis2

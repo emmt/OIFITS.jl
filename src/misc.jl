@@ -18,9 +18,9 @@ using FITSIO.Libcfitsio
 import FITSIO: TableHDU, ASCIITableHDU
 import Base: read
 
-const _EXTENSION = ["IMAGE" => :image_hdu,
-                    "TABLE" => :ascii_table,
-                    "BINTABLE" => :binary_table]
+const _EXTENSION = Dict("IMAGE" => :image_hdu,
+                        "TABLE" => :ascii_table,
+                        "BINTABLE" => :binary_table)
 
 # Guess HDU type (no warranty to work for primary HDU nor for incomplete
 # header).
@@ -48,7 +48,7 @@ end
 # Low level version.
 read_table(ff::FITSFile) = read_table(make_hdu(ff))
 
-function read_table(hdu::Union(TableHDU,ASCIITableHDU))
+function read_table(hdu::Union{TableHDU,ASCIITableHDU})
     hdr = read_header(hdu)
     data = Dict{ASCIIString,Any}()
     ncols = get_integer(hdr, "TFIELDS", 0)
@@ -68,7 +68,7 @@ function read_table(hdu::Union(TableHDU,ASCIITableHDU))
 end
 
 # Read the entire table from disk. (High level version.)
-read(hdu::Union(TableHDU,ASCIITableHDU)) = read_table(hdu)
+read(hdu::Union{TableHDU,ASCIITableHDU}) = read_table(hdu)
 
 # Local Variables:
 # mode: Julia

@@ -34,7 +34,7 @@ export cfitsio_datatype, fits_bitpix
 #              long            Clong
 #              LONGLONG        Int64     64-bit integer
 #     -------------------------------------------------
-#        8     BYTE_IMG        Uint8
+#        8     BYTE_IMG        UInt8
 #       16     SHORT_IMG       Int16
 #       32     LONG_IMG        Int32
 #       64     LONGLONG_IMG    Int64
@@ -42,7 +42,7 @@ export cfitsio_datatype, fits_bitpix
 #      -64     DOUBLE_IMG      Float64
 #     -------------------------------------------------
 #              TBIT
-#              TBYTE           Cuchar = Uint8
+#              TBYTE           Cuchar = UInt8
 #              TSBYTE          Cchar = Int8
 #              TLOGICAL        Bool
 #              TSHORT          Cshort
@@ -64,7 +64,7 @@ cint(x::Cint) = x
 
 # BITPIX routines and table.
 const _BITPIX = Dict{Cint, DataType}()
-for (sym, val, T) in ((:BYTE_IMG,        8,       Uint8),
+for (sym, val, T) in ((:BYTE_IMG,        8,       UInt8),
                       (:SHORT_IMG,      16,       Int16),
                       (:LONG_IMG,       32,       Int32),
                       (:LONGLONG_IMG,   64,       Int64),
@@ -76,15 +76,15 @@ for (sym, val, T) in ((:BYTE_IMG,        8,       Uint8),
         fits_bitpix(::Type{$T}) = $val
     end
 end
-fits_bitpix(code::Integer) = get(_BITPIX, cint(code), Nothing)
+fits_bitpix(code::Integer) = get(_BITPIX, cint(code), Void)
 
 # Data type routines and table.
 const _DATATYPE = Dict{Cint, DataType}()
-for (sym, val, T) in ((:TBIT       ,   1, Nothing),
-                      (:TBYTE      ,  11, Uint8),
+for (sym, val, T) in ((:TBIT       ,   1, Void),
+                      (:TBYTE      ,  11, UInt8),
                       (:TSBYTE     ,  12, Int8),
                       (:TLOGICAL   ,  14, Bool),
-                      (:TSTRING    ,  16, String),
+                      (:TSTRING    ,  16, AbstractString),
                       (:TUSHORT    ,  20, Cushort),          # Uint16
                       (:TSHORT     ,  21, Cshort),           # Int16
                       (:TUINT      ,  30, Cuint),            # Uint32
@@ -98,13 +98,13 @@ for (sym, val, T) in ((:TBIT       ,   1, Nothing),
                       (:TDBLCOMPLEX, 163, Complex{Cdouble})) # Complex128
     val = cint(val)
     _DATATYPE[val] = T
-    if T == String
-        @eval cfitsio_datatype{S<:String}(::Type{S}) = $val
-    elseif T != Nothing
+    if T == AbstractString
+        @eval cfitsio_datatype{S<:AbstractString}(::Type{S}) = $val
+    elseif T != Void
         @eval cfitsio_datatype(::Type{$T}) = $val
     end
 end
-cfitsio_datatype(code::Integer) = get(_DATATYPE, cint(code), Nothing)
+cfitsio_datatype(code::Integer) = get(_DATATYPE, cint(code), Void)
 
 # Local Variables:
 # mode: Julia

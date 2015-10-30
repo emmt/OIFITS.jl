@@ -25,7 +25,7 @@ function read_column(ff::FITSFile, colnum::Integer)
 
     # Allocate the array and read the column contents.
     T = cfitsio_datatype(typecode)
-    if T <: String
+    if T <: AbstractString
         # Column contains an array of strings.  Strip the leading dimension
         # which is the maximum length of each strings.  On return trailing
         # spaces are removed (they are insignificant according to the FITS
@@ -40,7 +40,7 @@ function read_column(ff::FITSFile, colnum::Integer)
         data = Array(T, dims...)
         fits_read_col(ff, colnum, 1, 1, data)
         return map(rstrip, data)
-    elseif T == Nothing
+    elseif T == Void
         error("unsupported column data")
     else
         # Column contains numerical data.
@@ -70,35 +70,35 @@ end
 
 const _COMMENT = Set(["HISTORY", "COMMENT"])
 
-function get_value(hdr::FITSHeader, key::String)
+function get_value(hdr::FITSHeader, key::AbstractString)
     haskey(hdr, key) || error("missing FITS keyword \"$key\"")
     hdr[key]
 end
 
-function get_value(hdr::FITSHeader, key::String, def)
+function get_value(hdr::FITSHeader, key::AbstractString, def)
     haskey(hdr, key) ? hdr[key] : def
 end
 
-function get_comment(hdr::FITSHeader, key::String)
+function get_comment(hdr::FITSHeader, key::AbstractString)
     haskey(hdr, key) || error("missing FITS keyword \"$key\"")
     FITSIO.get_comment(hdr, key)
 end
 
-function get_comment(hdr::FITSHeader, key::String, def::String)
+function get_comment(hdr::FITSHeader, key::AbstractString, def::AbstractString)
     haskey(hdr, key) ? get_comment(hdr, key) : def
 end
 
 for (fn, T, S) in ((:get_integer, Integer, Int),
                    (:get_real,    Real,    Float64),
                    (:get_logical, Bool,    Bool),
-                   (:get_string,  String,  ASCIIString))
+                   (:get_string,  AbstractString,  ASCIIString))
     @eval begin
-        function $fn(hdr::FITSHeader, key::String, def::$T)
+        function $fn(hdr::FITSHeader, key::AbstractString, def::$T)
             val = haskey(hdr, key) ? hdr[key] : def
             isa(val, $T) || error("bad type for FITS keyword \"$key\"")
             return typeof(val) != $S ? convert($S, val) : val
         end
-        function $fn(hdr::FITSHeader, key::String)
+        function $fn(hdr::FITSHeader, key::AbstractString)
             haskey(hdr, key) || error("missing FITS keyword \"$key\"")
             val = hdr[key]
             isa(val, $T) || error("bad type for FITS keyword \"$key\"")
@@ -119,7 +119,7 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
     while get_hdutype(hdr) == :binary_table
         # Get extension name.
         extname = get_value(hdr, "EXTNAME", nothing)
-        if ! isa(extname, String)
+        if ! isa(extname, AbstractString)
             quiet || warn(extname == nothing ? "missing keyword \"EXTNAME\""
                                              : "EXTNAME value is not a string")
             break
@@ -186,7 +186,7 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
     defn == nothing && return nothing
     columns = hash_column_names(hdr)
     nerrs = 0
-    data = Dict{Symbol,Any}([:revn => revn])
+    data = Dict{Symbol,Any}(Dict(:revn => revn))
     for field in defn.fields
         spec = defn.spec[field]
         name = spec.name
@@ -212,7 +212,7 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
     return build_datablock(dbtype, revn, data)
 end
 
-function load(filename::String; quiet::Bool=false)
+function load(filename::AbstractString; quiet::Bool=false)
     return load(FITS(filename, "r"), quiet=quiet)
 end
 
