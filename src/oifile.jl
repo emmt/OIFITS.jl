@@ -61,7 +61,7 @@ end
 function get_dbtype(hdr::FITSHeader)
     if get_hdutype(hdr) == :binary_table
         extname = fixname(get_string(hdr, "EXTNAME", ""))
-        if beginswith(extname, "OI_")
+        if startswith(extname, "OI_")
             return symbol(replace(extname, r"[^A-Z0-9_]", '_'))
         end
     end
@@ -125,7 +125,7 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
             break
         end
         extname = fixname(extname)
-        beginswith(extname, "OI_") || break
+        startswith(extname, "OI_") || break
         dbname = extname
         if ! haskey(_DATABLOCKS, dbname)
             quiet || warn("unknown OI-FITS data-block \"$extname\"")
