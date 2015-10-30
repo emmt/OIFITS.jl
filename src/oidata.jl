@@ -16,14 +16,16 @@
 # BASIC TYPES #
 ###############
 
-# The default floating point type corresponds to C double precision.
-typealias OIReal Cdouble
-
 # Conversion to real type (no-op. if already of the correct type).
-to_real(x::OIReal) = x
-to_real(x::Array{OIReal}) = x
-to_real{T<:Real}(x::Array{T}) = convert(Array{OIReal}, x)
-to_real(x::Real) = convert(OIReal, x)
+to_real(x::Cdouble) = x
+to_real(x::Array{Cdouble}) = x
+to_real{T<:Real}(x::Array{T}) = convert(Array{Cdouble}, x)
+to_real(x::Real) = convert(Cdouble, x)
+
+to_integer(x::Int) = x
+to_integer(x::Array{Int}) = x
+to_integer{T<:Integer}(x::Array{T}) = convert(Array{Int}, x)
+to_integer(x::Int) = convert(Int, x)
 
 # OI-FITS files stores the following 4 different data types:
 const _DTYPE_LOGICAL = 1 # for format letter 'L'
@@ -350,7 +352,7 @@ function build_datablock(dbname::ASCIIString, revn::Integer, args)
             if ! is_integer(value)
                 error("expecting integer value for field \"$field\" in $dbname")
             end
-            value = int(value)
+            value = to_integer(value)
         elseif spec.dtype == _DTYPE_REAL
             if ! is_real(value)
                 error("expecting real value for field \"$field\" in $dbname")
