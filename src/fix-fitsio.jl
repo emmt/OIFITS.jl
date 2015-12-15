@@ -105,12 +105,3 @@ for (sym, val, T) in ((:TBIT       ,   1, Void),
     end
 end
 cfitsio_datatype(code::Integer) = get(_DATATYPE, cint(code), Void)
-
-# Local Variables:
-# mode: Julia
-# tab-width: 8
-# indent-tabs-mode: nil
-# fill-column: 79
-# coding: utf-8
-# ispell-local-dictionary: "american"
-# End:

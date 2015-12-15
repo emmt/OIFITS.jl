@@ -24,13 +24,3 @@ end
 # Define getters which rely on indirections.
 get_eff_wave(db::Union{OIVis,OIVis2,OIT3}) = db.ins[:eff_wave]
 get_eff_band(db::Union{OIVis,OIVis2,OIT3}) = db.ins[:eff_band]
-
-
-# Local Variables:
-# mode: Julia
-# tab-width: 8
-# indent-tabs-mode: nil
-# fill-column: 79
-# coding: utf-8
-# ispell-local-dictionary: "american"
-# End:

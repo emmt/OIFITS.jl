@@ -159,12 +159,3 @@ add_def("OI_SPECTRUM", 1,
          "INT_TIME   1D s   integration time",
          "FLUXDATA  -1D -   flux",
          "FLUXERR   -1D -   flux error"])
-
-# Local Variables:
-# mode: Julia
-# tab-width: 8
-# indent-tabs-mode: nil
-# fill-column: 79
-# coding: utf-8
-# ispell-local-dictionary: "american"
-# End:

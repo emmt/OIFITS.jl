@@ -69,12 +69,3 @@ end
 
 # Read the entire table from disk. (High level version.)
 read(hdu::Union{TableHDU,ASCIITableHDU}) = read_table(hdu)
-
-# Local Variables:
-# mode: Julia
-# tab-width: 8
-# indent-tabs-mode: nil
-# fill-column: 79
-# coding: utf-8
-# ispell-local-dictionary: "american"
-# End:

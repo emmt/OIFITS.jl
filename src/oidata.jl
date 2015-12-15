@@ -36,17 +36,17 @@ const _DTYPE_STRING  = 4 # for format letter 'A'
 # The following dictionary is used for quick conversion of FITS format
 # letter to data type.
 const _DATATYPES = Dict('l' =>  _DTYPE_LOGICAL,
-                    'L' =>  _DTYPE_LOGICAL,
-                    'i' =>  _DTYPE_INTEGER,
-                    'I' =>  _DTYPE_INTEGER,
-                    'j' =>  _DTYPE_INTEGER,
-                    'J' =>  _DTYPE_INTEGER,
-                    'e' =>  _DTYPE_REAL,
-                    'E' =>  _DTYPE_REAL,
-                    'd' =>  _DTYPE_REAL,
-                    'D' =>  _DTYPE_REAL,
-                    'a' =>  _DTYPE_STRING,
-                    'A' =>  _DTYPE_STRING)
+                        'L' =>  _DTYPE_LOGICAL,
+                        'i' =>  _DTYPE_INTEGER,
+                        'I' =>  _DTYPE_INTEGER,
+                        'j' =>  _DTYPE_INTEGER,
+                        'J' =>  _DTYPE_INTEGER,
+                        'e' =>  _DTYPE_REAL,
+                        'E' =>  _DTYPE_REAL,
+                        'd' =>  _DTYPE_REAL,
+                        'D' =>  _DTYPE_REAL,
+                        'a' =>  _DTYPE_STRING,
+                        'A' =>  _DTYPE_STRING)
 
 is_logical(::Any) = false
 is_logical(::Bool) = true
@@ -122,12 +122,12 @@ end
 
 # Correspondance between OI-FITS data-block names and Julia types.
 _DATABLOCKS = Dict{ASCIIString,DataType}("OI_TARGET"     => OITarget,
-                                          "OI_WAVELENGTH" => OIWavelength,
-                                          "OI_ARRAY"      => OIArray,
-                                          "OI_SPECTRUM"   => OISpectrum,
-                                          "OI_VIS"        => OIVis,
-                                          "OI_VIS2"       => OIVis2,
-                                          "OI_T3"         => OIT3)
+                                         "OI_WAVELENGTH" => OIWavelength,
+                                         "OI_ARRAY"      => OIArray,
+                                         "OI_SPECTRUM"   => OISpectrum,
+                                         "OI_VIS"        => OIVis,
+                                         "OI_VIS2"       => OIVis2,
+                                         "OI_T3"         => OIT3)
 _EXTNAMES = Dict{DataType,ASCIIString}()
 
 for (key, val) in _DATABLOCKS
@@ -510,12 +510,3 @@ function update(master::OIMaster)
     end
     return master
 end
-
-# Local Variables:
-# mode: Julia
-# tab-width: 8
-# indent-tabs-mode: nil
-# fill-column: 79
-# coding: utf-8
-# ispell-local-dictionary: "american"
-# End:

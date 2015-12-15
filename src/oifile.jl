@@ -233,12 +233,3 @@ function load(f::FITS; quiet::Bool=false)
     update(master)
     return master
 end
-
-# Local Variables:
-# mode: Julia
-# tab-width: 8
-# indent-tabs-mode: nil
-# fill-column: 79
-# coding: utf-8
-# ispell-local-dictionary: "american"
-# End:
