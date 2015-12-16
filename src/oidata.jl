@@ -161,7 +161,7 @@ next(db::OIDataBlock, state) = next(db.contents, state)
 type OIMaster
     all::Vector{OIDataBlock}            # All data-blocks
     update_pending::Bool                # Update is needed?
-    target::Union{OITarget,Void}
+    tgt::Union{OITarget,Void}
     arr::Dict{ASCIIString,OIArray}
     ins::Dict{ASCIIString,OIWavelength}
     function OIMaster()
@@ -459,10 +459,8 @@ Assuming `tgt` is an instance of `OITarget`, then:
 ```
 yields the "TARGET" column of `tgt` which is an array of target names.
 """
-function get_target(master::OIMaster)
-    master.update_pending && update!(master)
-    return master.target
-end
+get_target(master::OIMaster) = update!(master).tgt
+
 
 """
 Assuming `mst` is an instance of `OIMaster`, then:
@@ -479,10 +477,8 @@ Assuming `db` is an instance of a sub-type of `OIDataBlock`, then:
 yields corresponding instance of `OIArray` if any, `nothing` otherwise.
 """
 function get_array(master::OIMaster, arrname::AbstractString)
-    master.update_pending && update!(master)
-    return master.arr[fixname(arrname)]
+    get(update!(master).arr, fixname(arrname), nothing)
 end
-
 get_array(db::OIDataBlock) = nothing
 get_array(db::Union{OIVis,OIVis2,OIT3}) = db.arr
 get_array(db::OIArray) = db
@@ -502,10 +498,8 @@ Assuming `db` is an instance of a sub-type of `OIDataBlock`, then:
 yields corresponding instance of `OIWavelength` if any, `nothing` otherwise.
 """
 function get_instrument(master::OIMaster, insname::AbstractString)
-    master.update_pending && update!(master)
-    return master.ins[fixname(insname)]
+    get(update!(master).ins, fixname(insname), nothing)
 end
-
 get_instrument(db::OIDataBlock) = nothing
 get_instrument(db::Union{OIVis,OIVis2,OIT3}) = db.ins
 get_instrument(db::OIWavelength) = db
@@ -529,10 +523,7 @@ Assuming `mst` is an instance of `OIMaster`, then:
 ```
 yields the names of the interferometric arrays defined in `mst`.
 """
-function get_arrays(master::OIMaster)
-    master.update_pending && update!(master)
-    return collect(keys(master.arr))
-end
+get_arrays(master::OIMaster) = collect(keys(update!(master).arr))
 
 """
 Assuming `mst` is an instance of `OIMaster`, then:
@@ -541,17 +532,14 @@ Assuming `mst` is an instance of `OIMaster`, then:
 ```
 yields the names of the instruments defined in `mst`.
 """
-function get_instruments(master::OIMaster)
-    master.update_pending && update!(master)
-    return collect(keys(master.ins))
-end
+get_instruments(master::OIMaster) = collect(keys(update!(master).ins))
 
 function new_master(datablocks::OIDataBlock...)
     master = OIMaster()
     for db in datablocks
         attach!(master, db)
     end
-    master
+    return update!(master)
 end
 
 function new_master(datablocks::Array{OIDataBlock})
@@ -559,16 +547,16 @@ function new_master(datablocks::Array{OIDataBlock})
     for db in datablocks
         attach!(master, db)
     end
-    master
+    return update!(master)
 end
 
 function attach!(master::OIMaster, db::OIDataBlock)
     db.owner == nothing || error("data-block already attached")
     if isa(db, OITarget)
-        if master.target != nothing
+        if master.tgt != nothing
             error("only one OI_TARGET data-block can be attached")
         end
-        master.target = db
+        master.tgt = db
     elseif isa(db, OIWavelength)
         insname = fixname(db[:insname])
         if haskey(master.ins, insname)
@@ -590,7 +578,7 @@ end
 
 function update!(master::OIMaster)
     if master.update_pending
-        if master.target == nothing
+        if master.tgt == nothing
             error("missing mandatory OI_TARGET data-block")
         end
         for db in master.all
@@ -710,8 +698,7 @@ function select_target(master::OIMaster, target::Integer)
         sel = select_target(db, target)
         sel != nothing && attach!(result, sel)
     end
-    update!(result)
-    return result
+    return update!(result)
 end
 
 function select_target(master::OIMaster, target::ASCIIString)
@@ -802,6 +789,5 @@ function select_wavelength(master::OIMaster, selector::Function)
         sel = select_wavelength(db, selector)
         sel != nothing && attach!(result, sel)
     end
-    update!(result)
-    return result
+    return update!(result)
 end
