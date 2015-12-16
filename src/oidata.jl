@@ -432,7 +432,7 @@ end
 fixname(name::AbstractString) = uppercase(rstrip(name))
 
 # Make OIMaster an iterator.
-start(master::OIMaster) = start(update(master).all)
+start(master::OIMaster) = start(update!(master).all)
 done(master::OIMaster, state) = done(master.all, state)
 next(master::OIMaster, state) = next(master.all, state)
 
@@ -447,19 +447,19 @@ function select(master::OIMaster, args::AbstractString...)
 end
 
 function get_target(master::OIMaster)
-    master.update_pending && update(master)
+    master.update_pending && update!(master)
     return master.target
 end
 
 function get_array(master::OIMaster, arrname::AbstractString)
-    master.update_pending && update(master)
+    master.update_pending && update!(master)
     return master.arr[fixname(arrname)]
 end
 
 get_array(db::Union{OIVis,OIVis2,OIT3}) = db.arr
 
 function get_instrument(master::OIMaster, insname::AbstractString)
-    master.update_pending && update(master)
+    master.update_pending && update!(master)
     return master.ins[fixname(insname)]
 end
 
@@ -471,12 +471,12 @@ function get_targets(master::OIMaster)
 end
 
 function get_arrays(master::OIMaster)
-    master.update_pending && update(master)
+    master.update_pending && update!(master)
     return collect(keys(master.arr))
 end
 
 function get_instruments(master::OIMaster)
-    master.update_pending && update(master)
+    master.update_pending && update!(master)
     return collect(keys(master.ins))
 end
 
@@ -522,7 +522,7 @@ function attach!(master::OIMaster, db::OIDataBlock)
     nothing
 end
 
-function update(master::OIMaster)
+function update!(master::OIMaster)
     if master.update_pending
         if master.target == nothing
             error("missing mandatory OI_TARGET data-block")
@@ -551,7 +551,9 @@ end
 
 This method clones an existing data-block.  The array data are shared between
 the clones but not the links (owner, target, instrument, etc.).  Only the
-fields defined in the format are cloned.
+fields defined by OI-FITS standard are cloned.  This method is intended when
+a data-block from a given `OIMaster` instance is to be attached to another
+`OIMaster` instance.
 """
 function clone(db::OIDataBlock)
     (name, revn, defn) = get_descr(db)
@@ -642,7 +644,7 @@ function select_target(master::OIMaster, target::Integer)
         sel = select_target(db, target)
         sel != nothing && attach!(result, sel)
     end
-    update(result)
+    update!(result)
     return result
 end
 
@@ -734,6 +736,6 @@ function select_wavelength(master::OIMaster, selector::Function)
         sel = select_wavelength(db, selector)
         sel != nothing && attach!(result, sel)
     end
-    update(result)
+    update!(result)
     return result
 end
