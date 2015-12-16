@@ -186,7 +186,7 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
     defn == nothing && return nothing
     columns = hash_column_names(hdr)
     nerrs = 0
-    data = Dict{Symbol,Any}(Dict(:revn => revn))
+    data = Dict{Symbol,Any}(:revn => revn)
     for field in defn.fields
         spec = defn.spec[field]
         name = spec.name
