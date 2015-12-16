@@ -446,35 +446,101 @@ function select(master::OIMaster, args::AbstractString...)
     return datablocks
 end
 
+"""
+Assuming `mst` is an instance of `OIMaster`, then:
+```
+    get_target(mst)
+```
+yields the `OITarget` data-block of `mst` if any, `nothing` otherwise.
+
+Assuming `tgt` is an instance of `OITarget`, then:
+```
+    get_target(tgt)
+```
+yields the "TARGET" column of `tgt` which is an array of target names.
+"""
 function get_target(master::OIMaster)
     master.update_pending && update!(master)
     return master.target
 end
 
+"""
+Assuming `mst` is an instance of `OIMaster`, then:
+```
+    get_array(mst, arrname)
+```
+yields the `OIArray` data-block of `mst` whose name is `arrname` if any,
+`nothing` otherwise.
+
+Assuming `db` is an instance of a sub-type of `OIDataBlock`, then:
+```
+    get_array(db)
+```
+yields corresponding instance of `OIArray` if any, `nothing` otherwise.
+"""
 function get_array(master::OIMaster, arrname::AbstractString)
     master.update_pending && update!(master)
     return master.arr[fixname(arrname)]
 end
 
+get_array(db::OIDataBlock) = nothing
 get_array(db::Union{OIVis,OIVis2,OIT3}) = db.arr
+get_array(db::OIArray) = db
 
+"""
+Assuming `mst` is an instance of `OIMaster`, then:
+```
+    get_instrument(mst, insname)
+```
+yields the `OIWavelength` data-block of `mst` whose name is `insname` if any,
+`nothing` otherwise.
+
+Assuming `db` is an instance of a sub-type of `OIDataBlock`, then:
+```
+    get_instrument(db)
+```
+yields corresponding instance of `OIWavelength` if any, `nothing` otherwise.
+"""
 function get_instrument(master::OIMaster, insname::AbstractString)
     master.update_pending && update!(master)
     return master.ins[fixname(insname)]
 end
 
+get_instrument(db::OIDataBlock) = nothing
 get_instrument(db::Union{OIVis,OIVis2,OIT3}) = db.ins
+get_instrument(db::OIWavelength) = db
 
+"""
+Assuming `mst` is an instance of `OIMaster`, then:
+```
+    get_targets(mst)
+```
+yields the names of the targets defined in `mst`.
+"""
 function get_targets(master::OIMaster)
     tgt = get_target(master)
     return tgt == nothing ? Array(ASCIIString, 0) : get_target(tgt)
 end
 
+"""
+Assuming `mst` is an instance of `OIMaster`, then:
+```
+    get_arrays(mst)
+```
+yields the names of the interferometric arrays defined in `mst`.
+"""
 function get_arrays(master::OIMaster)
     master.update_pending && update!(master)
     return collect(keys(master.arr))
 end
 
+"""
+Assuming `mst` is an instance of `OIMaster`, then:
+```
+    get_instruments(mst)
+```
+yields the names of the instruments defined in `mst`.
+"""
 function get_instruments(master::OIMaster)
     master.update_pending && update!(master)
     return collect(keys(master.ins))
