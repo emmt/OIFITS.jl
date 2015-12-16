@@ -230,6 +230,6 @@ function load(f::FITS; quiet::Bool=false)
         quiet || println("reading OI-FITS $dbname in HDU $hdu")
         attach!(master, db)
     end
-    update(master)
+    update!(master)
     return master
 end
