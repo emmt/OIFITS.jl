@@ -237,6 +237,17 @@ function get_def(dbname::ASCIIString, revn::Integer)
     _FORMATS[revn][dbname]
 end
 
+function get_def(db::OIDataBlock)
+    get_def(get_dbname(db), get_revn(db))
+end
+
+function get_descr(db::OIDataBlock)
+    name = get_dbname(db)
+    revn = get_revn(db)
+    return (name, revn, get_def(name, revn))
+end
+
+
 function add_def(dbname::ASCIIString, revn::Integer, tbl::Vector{ASCIIString})
     if ! startswith(dbname, "OI_") || dbname != uppercase(dbname) || contains(dbname, " ")
         error("invalid data-block name: \"$db\"")
@@ -332,7 +343,7 @@ end
 
 function build_datablock(dbname::ASCIIString, revn::Integer, args)
     def = get_def(dbname, revn)
-    contents = OIContents(Dict(:revn => revn))
+    contents = OIContents()
     nrows = -1     # number of measurements
     ncols = -1     # number of spectral channels
     nerrs = 0      # number of errors so far
@@ -435,15 +446,39 @@ function select(master::OIMaster, args::AbstractString...)
     return datablocks
 end
 
-oifits_target(master::OIMaster) = master.target
-oifits_array(master::OIMaster, arrname::AbstractString) = master.array[fixname(arrname)]
-oifits_wavelength(master::OIMaster, insname::AbstractString) = master.wavelength[fixname(insname)]
-#oifits_vis(master::OIMaster) = master.vis
-#oifits_vis(master::OIMaster, k::Integer) = master.vis[k]
-#oifits_vis2(master::OIMaster) = master.vis2
-#oifits_vis2(master::OIMaster, k::Integer) = master.vis2[k]
-#oifits_t3(master::OIMaster) = master.t3
-#oifits_t3(master::OIMaster, k::Integer) = master.t3[k]
+function get_target(master::OIMaster)
+    master.update_pending && update(master)
+    return master.target
+end
+
+function get_array(master::OIMaster, arrname::AbstractString)
+    master.update_pending && update(master)
+    return master.arr[fixname(arrname)]
+end
+
+get_array(db::Union{OIVis,OIVis2,OIT3}) = db.arr
+
+function get_instrument(master::OIMaster, insname::AbstractString)
+    master.update_pending && update(master)
+    return master.ins[fixname(insname)]
+end
+
+get_instrument(db::Union{OIVis,OIVis2,OIT3}) = db.ins
+
+function get_targets(master::OIMaster)
+    tgt = get_target(master)
+    return tgt == nothing ? Array(ASCIIString, 0) : get_target(tgt)
+end
+
+function get_arrays(master::OIMaster)
+    master.update_pending && update(master)
+    return collect(keys(master.arr))
+end
+
+function get_instruments(master::OIMaster)
+    master.update_pending && update(master)
+    return collect(keys(master.ins))
+end
 
 function new_master(datablocks::OIDataBlock...)
     master = OIMaster()
@@ -509,4 +544,196 @@ function update(master::OIMaster)
         master.update_pending = false
     end
     return master
+end
+
+"""
+### Clone a data-block
+
+This method clones an existing data-block.  The array data are shared between
+the clones but not the links (owner, target, instrument, etc.).  Only the
+fields defined in the format are cloned.
+"""
+function clone(db::OIDataBlock)
+    (name, revn, defn) = get_descr(db)
+    data = Dict{Symbol,Any}()
+    for (key, val) in db.contents
+        if haskey(defn.spec, key)
+            data[key] = val
+        end
+    end
+    return build_datablock(name, revn, data)
+end
+
+
+"""
+### Select data for a given target
+
+The method `select_target` selects a subset of data corresponding to a given
+target.   The general syntax is:
+```
+    out = select_target(inp, tgt)
+```
+where `inp` is the input data (can be an instance of `OIMaster` or of any
+`OIDataBlock` sub-types), `tgt` is the target number or name.
+
+The result `out` may share part of its contents with the input data `inp`.
+
+The result may be `nothing` if the input contains no data for the given target.
+"""
+select_target(db::OIDataBlock, target::Integer) = clone(db)
+
+function select_target(db::OITarget, target::Integer)
+    (name, revn, defn) = get_descr(db)
+    k = findfirst(id -> id == target, get_target_id(db))
+    k == 0 && return
+    data = Dict{Symbol,Any}()
+    for (key, val) in db.contents
+        spec = get(defn.spec, key, nothing)
+        spec != nothing || continue
+        if spec.keyword
+            data[key] = db[key]
+        else
+            data[key] = db[key][k:k]
+        end
+    end
+    return build_datablock(name, revn, data)
+end
+
+function select_target(db::OIData, target::Integer)
+    (name, revn, defn) = get_descr(db)
+    target_id = get_target_id(db)
+    sel = find(id -> id == target, target_id)
+    length(sel) > 0 || return
+    data = Dict{Symbol,Any}()
+    cpy = (length(sel) == length(target_id)) # just copy?
+    for (key, val) in db.contents
+        spec = get(defn.spec, key, nothing)
+        spec != nothing || continue
+        if cpy || spec.keyword
+            data[key] = db[key]
+        else
+            # Copy a sub-array corresponding to the selection.  (The target is
+            # specified for each last index.)
+            src = db[key]
+            @assert(size(src)[end] == length(target_id))
+            rank = ndims(src)
+            dims = ntuple(i -> i == rank ? length(sel) : size(src, i), rank)
+            dst = Array(eltype(src), dims)
+            data[key] = dst
+            if rank == 1
+                for j in 1:length(sel)
+                    dst[j] = src[sel[j]]
+                end
+            elseif rank == 2
+                for j in 1:length(sel)
+                    dst[:,j] = src[:,sel[j]]
+                end
+            else
+                error("unexpected rank $rank")
+            end
+        end
+    end
+    return build_datablock(name, revn, data)
+end
+
+function select_target(master::OIMaster, target::Integer)
+    result = OIMaster()
+    for db in master
+        sel = select_target(db, target)
+        sel != nothing && attach!(result, sel)
+    end
+    update(result)
+    return result
+end
+
+function select_target(master::OIMaster, target::ASCIIString)
+    db = get_target(master)
+    if db != nothing
+        k = findfirst(name -> name == target, get_target(db))
+        k != 0 && return select_target(master, get_target_id(db)[k])
+    end
+    error("target name not found")
+end
+
+"""
+### Select data at given wavelengths
+
+The method `select_wavelength` selects a subset of data on the basis of their
+wavelength.   The general syntax is:
+```
+    out = select_wavelength(inp, sel)
+```
+where `inp` is the input data (can be an instance of `OIMaster` or of any
+`OIDataBlock` sub-types), `sel` is a predicate function which takes a
+wavelength (in meters) as argument and returns true if this wavelength is to be
+selected and false otherwise.
+
+An alternative is:
+```
+    out = select_wavelength(inp, wmin, wmax)
+```
+to select wavelengths `w` such that `wmin ≤ w ≤ wmax`.  The wavelength
+bounds are in meters.
+
+The result `out` may share part of its contents with the input data `inp`.
+
+The result may be `nothing` if the input contains no data at selected
+wavelengths.
+"""
+function select_wavelength(inp::Union{OIMaster,OIDataBlock},
+                           wavemin::Real, wavemax::Real)
+    const wmin = convert(Cdouble, wavemin)
+    const wmax = convert(Cdouble, wavemax)
+    select_wavelength(inp, w -> wmin ≤ w ≤ wmax)
+end
+
+select_wavelength(db::OIDataBlock, selector::Function) = clone(db)
+
+function select_wavelength(db::Union{OIWavelength,OIVis,OIVis2,OIT3,OISpectrum},
+                           selector::Function)
+    (name, revn, defn) = get_descr(db)
+    wave = get_eff_wave(db)
+    sel = find(selector, wave)
+    length(sel) > 0 || return
+    data = Dict{Symbol,Any}()
+    cpy = (length(sel) == length(wave)) # just copy?
+    for (key, val) in db.contents
+        spec = get(defn.spec, key, nothing)
+        spec != nothing || continue
+        if cpy || spec.keyword || spec.multiplier >= 0
+            data[key] = db[key]
+        else
+            # Copy a sub-array corresponding to the selection.  (The wavelength
+            # corresponds to the first index.)
+            @assert(spec.multiplier == -1)
+            src = db[key]
+            @assert(size(src, 1) == length(wave))
+            rank = ndims(src)
+            dims = ntuple(i -> i == 1 ? length(sel) : size(src, i), rank)
+            dst = Array(eltype(src), dims)
+            data[key] = dst
+            if rank == 1
+                for j in 1:length(sel)
+                    dst[j] = src[sel[j]]
+                end
+            elseif rank == 2
+                for j in 1:length(sel)
+                    dst[j,:] = src[sel[j],:]
+                end
+            else
+                error("unexpected rank $rank")
+            end
+        end
+    end
+    return build_datablock(name, revn, data)
+end
+
+function select_wavelength(master::OIMaster, selector::Function)
+    result = OIMaster()
+    for db in master
+        sel = select_wavelength(db, selector)
+        sel != nothing && attach!(result, sel)
+    end
+    update(result)
+    return result
 end
