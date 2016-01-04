@@ -24,3 +24,11 @@ end
 # Define getters which rely on indirections.
 get_eff_wave(db::Union{OIVis,OIVis2,OIT3}) = db.ins[:eff_wave]
 get_eff_band(db::Union{OIVis,OIVis2,OIT3}) = db.ins[:eff_band]
+
+@doc """
+Assuming `db` is an instance of `OITarget`, `OIVis`, `OIVis2` or `OIT3`, then:
+```
+    get_target_id(db)
+```
+yields the "TARGET_ID" column of `db` which is an array of integers.
+""" get_target_id
