@@ -752,15 +752,15 @@ function select_wavelength(db::Union{OIWavelength,OIVis,OIVis2,OIT3,OISpectrum},
     length(sel) > 0 || return
     data = Dict{Symbol,Any}()
     cpy = (length(sel) == length(wave)) # just copy?
+    iswave = (typeof(db) == OIWavelength)
     for (key, val) in db.contents
         spec = get(defn.spec, key, nothing)
         spec != nothing || continue
-        if cpy || spec.keyword || spec.multiplier >= 0
+        if cpy || spec.keyword || (spec.multiplier >= 0 && ! iswave)
             data[key] = db[key]
         else
             # Copy a sub-array corresponding to the selection.  (The wavelength
             # corresponds to the first index.)
-            @assert(spec.multiplier == -1)
             src = db[key]
             @assert(size(src, 1) == length(wave))
             rank = ndims(src)
