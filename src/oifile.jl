@@ -212,11 +212,11 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
     return build_datablock(dbtype, revn, data)
 end
 
-function load(filename::AbstractString; quiet::Bool=false)
+function load(filename::AbstractString; quiet::Bool=true)
     return load(FITS(filename, "r"), quiet=quiet)
 end
 
-function load(f::FITS; quiet::Bool=false)
+function load(f::FITS; quiet::Bool=true)
     master = new_master()
 
     # Read all contents, skipping first HDU.

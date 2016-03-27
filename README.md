@@ -90,11 +90,10 @@ To load the contents of an OI-FITS file in memory, use:
 master = OIFITS.load(filename)
 ```
 where `filename` is the name of the file and the returned value, `master`,
-contains all the OI-FITS data-blocks of the file.  As the OI-FITS data are
-loaded, the names of the data blocks are printed.  If you find this
-annoying, add keyword `quiet=true` to the call to `OIFITS.load`:
+contains all the OI-FITS data-blocks of the file.  You may have the names
+of the data blocks printed as they get read with keyword `quiet=false`:
 ```julia
-master = OIFITS.load(filename, quiet=true)
+master = OIFITS.load(filename, quiet=false)
 ```
 If you already have a `FITS` handle to the data, you can use it as the
 argument to `OIFITS.load` in place of the file name.
