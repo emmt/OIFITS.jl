@@ -385,6 +385,12 @@ function build_datablock(dbname::ASCIIString, revn::Integer, args)
                 error("expecting a scalar value for field \"$field\" in $dbname")
             end
         else
+            if spec.multiplier < 0 && rank == 1
+                # Fix data arrays with a single spectral channel.
+                dims = (1, length(value))
+                value = reshape(value, dims)
+                rank = length(dims)
+            end
             n = (spec.multiplier == 1 || spec.dtype == _DTYPE_STRING ? 1 : 2)
             if rank != n
                 error("expecting a $n-D array value for field \"$field\" in $dbname")
