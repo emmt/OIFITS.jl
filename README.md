@@ -1,11 +1,15 @@
 # OIFITS.jl
-Support for OI-FITS (optical interferometry data format) in [Julia](http://julialang.org/).
+
+The `OIFITS.jl` package provides support for OI-FITS data in Julia language.
+The support for the actual FITS files is provided by the
+[`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package.
+
 
 ## OI-FITS Summary
 
-OI-FITS is a standard to store optical interferometry data as a collection
-of data-blocks.  In the first version of the standard, the available
-data-blocks are:
+OI-FITS is a standard to store optical interferometry data as a collection of
+data-blocks.  In the first version of the standard (see [Ref. 1](#references)),
+the available data-blocks are:
 
 * `OI_TARGET` provides a list of observed targets;
 * `OI_ARRAY` describes a given array of stations;
@@ -16,10 +20,6 @@ data-blocks are:
 * `OI_T3` contains triple product (bispectrum) data.
 
 These data-blocks, are stored as binary tables in a FITS data file.
-
-The objective of the `OIFITS.jl` package is to provide support of OI-FITS
-data in Julia language.  The support for the actual FITS files is provided
-by the [`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package.
 
 
 ## Installation
@@ -310,3 +310,15 @@ where `dims` is a vector of integer dimensions.
 The developments of this package has received funding from the European
 Community's Seventh Framework Programme (FP7/2013-2016) under Grant
 Agreement 312430 (OPTICON).
+
+
+## References
+
+1. Pauls, T. A., Young, J. S., Cotton, W. D., & Monnier, J. D. "A data exchange
+   standard for optical (visible/IR) interferometry." Publications of the
+   Astronomical Society of the Pacific, vol. 117, no 837, p. 1255 (2005).
+   [[pdf]](http://arxiv.org/pdf/astro-ph/0508185)
+
+2. Duvert, G., Young, J., & Hummel, C. "OIFITS 2: the 2nd version of the Data
+   Exchange Standard for Optical (Visible/IR) Interferometry." arXiv preprint
+   [[arXiv:1510.04556v2.04556]](http://arxiv.org/abs/1510.04556v2).
