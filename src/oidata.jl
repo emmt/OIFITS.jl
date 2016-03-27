@@ -72,6 +72,7 @@ is_real{T<:Real}(::Array{T}) = true
 typealias OIContents Dict{Symbol,Any}
 
 abstract OIDataBlock
+
 type OITarget <: OIDataBlock
     owner
     contents::OIContents
@@ -170,6 +171,112 @@ type OIMaster
             nothing,
             Dict{ASCIIString,OIArray}(),
             Dict{ASCIIString,OIWavelength}())
+    end
+end
+
+function show(io::IO, db::OITarget)
+    print(io, "OI_TARGET: ")
+    if haskey(db, :target)
+        tgt = db[:target]
+        n = length(tgt)
+        for i in 1:n
+            print(io, (i == 1 ? "[\"" : ", \""),
+                 tgt[i], (i == n ? "\"]" : "\""))
+        end
+   else
+        print(io, "<empty>")
+    end
+end
+
+function show(io::IO, db::OIArray)
+    print(io, "OI_ARRAY: ")
+    ntels = (haskey(db, :sta_index) ? length(db[:sta_index]) : 0)
+    if haskey(db, :arrname)
+        print(io, "arrname=\"", db[:arrname], "\", ", ntels, " telescope(s)")
+    else
+        print(io, ntels, " telescope(s)")
+    end
+end
+
+function show(io::IO, db::OIWavelength)
+    print(io, "OI_WAVELENGTH: ")
+    if ! haskey(db, :insname)
+        print(io, "<empty>")
+    else
+        print(io, "insname=\"", db[:insname], "\"")
+        if haskey(db, :eff_wave)
+            wave = db[:eff_wave]
+            n = length(db[:eff_wave])
+            if n < 1
+                print(io, " with 0 spectral channels")
+            elseif n == 1
+                print(io, " with 1 spectral channel at ",
+                      round(wave[1]*1e6, 3), " µm")
+            else
+                print(io, " with ", n, " spectral channels from ",
+                      round(minimum(wave)*1e6, 3), " µm to ",
+                      round(maximum(wave)*1e6, 3), " µm")
+            end
+        end
+    end
+end
+
+function show(io::IO, db::OISpectrum)
+    print(io, "OI_SPECTRUM")
+end
+
+function show(io::IO, db::OIDataBlock,
+              name::AbstractString, nwaves::Integer, ntimes::Integer)
+    print(io, name, ": ")
+    if nwaves > 0 && ntimes > 0
+        print(io, nwaves*ntimes, " measurements in ", nwaves,
+              " channel(s) and ", ntimes, " exposure(s)")
+    else
+        print(io, name, "<empty>")
+    end
+end
+
+function show(io::IO, db::OIVis)
+    if haskey(db, :visamp)
+        dims = size(db[:visamp])
+        nwaves = dims[1]
+        ntimes = dims[2]
+    else
+        nwaves = 0
+        ntimes = 0
+    end
+    show(io, db, "OI_VIS", nwaves, ntimes)
+end
+
+function show(io::IO, db::OIVis2)
+    if haskey(db, :vis2data)
+        dims = size(db[:vis2data])
+        nwaves = dims[1]
+        ntimes = dims[2]
+    else
+        nwaves = 0
+        ntimes = 0
+    end
+    show(io, db, "OI_VIS2", nwaves, ntimes)
+end
+
+function show(io::IO, db::OIT3)
+    if haskey(db, :t3amp)
+        dims = size(db[:t3amp])
+        nwaves = dims[1]
+        ntimes = dims[2]
+    else
+        nwaves = 0
+        ntimes = 0
+    end
+    show(io, db, "OI_T3", nwaves, ntimes)
+end
+
+function show(io::IO, master::OIMaster)
+    print(io, "OI_MASTER: (", length(master.all), " data-block(s))")
+    for db in master.all
+        print(io, "\n    ")
+        show(io, db)
     end
 end
 

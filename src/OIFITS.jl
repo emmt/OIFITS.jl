@@ -14,7 +14,7 @@
 
 module OIFITS
 
-import Base: getindex, setindex!, haskey, keys, start, done, next
+import Base: getindex, setindex!, haskey, keys, start, done, next, show
 
 include("oidata.jl")
 include("fix-fitsio.jl")
