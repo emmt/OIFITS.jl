@@ -131,8 +131,8 @@ Note that the revision number (`revn=...`) can be omitted; by default, the
 highest defined revision will be used.
 
 A consistent set of OI-FITS data-blocks is made of: exactly one `OI_TARGET`
-data-block, one or more `OI_WAVELENGTH` data-block, one or more `OI_ARRAY`
-data-block and any number of data-blocks with interferometric data
+data-block, one or more `OI_WAVELENGTH` data-blocks, one or more `OI_ARRAY`
+data-blocks and any number of data-blocks with interferometric data
 (`OI_VIS`, `OI_VIS2` or `OI_T3`).  These data-blocks must be stored in a
 container created by:
 ```julia
