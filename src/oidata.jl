@@ -179,13 +179,17 @@ function show(io::IO, db::OITarget)
     if haskey(db, :target)
         tgt = db[:target]
         n = length(tgt)
-        for i in 1:n
-            print(io, (i == 1 ? "[\"" : ", \""),
-                 tgt[i], (i == n ? "\"]" : "\""))
+        if n > 0
+            print(io, "target=")
+            for i in 1:n
+                print(io, (i == 1 ? "[\"" : ", \""),
+                      tgt[i], (i == n ? "\"]" : "\""))
+            end
         end
-   else
-        print(io, "<empty>")
+    else
+        n = 0
     end
+    n == 0 && print(io, "<empty>")
 end
 
 function show(io::IO, db::OIArray)
@@ -230,7 +234,7 @@ function show(io::IO, db::OIDataBlock,
     print(io, name, ": ")
     if nwaves > 0 && ntimes > 0
         print(io, nwaves*ntimes, " measurements in ", nwaves,
-              " channel(s) and ", ntimes, " exposure(s)")
+              " spectral channel(s) and ", ntimes, " exposure(s)")
     else
         print(io, name, "<empty>")
     end
