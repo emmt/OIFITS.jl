@@ -22,7 +22,7 @@ to_real(x::Array{Cdouble}) = x
 to_real{T<:Real}(x::Array{T}) = convert(Array{Cdouble}, x)
 to_real(x::Real) = convert(Cdouble, x)
 
-to_integer(x::Int) = x
+#to_integer(x::Int) = x
 to_integer(x::Array{Int}) = x
 to_integer{T<:Integer}(x::Array{T}) = convert(Array{Int}, x)
 to_integer(x::Int) = convert(Int, x)
