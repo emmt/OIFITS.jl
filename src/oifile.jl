@@ -30,7 +30,7 @@ function read_column(ff::FITSFile, colnum::Integer)
         # which is the maximum length of each strings.  On return trailing
         # spaces are removed (they are insignificant according to the FITS
         # norm).
-        T = ASCIIString
+        T = String
         if length(dims) == 1
             dims = nrows
         else
@@ -91,7 +91,7 @@ end
 for (fn, T, S) in ((:get_integer, Integer, Int),
                    (:get_real,    Real,    Float64),
                    (:get_logical, Bool,    Bool),
-                   (:get_string,  AbstractString,  ASCIIString))
+                   (:get_string,  AbstractString,  String))
     @eval begin
         function $fn(hdr::FITSHeader, key::AbstractString, def::$T)
             val = haskey(hdr, key) ? hdr[key] : def
@@ -158,7 +158,7 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
 end
 
 function hash_column_names(hdr::FITSHeader)
-    columns = Dict{ASCIIString,Int}()
+    columns = Dict{String,Int}()
     hdutype = get_hdutype(hdr)
     if hdutype == :binary_table || hdutype == :ascii_table
         ncols = get_integer(hdr, "TFIELDS", 0)
