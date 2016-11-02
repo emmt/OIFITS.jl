@@ -50,7 +50,7 @@ read_table(ff::FITSFile) = read_table(make_hdu(ff))
 
 function read_table(hdu::Union{TableHDU,ASCIITableHDU})
     hdr = read_header(hdu)
-    data = Dict{ASCIIString,Any}()
+    data = Dict{String,Any}()
     ncols = get_integer(hdr, "TFIELDS", 0)
     for k in 1:ncols
         name = uppercase(strip(get_string(hdr, "TTYPE$k", "")))
