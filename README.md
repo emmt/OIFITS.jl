@@ -225,7 +225,7 @@ The function:
 ```julia
 OIFITS.get_hdutype(hdr)
 ```
-returns the HDU type as a symbol, `:image_hdu` for an image, `:ascii_table`
+returns the HDU type as a Symbol, `:image_hdu` for an image, `:ascii_table`
 for an ASCII table, `:binary_table` for a binary table, and `:unknown`
 otherwise.
 
@@ -233,13 +233,13 @@ For a FITS table, the function:
 ```julia
 OIFITS.get_dbtype(hdr)
 ```
-returns the OI-FITS data-block type as a symbol like `:OI_TARGET`,
+returns the OI-FITS data-block type as a Symbol like `:OI_TARGET`,
 `:OI_WAVELENGTH`, *etc.*
 
 
 ### Reading FITS tables
 
-In addition to the method `read(tbl::TableHDU, colname::ASCIIString)`
+In addition to the method `read(tbl::TableHDU, colname::String)`
 provided by FITSIO for reading a specific column of a FITS table, the
 low-level function:
 ```julia
