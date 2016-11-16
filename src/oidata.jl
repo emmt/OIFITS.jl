@@ -22,10 +22,10 @@ to_real(x::Array{Cdouble}) = x
 to_real{T<:Real}(x::Array{T}) = convert(Array{Cdouble}, x)
 to_real(x::Real) = convert(Cdouble, x)
 
-#to_integer(x::Int) = x
+to_integer(x::Int) = x
 to_integer(x::Array{Int}) = x
 to_integer{T<:Integer}(x::Array{T}) = convert(Array{Int}, x)
-to_integer(x::Int) = convert(Int, x)
+#to_integer(x::Int) = convert(Int, x)
 
 # OI-FITS files stores the following 4 different data types:
 const _DTYPE_LOGICAL = 1 # for format letter 'L'
@@ -141,11 +141,11 @@ get_dbname(db::OIDataBlock) = _EXTNAMES[typeof(db)]
 typealias OIData Union{OIVis,OIVis2,OIT3}
 
 # OIDataBlock can be indexed by the name (either as a string or as a
-# symbol) of the field.
+# Symbol) of the field.
 getindex(db::OIDataBlock, key::Symbol) = get(db.contents, key, nothing)
-getindex(db::OIDataBlock, key::AbstractString) = getindex(db, symbol(key))
+getindex(db::OIDataBlock, key::AbstractString) = getindex(db, Symbol(key))
 haskey(db::OIDataBlock, key::Symbol) = haskey(db.contents, key)
-haskey(db::OIDataBlock, key::AbstractString) = haskey(db.contents, symbol(key))
+haskey(db::OIDataBlock, key::AbstractString) = haskey(db.contents, Symbol(key))
 keys(db::OIDataBlock) = keys(db.contents)
 
 # OIDataBlock can be used as iterators.
@@ -381,7 +381,7 @@ function add_def(dbname::String, revn::Integer, tbl::Vector{String})
             continue
         end
         name = uppercase(m.captures[1])
-        symb = name2symbol(name)
+        symb = name2Symbol(name)
         dtype = get(_DATATYPES, m.captures[2][end], nothing)
         if dtype == nothing
             error("invalid format type in OI_FITS definition: \"$row\"")
@@ -411,14 +411,14 @@ function add_def(dbname::String, revn::Integer, tbl::Vector{String})
     _FIELDS[dbname] = fields
 end
 
-# This version takes care of converting the string into a symbol.
-get_def(db::AbstractString, revn::Integer) =  get_def(symbol(db), revn)
+# This version takes care of converting the string into a Symbol.
+get_def(db::AbstractString, revn::Integer) =  get_def(Symbol(db), revn)
 
 # get_def(db) -- returns the definition for the default format version.
 get_def(db) =  get_def(db, default_revision())
 
-# Convert the name of an OI-FITS keyword/column into a valid symbol.
-function name2symbol(name::AbstractString)
+# Convert the name of an OI-FITS keyword/column into a valid Symbol.
+function name2Symbol(name::AbstractString)
     key = lowercase(name)
     if key == "oi_revn"
         return :revn

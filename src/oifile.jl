@@ -62,7 +62,7 @@ function get_dbtype(hdr::FITSHeader)
     if get_hdutype(hdr) == :binary_table
         extname = fixname(get_string(hdr, "EXTNAME", ""))
         if startswith(extname, "OI_")
-            return symbol(replace(extname, r"[^A-Z0-9_]", '_'))
+            return Symbol(replace(extname, r"[^A-Z0-9_]", '_'))
         end
     end
     :unknown
