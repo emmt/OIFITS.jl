@@ -458,6 +458,7 @@ function build_datablock(dbname::String, revn::Integer, kwds)
     nrows = -1     # number of measurements
     ncols = -1     # number of spectral channels
     nerrs = 0      # number of errors so far
+    contents[:revn] = to_integer(revn)
     for (field, value) in kwds
         # Check whether this field exists.
         spec = get(def.spec, field, nothing)
