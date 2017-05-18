@@ -37,7 +37,7 @@ function read_column(ff::FITSFile, colnum::Integer)
             dims[1:end-1] = dims[2:end]
             dims[end] = nrows
         end
-        data = Array(T, dims...)
+        data = Array{T}(dims...)
         fits_read_col(ff, colnum, 1, 1, data)
         return map(rstrip, data)
     elseif T == Void
@@ -51,7 +51,7 @@ function read_column(ff::FITSFile, colnum::Integer)
             # Result will be a multi-dimensional array.
             push!(dims, nrows)
         end
-        data = Array(T, dims...)
+        data = Array{T}(dims...)
         fits_read_col(ff, colnum, 1, 1, data)
         return data
     end
