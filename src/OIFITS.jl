@@ -12,6 +12,8 @@
 #
 #------------------------------------------------------------------------------
 
+isdefined(Base, :__precompile__) && __precompile__()
+
 module OIFITS
 
 using Compat
