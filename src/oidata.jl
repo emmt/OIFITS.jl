@@ -69,9 +69,9 @@ is_real{T<:Real}(::Array{T}) = true
 # OI-FITS TYPES #
 #################
 
-typealias OIContents Dict{Symbol,Any}
+const OIContents = Dict{Symbol,Any}
 
-abstract OIDataBlock
+@compat abstract type OIDataBlock end
 
 type OITarget <: OIDataBlock
     owner
@@ -138,7 +138,7 @@ end
 get_dbname(db::OIDataBlock) = _EXTNAMES[typeof(db)]
 
 # OIData is any OI-FITS data-block which contains interferometric data.
-typealias OIData Union{OIVis,OIVis2,OIT3}
+const OIData = Union{OIVis,OIVis2,OIT3}
 
 # OIDataBlock can be indexed by the name (either as a string or as a
 # Symbol) of the field.
@@ -166,7 +166,7 @@ type OIMaster
     arr::Dict{String,OIArray}
     ins::Dict{String,OIWavelength}
     function OIMaster()
-        new(Array(OIDataBlock, 0),
+        new(Array{OIDataBlock}(0),
             false,
             nothing,
             Dict{String,OIArray}(),
@@ -310,7 +310,7 @@ type OIDataBlockDef
     spec::Dict{Symbol,OIFieldDef} # dictionary of field specifications
     function OIDataBlockDef(dbname::String, vect::Vector{OIFieldDef})
         spec = Dict{Symbol,OIFieldDef}()
-        fields = Array(Symbol, length(vect))
+        fields = Array{Symbol}(length(vect))
         for j in 1:length(vect)
             entry = vect[j]
             fields[j] = entry.symb
@@ -322,10 +322,10 @@ end
 
 # OIFormatDef is used to store all the data-block definitions
 # for a given revision number.
-typealias OIFormatDef Dict{String,OIDataBlockDef}
+const OIFormatDef = Dict{String,OIDataBlockDef}
 
 # _FORMATS array is indexed by the revision number.
-_FORMATS = Array(OIFormatDef, 0)
+_FORMATS = Array{OIFormatDef}(0)
 
 # The default format version number is the highest registered one.
 default_revision() = length(_FORMATS)
@@ -368,7 +368,7 @@ function add_def(dbname::String, revn::Integer, tbl::Vector{String})
     end
 
     fields = get(_FIELDS, dbname, Set{Symbol}())
-    def = Array(OIFieldDef, 0)
+    def = Array{OIFieldDef}(0)
     keyword = true
     for j in 1:length(tbl)
         row = strip(tbl[j])
@@ -442,8 +442,8 @@ for (func, name) in ((:new_target,     "OI_TARGET"),
                      (:new_t3,         "OI_T3"))
     @eval begin
         function $func(master::Union{OIMaster, Void}=nothing;
-                       revn::Integer=default_revision(), args...)
-            db = build_datablock($name, revn, args)
+                       revn::Integer = default_revision(), kwds...)
+            db = build_datablock($name, revn, kwds)
             if master != nothing
                 attach!(master, db)
             end
@@ -452,13 +452,13 @@ for (func, name) in ((:new_target,     "OI_TARGET"),
     end
 end
 
-function build_datablock(dbname::String, revn::Integer, args)
+function build_datablock(dbname::String, revn::Integer, kwds)
     def = get_def(dbname, revn)
     contents = OIContents()
     nrows = -1     # number of measurements
     ncols = -1     # number of spectral channels
     nerrs = 0      # number of errors so far
-    for (field, value) in args
+    for (field, value) in kwds
         # Check whether this field exists.
         spec = get(def.spec, field, nothing)
         if spec == nothing
@@ -554,7 +554,7 @@ done(master::OIMaster, state) = done(master.all, state)
 next(master::OIMaster, state) = next(master.all, state)
 
 function select(master::OIMaster, args::AbstractString...)
-    datablocks = Array(OIDataBlock, 0)
+    datablocks = Array{OIDataBlock}(0)
     for db in master
         if get_dbname(db) ∈ args
             push!(datablocks, db)
@@ -630,7 +630,7 @@ yields the names of the targets defined in `mst`.
 """
 function get_targets(master::OIMaster)
     tgt = get_target(master)
-    return tgt == nothing ? Array(String, 0) : get_target(tgt)
+    return tgt == nothing ? Array{String}(0) : get_target(tgt)
 end
 
 """
@@ -791,7 +791,7 @@ function select_target(db::OIData, target::Integer)
             @assert(size(src)[end] == length(target_id))
             rank = ndims(src)
             dims = ntuple(i -> i == rank ? length(sel) : size(src, i), rank)
-            dst = Array(eltype(src), dims)
+            dst = Array{eltype(src)}(dims)
             data[key] = dst
             if rank == 1
                 for j in 1:length(sel)
@@ -882,7 +882,7 @@ function select_wavelength(db::Union{OIWavelength,OIVis,OIVis2,OIT3,OISpectrum},
             @assert(size(src, 1) == length(wave))
             rank = ndims(src)
             dims = ntuple(i -> i == 1 ? length(sel) : size(src, i), rank)
-            dst = Array(eltype(src), dims)
+            dst = Array{eltype(src)}(dims)
             data[key] = dst
             if rank == 1
                 for j in 1:length(sel)

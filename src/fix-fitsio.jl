@@ -80,6 +80,7 @@ fits_bitpix(code::Integer) = get(_BITPIX, cint(code), Void)
 
 # Data type routines and table.
 const _DATATYPE = Dict{Cint, DataType}()
+const _REVERSE_DATATYPE = Dict{DataType, Cint}()
 for (sym, val, T) in ((:TBIT       ,   1, Void),
                       (:TBYTE      ,  11, UInt8),
                       (:TSBYTE     ,  12, Int8),
@@ -98,10 +99,13 @@ for (sym, val, T) in ((:TBIT       ,   1, Void),
                       (:TDBLCOMPLEX, 163, Complex{Cdouble})) # Complex128
     val = cint(val)
     _DATATYPE[val] = T
-    if T == AbstractString
-        @eval cfitsio_datatype{S<:AbstractString}(::Type{S}) = $val
-    elseif T != Void
-        @eval cfitsio_datatype(::Type{$T}) = $val
+    if ! haskey(_REVERSE_DATATYPE, T)
+        _REVERSE_DATATYPE[T] = val
+        if T == AbstractString
+            @eval cfitsio_datatype{S<:AbstractString}(::Type{S}) = $val
+        elseif T != Void
+            @eval cfitsio_datatype(::Type{$T}) = $val
+        end
     end
 end
 cfitsio_datatype(code::Integer) = get(_DATATYPE, cint(code), Void)

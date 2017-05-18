@@ -14,6 +14,8 @@
 
 module OIFITS
 
+using Compat
+
 import Base: getindex, setindex!, haskey, keys, start, done, next, show
 
 include("oidata.jl")
