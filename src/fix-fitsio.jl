@@ -3,7 +3,14 @@
 #
 # Some fixes and additional routines which should be part of FITSIO.jl package.
 #
-# ----------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+#
+# This file is part of OIFITS.jl which is licensed under the MIT "Expat"
+# License:
+#
+# Copyright (C) 2015-2017: Éric Thiébaut.
+#
+#------------------------------------------------------------------------------
 
 using FITSIO
 using FITSIO.Libcfitsio
@@ -85,7 +92,7 @@ for (sym, val, T) in ((:TBIT       ,   1, Void),
                       (:TBYTE      ,  11, UInt8),
                       (:TSBYTE     ,  12, Int8),
                       (:TLOGICAL   ,  14, Bool),
-                      (:TSTRING    ,  16, AbstractString),
+                      (:TSTRING    ,  16, Name),
                       (:TUSHORT    ,  20, Cushort),          # Uint16
                       (:TSHORT     ,  21, Cshort),           # Int16
                       (:TUINT      ,  30, Cuint),            # Uint32

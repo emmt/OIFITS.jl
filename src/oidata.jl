@@ -8,9 +8,24 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015: Éric Thiébaut.
+# Copyright (C) 2015-2017: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
+
+"""
+    reverse(D::Dict)
+
+yields a reversion dictionary which assiates the value of `D` to their keys.
+It is checked that the values are unique.
+"""
+function Base.reverse{K,V}(D::Dict{K,V})
+    R = Dict{V,K}()
+    for (key, val) in D
+        haskey(R, val) && error("values must be unique")
+        R[val] = key
+    end
+    return R
+end
 
 ###############
 # BASIC TYPES #
@@ -25,7 +40,7 @@ to_real(x::Real) = convert(Cdouble, x)
 to_integer(x::Int) = x
 to_integer(x::Array{Int}) = x
 to_integer{T<:Integer}(x::Array{T}) = convert(Array{Int}, x)
-#to_integer(x::Int) = convert(Int, x)
+to_integer(x::Integer) = convert(Int, x)
 
 # OI-FITS files stores the following 4 different data types:
 const _DTYPE_LOGICAL = 1 # for format letter 'L'
@@ -122,18 +137,15 @@ type OIT3 <: OIDataBlock
 end
 
 # Correspondance between OI-FITS data-block names and Julia types.
-_DATABLOCKS = Dict{String,DataType}("OI_TARGET"     => OITarget,
-                                         "OI_WAVELENGTH" => OIWavelength,
-                                         "OI_ARRAY"      => OIArray,
-                                         "OI_SPECTRUM"   => OISpectrum,
-                                         "OI_VIS"        => OIVis,
-                                         "OI_VIS2"       => OIVis2,
-                                         "OI_T3"         => OIT3)
-_EXTNAMES = Dict{DataType,String}()
+const _DATABLOCKS = Dict("OI_TARGET"     => OITarget,
+                         "OI_WAVELENGTH" => OIWavelength,
+                         "OI_ARRAY"      => OIArray,
+                         "OI_SPECTRUM"   => OISpectrum,
+                         "OI_VIS"        => OIVis,
+                         "OI_VIS2"       => OIVis2,
+                         "OI_T3"         => OIT3)
 
-for (key, val) in _DATABLOCKS
-    _EXTNAMES[val] = key
-end
+const _EXTNAMES = reverse(_DATABLOCKS)
 
 get_dbname(db::OIDataBlock) = _EXTNAMES[typeof(db)]
 
@@ -163,14 +175,14 @@ type OIMaster
     all::Vector{OIDataBlock}            # All data-blocks
     update_pending::Bool                # Update is needed?
     tgt::Union{OITarget,Void}
-    arr::Dict{String,OIArray}
-    ins::Dict{String,OIWavelength}
+    arr::Dict{Name,OIArray}
+    ins::Dict{Name,OIWavelength}
     function OIMaster()
         new(Array{OIDataBlock}(0),
             false,
             nothing,
-            Dict{String,OIArray}(),
-            Dict{String,OIWavelength}())
+            Dict{Name,OIArray}(),
+            Dict{Name,OIWavelength}())
     end
 end
 
@@ -291,24 +303,23 @@ end
 
 # OIFieldDef is used to store the definition of a keyword/column field.
 type OIFieldDef
-    name::String    # keyword/column name as a string
-    symb::Symbol         # keyword/column symbolic name
-    keyword::Bool        # is keyword? (otherwise column)
-    multiplier::Int      # multiplier; for keywords, 0 means optional and 1
-                         # means required; for columns, a negative number
-                         # means abs(n) times the number of spectral
-                         # channels;
-    dtype::Int           # data type
-    units::String   # units
-    descr::String   # description
+    name::Name      # Keyword/column name as a string.
+    symb::Symbol    # Keyword/column symbolic name.
+    keyword::Bool   # Is keyword? (otherwise column)
+    multiplier::Int # Multiplier: for keywords, 0 means optional and 1 means
+                    # required; for columns, a negative number means abs(n)
+                    # times the number of spectral channels.
+    dtype::Int      # Data type.
+    units::Name     # Units.
+    descr::Name     # Description.
 end
 
 # OIDataBlockDef is used to store the definition of data-block.
 type OIDataBlockDef
-    dbname::String
+    dbname::Name
     fields::Vector{Symbol}        # ordered field symbolic names
     spec::Dict{Symbol,OIFieldDef} # dictionary of field specifications
-    function OIDataBlockDef(dbname::String, vect::Vector{OIFieldDef})
+    function OIDataBlockDef(dbname::AbstractString, vect::Vector{OIFieldDef})
         spec = Dict{Symbol,OIFieldDef}()
         fields = Array{Symbol}(length(vect))
         for j in 1:length(vect)
@@ -322,7 +333,7 @@ end
 
 # OIFormatDef is used to store all the data-block definitions
 # for a given revision number.
-const OIFormatDef = Dict{String,OIDataBlockDef}
+const OIFormatDef = Dict{Name,OIDataBlockDef}
 
 # _FORMATS array is indexed by the revision number.
 _FORMATS = Array{OIFormatDef}(0)
@@ -332,13 +343,16 @@ default_revision() = length(_FORMATS)
 
 # _FIELDS is a dictionary indexed by the data-block name (e,g., "OI_VIS"), each
 # entry stores a set of its fields.
-_FIELDS = Dict{String,Set{Symbol}}()
+_FIELDS = Dict{Name,Set{Symbol}}()
 
-# get_def(db, revn) -- yields the OIDataBlockDef for datablock of type `db`
-#                      (e.g., "OI_TARGET") in revison `revn` of OI-FITS
-#                      standard.
-#
-function get_def(dbname::String, revn::Integer)
+"""
+    get_def(db, revn = default_revision())
+
+yields the `OIDataBlockDef` for datablock of type `db` (e.g., "OI_TARGET") in
+revison `revn` of OI-FITS standard.
+
+"""
+function get_def(dbname::AbstractString, revn::Integer = default_revision())
     if revn < 0 || revn > length(_FORMATS)
         error("unsupported revision number: $revn")
     end
@@ -359,8 +373,10 @@ function get_descr(db::OIDataBlock)
 end
 
 
-function add_def(dbname::String, revn::Integer, tbl::Vector{String})
-    if ! startswith(dbname, "OI_") || dbname != uppercase(dbname) || contains(dbname, " ")
+function add_def{S<:AbstractString}(dbname::AbstractString, revn::Integer,
+    tbl::Vector{S})
+    if (! startswith(dbname, "OI_") || dbname != uppercase(dbname)
+        || contains(dbname, " "))
         error("invalid data-block name: \"$db\"")
     end
     if revn < 0 || revn > 2
@@ -381,7 +397,7 @@ function add_def(dbname::String, revn::Integer, tbl::Vector{String})
             continue
         end
         name = uppercase(m.captures[1])
-        symb = name2Symbol(name)
+        symb = symbolicname(name)
         dtype = get(_DATATYPES, m.captures[2][end], nothing)
         if dtype == nothing
             error("invalid format type in OI_FITS definition: \"$row\"")
@@ -411,14 +427,8 @@ function add_def(dbname::String, revn::Integer, tbl::Vector{String})
     _FIELDS[dbname] = fields
 end
 
-# This version takes care of converting the string into a Symbol.
-get_def(db::AbstractString, revn::Integer) =  get_def(Symbol(db), revn)
-
-# get_def(db) -- returns the definition for the default format version.
-get_def(db) =  get_def(db, default_revision())
-
 # Convert the name of an OI-FITS keyword/column into a valid Symbol.
-function name2Symbol(name::AbstractString)
+function symbolicname(name::AbstractString)
     key = lowercase(name)
     if key == "oi_revn"
         return :revn
@@ -452,7 +462,7 @@ for (func, name) in ((:new_target,     "OI_TARGET"),
     end
 end
 
-function build_datablock(dbname::String, revn::Integer, kwds)
+function build_datablock(dbname::AbstractString, revn::Integer, kwds)
     def = get_def(dbname, revn)
     contents = OIContents()
     nrows = -1     # number of measurements
@@ -631,7 +641,7 @@ yields the names of the targets defined in `mst`.
 """
 function get_targets(master::OIMaster)
     tgt = get_target(master)
-    return tgt == nothing ? Array{String}(0) : get_target(tgt)
+    return tgt == nothing ? Array{typeof("")}(0) : get_target(tgt)
 end
 
 """
@@ -819,7 +829,7 @@ function select_target(master::OIMaster, target::Integer)
     return update!(result)
 end
 
-function select_target(master::OIMaster, target::String)
+function select_target(master::OIMaster, target::AbstractString)
     db = get_target(master)
     if db != nothing
         k = findfirst(name -> name == target, get_target(db))

@@ -8,7 +8,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015: Éric Thiébaut.
+# Copyright (C) 2015-2017: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
@@ -30,7 +30,6 @@ function read_column(ff::FITSFile, colnum::Integer)
         # which is the maximum length of each strings.  On return trailing
         # spaces are removed (they are insignificant according to the FITS
         # norm).
-        T = String
         if length(dims) == 1
             dims = nrows
         else
@@ -88,21 +87,37 @@ function get_comment(hdr::FITSHeader, key::AbstractString, def::AbstractString)
     haskey(hdr, key) ? get_comment(hdr, key) : def
 end
 
-for (fn, T, S) in ((:get_integer, Integer, Int),
-                   (:get_real,    Real,    Float64),
-                   (:get_logical, Bool,    Bool),
-                   (:get_string,  AbstractString,  String))
-    @eval begin
-        function $fn(hdr::FITSHeader, key::AbstractString, def::$T)
-            val = haskey(hdr, key) ? hdr[key] : def
-            isa(val, $T) || error("bad type for FITS keyword \"$key\"")
-            return typeof(val) != $S ? convert($S, val) : val
+for (fn, T, S) in ((:get_integer, Integer,        Int),
+                   (:get_real,    Real,           Float64),
+                   (:get_logical, Bool,           Bool),
+                   (:get_string,  AbstractString, AbstractString))
+    if S == T
+        @eval begin
+            function $fn(hdr::FITSHeader, key::AbstractString, def::$T)
+                val = haskey(hdr, key) ? hdr[key] : def
+                isa(val, $T) || error("bad type for FITS keyword \"$key\"")
+                return val
+            end
+            function $fn(hdr::FITSHeader, key::AbstractString)
+                haskey(hdr, key) || error("missing FITS keyword \"$key\"")
+                val = hdr[key]
+                isa(val, $T) || error("bad type for FITS keyword \"$key\"")
+                return val
+            end
         end
-        function $fn(hdr::FITSHeader, key::AbstractString)
-            haskey(hdr, key) || error("missing FITS keyword \"$key\"")
-            val = hdr[key]
-            isa(val, $T) || error("bad type for FITS keyword \"$key\"")
-            return typeof(val) != $S ? convert($S, val) : val
+    else
+        @eval begin
+            function $fn(hdr::FITSHeader, key::AbstractString, def::$T)
+                val = haskey(hdr, key) ? hdr[key] : def
+                isa(val, $T) || error("bad type for FITS keyword \"$key\"")
+                return convert($S, val)
+            end
+            function $fn(hdr::FITSHeader, key::AbstractString)
+                haskey(hdr, key) || error("missing FITS keyword \"$key\"")
+                val = hdr[key]
+                isa(val, $T) || error("bad type for FITS keyword \"$key\"")
+                return convert($S, val)
+            end
         end
     end
 end
@@ -158,7 +173,7 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
 end
 
 function hash_column_names(hdr::FITSHeader)
-    columns = Dict{String,Int}()
+    columns = Dict{Name,Int}()
     hdutype = get_hdutype(hdr)
     if hdutype == :binary_table || hdutype == :ascii_table
         ncols = get_integer(hdr, "TFIELDS", 0)

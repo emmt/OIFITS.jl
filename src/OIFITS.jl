@@ -8,7 +8,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015: Éric Thiébaut.
+# Copyright (C) 2015-2017: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
@@ -17,8 +17,11 @@ isdefined(Base, :__precompile__) && __precompile__()
 module OIFITS
 
 using Compat
+using Compat: String
 
 import Base: getindex, setindex!, haskey, keys, start, done, next, show
+
+const Name = Compat.ASCIIString
 
 include("oidata.jl")
 include("fix-fitsio.jl")

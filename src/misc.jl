@@ -8,7 +8,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015: Éric Thiébaut.
+# Copyright (C) 2015-2017: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
@@ -50,7 +50,7 @@ read_table(ff::FITSFile) = read_table(make_hdu(ff))
 
 function read_table(hdu::Union{TableHDU,ASCIITableHDU})
     hdr = read_header(hdu)
-    data = Dict{String,Any}()
+    data = Dict{Name,Any}()
     ncols = get_integer(hdr, "TFIELDS", 0)
     for k in 1:ncols
         name = uppercase(strip(get_string(hdr, "TTYPE$k", "")))
