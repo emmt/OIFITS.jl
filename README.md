@@ -1,4 +1,4 @@
-# OIFITS.jl ![Travis build status](https://travis-ci.org/emmt/OIFITS.svg?branch=master)
+# OIFITS.jl [![Build Status](https://travis-ci.org/emmt/OIFITS.jl.svg?branch=master)](https://travis-ci.org/emmt/OIFITS.jl)
 
 The `OIFITS.jl` package provides support for OI-FITS data in Julia language.
 The support for the actual FITS files is provided by the
