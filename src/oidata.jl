@@ -12,21 +12,6 @@
 #
 #------------------------------------------------------------------------------
 
-"""
-    reverse(D::Dict)
-
-yields a reversion dictionary which assiates the value of `D` to their keys.
-It is checked that the values are unique.
-"""
-function Base.reverse{K,V}(D::Dict{K,V})
-    R = Dict{V,K}()
-    for (key, val) in D
-        haskey(R, val) && error("values must be unique")
-        R[val] = key
-    end
-    return R
-end
-
 ###############
 # BASIC TYPES #
 ###############
@@ -145,7 +130,16 @@ const _DATABLOCKS = Dict("OI_TARGET"     => OITarget,
                          "OI_VIS2"       => OIVis2,
                          "OI_T3"         => OIT3)
 
-const _EXTNAMES = reverse(_DATABLOCKS)
+const _EXTNAMES = Dict{valtype(_DATABLOCKS), keytype(_DATABLOCKS)}()
+
+function __init__()
+    # Dictionaries whose keys are types may not be precompiled (at least for
+    # Julia versions anterior to 0.5).
+    for (key, val) in _DATABLOCKS
+        haskey(_EXTNAMES, val) && error("values must be unique")
+        _EXTNAMES[val] = key
+    end
+end
 
 get_dbname(db::OIDataBlock) = _EXTNAMES[typeof(db)]
 
@@ -336,14 +330,14 @@ end
 const OIFormatDef = Dict{Name,OIDataBlockDef}
 
 # _FORMATS array is indexed by the revision number.
-_FORMATS = Array{OIFormatDef}(0)
+const _FORMATS = Array{OIFormatDef}(0)
 
 # The default format version number is the highest registered one.
 default_revision() = length(_FORMATS)
 
 # _FIELDS is a dictionary indexed by the data-block name (e,g., "OI_VIS"), each
 # entry stores a set of its fields.
-_FIELDS = Dict{Name,Set{Symbol}}()
+const _FIELDS = Dict{Name,Set{Symbol}}()
 
 """
     get_def(db, revn = default_revision())
