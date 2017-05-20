@@ -15,7 +15,7 @@
 # With last (0.4.8-pre+3) version of Julia 0.4, precompilation yields a module
 # which fails to use data types as keys in hash tables.  Since we heavily rely
 # on such tables, precompilation is avoided for Julia versions anterior to 0.5.
-VERSION ≥ v"0.5" && isdefined(Base, :__precompile__) && __precompile__()
+isdefined(Base, :__precompile__) && __precompile__(VERSION ≥ v"0.5")
 
 module OIFITS
 
