@@ -65,10 +65,6 @@ export cfitsio_datatype, fits_bitpix
 #              TDBLCOMPLEX     Complex{Cdouble}
 #     -------------------------------------------------
 
-# Conversion to a C `int`:
-cint(x) = convert(Cint, x)
-cint(x::Cint) = x
-
 # BITPIX routines and table.
 const _BITPIX = Dict{Cint, DataType}()
 for (sym, val, T) in ((:BYTE_IMG,        8,       UInt8),
@@ -77,34 +73,33 @@ for (sym, val, T) in ((:BYTE_IMG,        8,       UInt8),
                       (:LONGLONG_IMG,   64,       Int64),
                       (:FLOAT_IMG,     -32,       Float32),
                       (:DOUBLE_IMG,    -64,       Float64))
-    val = cint(val)
+    val = Cint(val)
     _BITPIX[val] = T
     @eval begin
         fits_bitpix(::Type{$T}) = $val
     end
 end
-fits_bitpix(code::Integer) = get(_BITPIX, cint(code), Void)
+fits_bitpix(code::Integer) = get(_BITPIX, Cint(code), Void)
 
 # Data type routines and table.
 const _DATATYPE = Dict{Cint, DataType}()
 const _REVERSE_DATATYPE = Dict{DataType, Cint}()
-for (sym, val, T) in ((:TBIT       ,   1, Void),
-                      (:TBYTE      ,  11, UInt8),
-                      (:TSBYTE     ,  12, Int8),
-                      (:TLOGICAL   ,  14, Bool),
-                      (:TSTRING    ,  16, Name),
-                      (:TUSHORT    ,  20, Cushort),          # Uint16
-                      (:TSHORT     ,  21, Cshort),           # Int16
-                      (:TUINT      ,  30, Cuint),            # Uint32
-                      (:TINT       ,  31, Cint),             # Int32
-                      (:TULONG     ,  40, Culong),
-                      (:TLONG      ,  41, Clong),
-                      (:TFLOAT     ,  42, Cfloat),           # Float32
-                      (:TLONGLONG  ,  81, Int64),
-                      (:TDOUBLE    ,  82, Cdouble),          # Float64
-                      (:TCOMPLEX   ,  83, Complex{Cfloat}),  # Complex64
-                      (:TDBLCOMPLEX, 163, Complex{Cdouble})) # Complex128
-    val = cint(val)
+for (sym, val, T) in ((:TBIT       , Cint(  1), Void),
+                      (:TBYTE      , Cint( 11), UInt8),
+                      (:TSBYTE     , Cint( 12), Int8),
+                      (:TLOGICAL   , Cint( 14), Bool),
+                      (:TSTRING    , Cint( 16), Name),
+                      (:TUSHORT    , Cint( 20), Cushort),          # Uint16
+                      (:TSHORT     , Cint( 21), Cshort),           # Int16
+                      (:TUINT      , Cint( 30), Cuint),            # Uint32
+                      (:TINT       , Cint( 31), Cint),             # Int32
+                      (:TULONG     , Cint( 40), Culong),
+                      (:TLONG      , Cint( 41), Clong),
+                      (:TFLOAT     , Cint( 42), Cfloat),           # Float32
+                      (:TLONGLONG  , Cint( 81), Int64),
+                      (:TDOUBLE    , Cint( 82), Cdouble),          # Float64
+                      (:TCOMPLEX   , Cint( 83), Complex{Cfloat}),  # Complex64
+                      (:TDBLCOMPLEX, Cint(163), Complex{Cdouble})) # Complex128
     _DATATYPE[val] = T
     if ! haskey(_REVERSE_DATATYPE, T)
         _REVERSE_DATATYPE[T] = val
@@ -115,4 +110,4 @@ for (sym, val, T) in ((:TBIT       ,   1, Void),
         end
     end
 end
-cfitsio_datatype(code::Integer) = get(_DATATYPE, cint(code), Void)
+cfitsio_datatype(code::Integer) = get(_DATATYPE, code, Void)
