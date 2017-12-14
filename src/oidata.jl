@@ -31,7 +31,8 @@ to_integer(x::Integer) = convert(Int, x)
 const _DTYPE_LOGICAL = 1 # for format letter 'L'
 const _DTYPE_INTEGER = 2 # for format letters 'I' or 'J'
 const _DTYPE_REAL    = 3 # for format letters 'D' or 'E'
-const _DTYPE_STRING  = 4 # for format letter 'A'
+const _DTYPE_COMPLEX = 4 # for format letter 'C'
+const _DTYPE_STRING  = 5 # for format letter 'A'
 
 # The following dictionary is used for quick conversion of FITS format
 # letter to data type.
@@ -45,6 +46,8 @@ const _DATATYPES = Dict('l' =>  _DTYPE_LOGICAL,
                         'E' =>  _DTYPE_REAL,
                         'd' =>  _DTYPE_REAL,
                         'D' =>  _DTYPE_REAL,
+                        'c' =>  _DTYPE_COMPLEX,
+                        'C' =>  _DTYPE_COMPLEX,
                         'a' =>  _DTYPE_STRING,
                         'A' =>  _DTYPE_STRING)
 
@@ -147,7 +150,7 @@ get_dbname(db::OIDataBlock) = _EXTNAMES[typeof(db)]
 const OIData = Union{OIVis,OIVis2,OIT3}
 
 # OIDataBlock can be indexed by the name (either as a string or as a
-# Symbol) of the field.
+# symbol) of the field.
 getindex(db::OIDataBlock, key::Symbol) = get(db.contents, key, nothing)
 getindex(db::OIDataBlock, key::AbstractString) = getindex(db, Symbol(key))
 haskey(db::OIDataBlock, key::Symbol) = haskey(db.contents, key)
@@ -485,6 +488,11 @@ function build_datablock(dbname::AbstractString, revn::Integer, kwds)
                 error("expecting real value for field \"$field\" in $dbname")
             end
             value = to_real(value)
+        elseif spec.dtype == _DTYPE_COMPLEX
+            if ! is_complex(value)
+                error("expecting complex value for field \"$field\" in $dbname")
+            end
+            value = to_complex(value)
         elseif spec.dtype == _DTYPE_STRING
             if ! is_string(value)
                 error("expecting string value for field \"$field\" in $dbname")
