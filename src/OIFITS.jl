@@ -17,11 +17,10 @@ isdefined(Base, :__precompile__) && __precompile__(true)
 module OIFITS
 
 using Compat
-using Compat: String
 
 import Base: getindex, setindex!, haskey, keys, start, done, next, show
 
-const Name = Compat.ASCIIString
+const Name = (isdefined(Core, :ASCIIString) ? ASCIIString : String)
 
 include("oidata.jl")
 include("fix-fitsio.jl")
