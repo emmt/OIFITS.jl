@@ -159,14 +159,16 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
             quiet || warn("invalid \"OI_REVN\" value ($dbrevn)")
             break
         end
-        if dbrevn > length(_FORMATS)
+        if ! haskey(_FORMATS, dbname)
+            quiet || warn("unknown OI-FITS data-block \"$extname\"")
+            break
+        end
+        v = _FORMATS[dbname]
+        if dbrevn > length(v)
             quiet || warn("unsupported \"OI_REVN\" value ($dbrevn)")
             break
         end
-        if ! haskey(_FORMATS[dbrevn], dbname)
-            quiet || warn("unknown OI-FITS data-block \"$extname\"")
-        end
-        dbdefn = _FORMATS[dbrevn][dbname]
+        dbdefn = v[dbrevn]
         break
     end
     return (dbname, dbrevn, dbdefn)

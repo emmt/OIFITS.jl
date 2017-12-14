@@ -328,15 +328,16 @@ type OIDataBlockDef
     end
 end
 
-# OIFormatDef is used to store all the data-block definitions
-# for a given revision number.
+# OIFormatDef is used to store all the data-block definitions for a given
+# revision number.
 const OIFormatDef = Dict{Name,OIDataBlockDef}
 
-# _FORMATS array is indexed by the revision number.
-const _FORMATS = Array{OIFormatDef}(0)
+# _FORMATS table is indexed by the datablock name and then by the revision
+# number of the corresponding OI-FITS table.
+const _FORMATS = Dict{Name,Vector{Union{OIDataBlockDef,Void}}}()
 
-# The default format version number is the highest registered one.
-default_revision() = length(_FORMATS)
+# The default format version number.
+default_revision() = 2
 
 # _FIELDS is a dictionary indexed by the data-block name (e,g., "OI_VIS"), each
 # entry stores a set of its fields.
@@ -350,13 +351,14 @@ revison `revn` of OI-FITS standard.
 
 """
 function get_def(dbname::AbstractString, revn::Integer = default_revision())
-    if revn < 0 || revn > length(_FORMATS)
-        error("unsupported revision number: $revn")
-    end
-    if ! haskey(_FORMATS[revn], dbname)
+    if ! haskey(_FORMATS, dbname)
         error("unknown data-block: $db")
     end
-    _FORMATS[revn][dbname]
+    v = _FORMATS[dbname]
+    if revn < 1 || revn > length(v) || v[revn] == nothing
+        error("unsupported revision number: $revn")
+    end
+    return v[revn]
 end
 
 function get_def(db::OIDataBlock)
@@ -369,14 +371,13 @@ function get_descr(db::OIDataBlock)
     return (name, revn, get_def(name, revn))
 end
 
-
 function add_def{S<:AbstractString}(dbname::AbstractString, revn::Integer,
     tbl::Vector{S})
     if (! startswith(dbname, "OI_") || dbname != uppercase(dbname)
         || contains(dbname, " "))
         error("invalid data-block name: \"$db\"")
     end
-    if revn < 0 || revn > 2
+    if revn < 1
         error("invalid revision number: $revn")
     end
 
@@ -417,10 +418,16 @@ function add_def{S<:AbstractString}(dbname::AbstractString, revn::Integer,
     end
 
     # Insert the data-block definition in the global table.
-    while revn > length(_FORMATS)
-        push!(_FORMATS, OIFormatDef())
+    if haskey(_FORMATS, dbname)
+        v = _FORMATS[dbname]
+    else
+        v = Array{Union{OIDataBlockDef,Void}}(0)
+        _FORMATS[dbname] = v
     end
-    _FORMATS[revn][dbname] = OIDataBlockDef(dbname, def)
+    while revn > length(v)
+        push!(v, nothing)
+    end
+    v[revn] = OIDataBlockDef(dbname, def)
     _FIELDS[dbname] = fields
 end
 
