@@ -189,4 +189,4 @@ add_def("OI_INSPOL", 1,
          "LYY        C(W)  complex Jones Matrix component along Y axis",
          "LXY        C(W)  complex Jones Matrix component between Y and X axis",
          "LYX        C(W)  complex Jones Matrix component between Y and X axis",
-         "STA_INDEX  I(1)  station number for the above matrices"])
+         "STA_INDEX ?I(1)  station number for the above matrices"])
