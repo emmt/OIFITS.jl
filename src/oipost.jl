@@ -14,8 +14,7 @@
 #------------------------------------------------------------------------------
 
 # Automatically define getters from all fields of a data-block.
-for dbname in keys(_FIELDS)
-    local dbtype = _DATABLOCKS[dbname]
+for (dbname, dbtype) in _DATABLOCKS
     for symb in _FIELDS[dbname]
         eval(parse("get_$symb(db::$dbtype) = db.contents[:$symb]"))
     end
