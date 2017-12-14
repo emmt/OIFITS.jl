@@ -1,8 +1,6 @@
 # OIFITS.jl [![Build Status](https://travis-ci.org/emmt/OIFITS.jl.svg?branch=master)](https://travis-ci.org/emmt/OIFITS.jl)
 
 The `OIFITS.jl` package provides support for OI-FITS data in Julia language.
-The support for the actual FITS files is provided by the
-[`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package.
 
 
 ## OI-FITS Summary
@@ -19,7 +17,9 @@ the available data-blocks are:
 * `OI_VIS2` contains squared visibility (powerspectrum) data;
 * `OI_T3` contains triple product (bispectrum) data.
 
-These data-blocks, are stored as binary tables in a FITS data file.
+These data-blocks, are stored as binary tables in a FITS data file.  The
+support for the actual FITS files is provided by the
+[`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package.
 
 
 ## Installation
@@ -157,7 +157,7 @@ To read an OI-FITS data-block from the HDU of a FITS file:
 ```julia
 db = OIFITS.read_datablock(hdu)
 ```
-where `hdu` is a `HDU` handle.  The result may be `nothing` if the
+where `hdu` is a FITS `HDU` handle.  The result may be `nothing` if the
 current HDU does not contain an OI-FITS data-block.
 
 
