@@ -27,6 +27,11 @@ to_integer(x::Array{Int}) = x
 to_integer{T<:Integer}(x::Array{T}) = convert(Array{Int}, x)
 to_integer(x::Integer) = convert(Int, x)
 
+to_complex(x::Complex{Cdouble}) = x
+to_complex(x::Array{Complex{Cdouble}}) = x
+to_complex{T<:Union{Real,Complex}}(x::AbstractArray{T}) = convert(Array{Complex{Cdouble}}, x)
+to_complex(x::Union{Real,Complex}) = convert(Complex{Cdouble}, x)
+
 # OI-FITS files stores the following 4 different data types:
 const _DTYPE_LOGICAL = 1 # for format letter 'L'
 const _DTYPE_INTEGER = 2 # for format letters 'I' or 'J'
@@ -67,6 +72,10 @@ is_real(::Any) = false
 is_real(::Real) = true
 is_real{T<:Real}(::Array{T}) = true
 
+is_complex(::Any) = false
+is_complex(::Complex) = true
+is_complex{T<:Complex}(::Array{T}) = true
+
 
 #################
 # OI-FITS TYPES #
@@ -102,8 +111,9 @@ end
 
 type OIPolarization <: OIDataBlock
     owner
+    arr::Union{OIArray,Void}
     contents::OIContents
-    OIPolarization(contents::OIContents) = new(nothing, contents)
+    OIPolarization(contents::OIContents) = new(nothing, nothing, contents)
 end
 
 type OIVis <: OIDataBlock
@@ -520,10 +530,9 @@ end
 function build_datablock(dbname::AbstractString, revn::Integer, kwds)
     def = get_def(dbname, revn)
     contents = OIContents()
-    nrows = -1     # number of measurements
-    ncols = -1     # number of spectral channels
-    nerrs = 0      # number of errors so far
     contents[:revn] = to_integer(revn)
+    rows = -1         # number of rows in the OI-FITS table
+    channels = -1     # number of spectral channels
     for (field, value) in kwds
         # Check whether this field exists.
         spec = get(def.spec, field, nothing)
@@ -567,27 +576,41 @@ function build_datablock(dbname::AbstractString, revn::Integer, kwds)
                 error("expecting a scalar value for field \"$field\" in $dbname")
             end
         else
-            if spec.multiplier < 0 && rank == 1
-                # Fix data arrays with a single spectral channel.
-                dims = (1, length(value))
-                value = reshape(value, dims)
-                rank = length(dims)
+            # Check array rank.
+            mult = spec.multiplier
+            maxrank = (spec.dtype == _DTYPE_STRING || mult == 1 ? 1 :
+                       mult == -2 ? 3 :
+                       2)
+            if rank > maxrank
+                error("bad number of dimensions for field \"$field\" in $dbname")
             end
-            n = (spec.multiplier == 1 || spec.dtype == _DTYPE_STRING ? 1 : 2)
-            if rank != n
-                error("expecting a $n-D array value for field \"$field\" in $dbname")
+
+            # Fields may have up to 3 dimensions.  For now, the last dimension
+            # is the number of rows.  FIXME: The ordering of dimensions must
+            # be changed: the number of rows should be the frist dimension.
+            dim0 = (rank >= 1 ? dims[end] : 1)
+            dim1 = (rank >= 2 ? dims[1] : 1)
+            dim2 = (rank >= 3 ? dims[2] : 1)
+
+            if rows == -1
+                rows = dim0
+            elseif rows != dim0
+                error("incompatible number of rows for field \"$field\" in $dbname")
             end
-            if nrows == -1
-                nrows = dims[end]
-            elseif nrows != dims[end]
-                error("incompatible number of rows for value of field \"$field\" in $dbname")
-            end
-            if spec.multiplier < 0
-                if ncols == -1
-                    ncols = dims[2]
-                elseif ncols != dims[2]
-                    error("incompatible number of columns for value of field \"$field\" in $dbname")
+
+            if mult < 0
+                # Expecting an N-by-W or N-by-W-by-W array (N is the number of
+                # rows and W the number of channels).
+                if mult == -2 && dim1 != dim2
+                    error("bad dimensions for field \"$field\" in $dbname")
                 end
+                if channels == -1
+                    channels = dim1
+                elseif channels != dim1
+                    error("incompatible number of spectral channels for field \"$field\" in $dbname")
+                end
+            elseif spec.dtype != _DTYPE_STRING && dim1 != mult
+                error("bad dimensions for field \"$field\" in $dbname")
             end
         end
 
@@ -776,7 +799,7 @@ function update!(master::OIMaster)
             error("missing mandatory OI_TARGET data-block")
         end
         for db in master.all
-            if haskey(db, :insname) && ! isa(db, OIWavelength)
+            if haskey(db, :insname) && ! isa(db, Union{OIWavelength,OIPolarization})
                 insname = fixname(db[:insname])
                 db.ins = get(master.ins, insname, nothing)
                 if db.ins == nothing
