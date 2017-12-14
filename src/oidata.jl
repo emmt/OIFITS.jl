@@ -303,9 +303,10 @@ type OIFieldDef
     name::Name      # Keyword/column name as a string.
     symb::Symbol    # Keyword/column symbolic name.
     keyword::Bool   # Is keyword? (otherwise column)
-    multiplier::Int # Multiplier: for keywords, 0 means optional and 1 means
-                    # required; for columns, a negative number means abs(n)
-                    # times the number of spectral channels.
+    optional::Bool  # Optional field?
+    multiplier::Int # Multiplier: 1 for keywords, number of cells for columns
+                    # (a negative number -N means an array of N dimensions each
+                    # equal to the number of spectral channels.
     dtype::Int      # Data type.
     units::Name     # Units.
     descr::Name     # Description.
@@ -375,10 +376,14 @@ function add_def{S<:AbstractString}(dbname::AbstractString, revn::Integer,
     tbl::Vector{S})
     if (! startswith(dbname, "OI_") || dbname != uppercase(dbname)
         || contains(dbname, " "))
-        error("invalid data-block name: \"$db\"")
+        error("invalid data-block name: \"$dbname\"")
     end
     if revn < 1
         error("invalid revision number: $revn")
+    end
+    if haskey(_FORMATS, dbname) && revn <= length(_FORMATS[dbname]) &&
+        _FORMATS[dbname][revn] != nothing
+        error("data-block \"$dbname\" version $revn already defined")
     end
 
     fields = get(_FIELDS, dbname, Set{Symbol}())
@@ -386,7 +391,7 @@ function add_def{S<:AbstractString}(dbname::AbstractString, revn::Integer,
     keyword = true
     for j in 1:length(tbl)
         row = strip(tbl[j])
-        m = match(r"^([^ ]+) +([^ ]+) +([^ ]+) +(.*)$", row)
+        m = match(r"^([^ ]+) +([^ ]+) +(.*)$", row)
         if m == nothing
             if match(r"^-+$", row) == nothing
                 error("syntax error in OI_FITS definition: \"$row\"")
@@ -396,23 +401,45 @@ function add_def{S<:AbstractString}(dbname::AbstractString, revn::Integer,
         end
         name = uppercase(m.captures[1])
         symb = symbolicname(name)
-        dtype = get(_DATATYPES, m.captures[2][end], nothing)
+        format = m.captures[2]
+        descr = m.captures[3]
+        optional = (format[1] == '?')
+        i = (optional ? 2 : 1)
+        dtype = get(_DATATYPES, format[i], nothing)
         if dtype == nothing
             error("invalid format type in OI_FITS definition: \"$row\"")
         end
-        multiplier = parse(Int, m.captures[2][1:end-1])
-        units = m.captures[3]
-        descr = m.captures[4]
         if keyword
-            if ! (multiplier == 0 || multiplier == 1)
-                error("multiplier must be 0 or 1 in OI_FITS definition: \"$row\"")
+            if length(format) != i
+                error("invalid keyword format in OI_FITS definition: \"$row\"")
             end
+            multiplier = 1
         else
-            if ! (multiplier == -1 || multiplier > 0)
-                error("invalid multiplier in OI_FITS definition: \"$row\"")
+            # Very naive code to parse the dimension list of the column format.
+            if length(format) < i + 3 || format[i+1] != '(' ||
+                format[end] != ')'
+                error("missing column dimensions in OI_FITS definition: \"$row\"")
+            end
+            format = uppercase(format[i+2:end-1])
+            if format == "W"
+                multiplier = -1
+            elseif format == "W,W"
+                multiplier = -2
+            else
+                multiplier = parse(Int, format)
+                if multiplier <= 0
+                    error("invalid multiplier in OI_FITS definition: \"$row\"")
+                end
             end
         end
-        push!(def, OIFieldDef(name, symb, keyword, multiplier,
+        mp = match(r"^(.*[^ ]) +\[([^\]])\]$", descr)
+        if mp == nothing
+            units = ""
+        else
+            descr = mp.captures[1]
+            units = mp.captures[2]
+        end
+        push!(def, OIFieldDef(name, symb, keyword, optional, multiplier,
                               dtype, units, descr))
         push!(fields, symb)
     end
@@ -431,7 +458,7 @@ function add_def{S<:AbstractString}(dbname::AbstractString, revn::Integer,
     _FIELDS[dbname] = fields
 end
 
-# Convert the name of an OI-FITS keyword/column into a valid Symbol.
+# Convert the name of an OI-FITS keyword/column into a valid symbol.
 function symbolicname(name::AbstractString)
     key = lowercase(name)
     if key == "oi_revn"
@@ -548,7 +575,7 @@ function build_datablock(dbname::AbstractString, revn::Integer, kwds)
     nerrs = 0
     for field in def.fields
         spec = def.spec[field]
-        if ! haskey(contents, field) && spec.multiplier != 0
+        if ! haskey(contents, field) && ! spec.optional
             warn("missing value for field \"$field\" in $dbname")
             nerrs += 1
         end
