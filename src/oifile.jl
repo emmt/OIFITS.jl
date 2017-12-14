@@ -17,7 +17,7 @@ using FITSIO.Libcfitsio
 
 # Read a column from a table (this is low-level API, it is expected that the
 # FITS file is open, this must be done by the caller with fits_assert_open).
-function read_column(ff::FITSFile, colnum::Integer)
+function read_column(ff::FITSFile, colnum::Integer, multiplier::Integer)
     # Get the type and the dimensions of the data stored in the column.
     (typecode, repcnt, width) = fits_get_eqcoltype(ff, colnum)
     dims = fits_read_tdim(ff, colnum)
@@ -43,9 +43,10 @@ function read_column(ff::FITSFile, colnum::Integer)
         error("unsupported column data")
     else
         # Column contains numerical data.
-        if length(dims) == 1 && dims[1] == 1
+        if length(dims) == 1 && dims[1] == multiplier == 1
             # Result will be a simple vector.
-            dims = nrows
+            resize!(dims, 1)
+            dims[1] = nrows
         else
             # Result will be a multi-dimensional array.
             push!(dims, nrows)
@@ -218,10 +219,12 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
         else
             colnum = get(columns, name, 0)
             if colnum < 1
-                warn("missing column \"$name\" in OI-FITS $dbtype data-block")
-                nerrs += 1
+                if ! spec.optional
+                    warn("missing column \"$name\" in OI-FITS $dbtype data-block")
+                    nerrs += 1
+                end
             else
-                data[field] = read_column(ff, colnum)
+                data[field] = read_column(ff, colnum, spec.multiplier)
             end
         end
     end
