@@ -18,7 +18,7 @@ module OIFITS
 
 using Compat
 
-import Base: getindex, setindex!, haskey, keys, start, done, next, show
+import Base: getindex, setindex!, haskey, keys, show
 
 const Name = (isdefined(Core, :ASCIIString) ? ASCIIString : String)
 
