@@ -188,7 +188,10 @@ haskey(db::OIDataBlock, key::AbstractString) = haskey(db.contents, Symbol(key))
 keys(db::OIDataBlock) = keys(db.contents)
 
 # OIDataBlock can be used as iterators.
-Base.iterate(db::OIDataBlock, state=1) = iterate(db.contents, state)
+#start(db::OIDataBlock) = start(db.contents)
+#done(db::OIDataBlock, state) = done(db.contents, state)
+#next(db::OIDataBlock, state) = next(db.contents, state)
+iterate(db::OIDataBlock, state=1) = iterate(db.contents, state)
 
 # OIMaster stores the contents of an OI-FITS file.  Data-blocks containing
 # measurements (OI_VIS, OI_VIS2 and OI_T3) are stored into a vector and
@@ -641,7 +644,7 @@ end
 fixname(name::AbstractString) = uppercase(rstrip(name))
 
 # Make OIMaster an iterator.
-Base.iterate(master::OIMaster, state=1) = iterate(master.all, state)
+iterate(master::OIMaster, state=1) = iterate(master.all, state)
 
 function select(master::OIMaster, args::AbstractString...)
     datablocks = Array{OIDataBlock}(undef,0)
