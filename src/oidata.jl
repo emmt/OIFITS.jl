@@ -259,8 +259,8 @@ function show(io::IO, db::OIWavelength)
                       round(wave[1]*1e6, 3), " µm")
             else
                 print(io, " with ", n, " spectral channels from ",
-                      round(minimum(wave)*1e6, 3), " µm to ",
-                      round(maximum(wave)*1e6, 3), " µm")
+                      round(minimum(wave)*1e6, digits=3), " µm to ",
+                      round(maximum(wave)*1e6, digits=3), " µm")
             end
         end
     end
@@ -623,7 +623,7 @@ function build_datablock(dbname::AbstractString, revn::Integer, kwds)
     for field in def.fields
         spec = def.spec[field]
         if ! haskey(contents, field) && ! spec.optional
-            warn("missing value for field \"$field\" in $dbname")
+            @warn("missing value for field \"$field\" in $dbname")
             nerrs += 1
         end
     end
@@ -810,14 +810,14 @@ function update!(master::OIMaster)
                 arrname = fixname(db[:arrname])
                 db.arr = get(master.arr, arrname, nothing)
                 if db.arr == nothing
-                    warn("OI_ARRAY data-block with ARRNAME=\"$arrname\" not found in master")
+                    @warn("OI_ARRAY data-block with ARRNAME=\"$arrname\" not found in master")
                 end
             end
             if haskey(db, :corrname) && ! isa(db, OICorrelation)
                 corrname = fixname(db[:corrname])
                 db.corr = get(master.corr, corrname, nothing)
                 if db.corr == nothing
-                    warn("OI_CORR data-block with CORRNAME=\"$corrname\" not found in master")
+                    @warn("OI_CORR data-block with CORRNAME=\"$corrname\" not found in master")
                 end
             end
         end
