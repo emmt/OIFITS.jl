@@ -8,7 +8,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015-2017: Éric Thiébaut.
+# Copyright (C) 2015-2019: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
@@ -79,12 +79,12 @@ for (sym, val, T) in ((:BYTE_IMG,        8,       UInt8),
         fits_bitpix(::Type{$T}) = $val
     end
 end
-fits_bitpix(code::Integer) = get(_BITPIX, Cint(code), Void)
+fits_bitpix(code::Integer) = get(_BITPIX, Cint(code), Nothing)
 
 # Data type routines and table.
 const _DATATYPE = Dict{Cint, DataType}()
 const _REVERSE_DATATYPE = Dict{DataType, Cint}()
-for (sym, val, T) in ((:TBIT       , Cint(  1), Void),
+for (sym, val, T) in ((:TBIT       , Cint(  1), Nothing),
                       (:TBYTE      , Cint( 11), UInt8),
                       (:TSBYTE     , Cint( 12), Int8),
                       (:TLOGICAL   , Cint( 14), Bool),
@@ -105,9 +105,9 @@ for (sym, val, T) in ((:TBIT       , Cint(  1), Void),
         _REVERSE_DATATYPE[T] = val
         if T == AbstractString
             @eval cfitsio_datatype{S<:AbstractString}(::Type{S}) = $val
-        elseif T != Void
+        elseif T != Nothing
             @eval cfitsio_datatype(::Type{$T}) = $val
         end
     end
 end
-cfitsio_datatype(code::Integer) = get(_DATATYPE, code, Void)
+cfitsio_datatype(code::Integer) = get(_DATATYPE, code, Nothing)

@@ -9,14 +9,14 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015: Éric Thiébaut.
+# Copyright (C) 2015-2019: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
 # Automatically define getters from all fields of a data-block.
 for (dbname, dbtype) in _DATABLOCKS
     for symb in _FIELDS[dbname]
-        eval(parse("get_$symb(db::$dbtype) = db.contents[:$symb]"))
+        eval(Meta.parse("get_$symb(db::$dbtype) = db.contents[:$symb]"))
     end
 end
 

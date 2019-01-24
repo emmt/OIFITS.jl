@@ -8,7 +8,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015-2017: Éric Thiébaut.
+# Copyright (C) 2015-2019: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ module OIFITS
 
 using Compat
 
-import Base: getindex, setindex!, haskey, keys, start, done, next, show
+import Base: getindex, setindex!, haskey, keys, show
 
 const Name = (isdefined(Core, :ASCIIString) ? ASCIIString : String)
 

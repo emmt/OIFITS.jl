@@ -8,7 +8,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015-2017: Éric Thiébaut, Jonathan Léger.
+# Copyright (C) 2015-2019: Éric Thiébaut, Jonathan Léger.
 #
 #------------------------------------------------------------------------------
 
