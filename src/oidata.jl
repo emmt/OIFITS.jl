@@ -252,11 +252,11 @@ function show(io::IO, db::OIWavelength)
                 print(io, " with 0 spectral channels")
             elseif n == 1
                 print(io, " with 1 spectral channel at ",
-                      round(wave[1]*1e6, 3), " µm")
+                      round(wave[1]*1e6, digits = 3), " µm")
             else
                 print(io, " with ", n, " spectral channels from ",
-                      round(minimum(wave)*1e6, 3), " µm to ",
-                      round(maximum(wave)*1e6, 3), " µm")
+                      round(minimum(wave)*1e6, digits = 3), " µm to ",
+                      round(maximum(wave)*1e6, digits = 3), " µm")
             end
         end
     end
