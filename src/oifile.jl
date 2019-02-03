@@ -8,7 +8,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015-2017: Éric Thiébaut.
+# Copyright (C) 2015-2019: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
@@ -36,7 +36,7 @@ function read_column(ff::FITSFile, colnum::Integer, multiplier::Integer)
             dims[1:end-1] = dims[2:end]
             dims[end] = nrows
         end
-        data = Array{T}(undef,dims...)
+        data = Array{T}(undef, dims...)
         fits_read_col(ff, colnum, 1, 1, data)
         return map(rstrip, data)
     elseif T == Nothing
@@ -51,7 +51,7 @@ function read_column(ff::FITSFile, colnum::Integer, multiplier::Integer)
             # Result will be a multi-dimensional array.
             push!(dims, nrows)
         end
-        data = Array{T}(undef,dims...)
+        data = Array{T}(undef, dims...)
         fits_read_col(ff, colnum, 1, 1, data)
         return data
     end

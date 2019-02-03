@@ -1,8 +1,8 @@
 module TestOIFITS
 
 using OIFITS
-using Base.Test
 using Compat
+using Compat.Test
 
 dir = dirname(@__FILE__)
 
@@ -26,18 +26,6 @@ function tryload(dir, file)
     catch
         warn("failed to load \"", file, "\"")
         return false
-    end
-end
-
-# Macro `@testset` may not exists, so we provide a poor replacement.
-if ! isdefined(Symbol("@testset"))
-    macro testset(args...)
-        prefix = (length(args) ≥ 2 ? args[1]*": " : "")
-        tests = args[end]
-        quote
-            $tests
-            println($prefix, "all ", counter, " tests were successful")
-        end
     end
 end
 

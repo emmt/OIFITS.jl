@@ -8,7 +8,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015-2017: Éric Thiébaut.
+# Copyright (C) 2015-2019: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
@@ -19,17 +19,18 @@
 # Conversion to real type (no-op. if already of the correct type).
 to_real(x::Cdouble) = x
 to_real(x::Array{Cdouble}) = x
-to_real(x::Array{T}) where T<:Real = convert(Array{Cdouble}, x)
+to_real(x::Array{T}) where {T<:Real} = convert(Array{Cdouble}, x)
 to_real(x::Real) = convert(Cdouble, x)
 
 to_integer(x::Int) = x
 to_integer(x::Array{Int}) = x
-to_integer(x::Array{T}) where T<:Integer  = convert(Array{Int}, x)
+to_integer(x::Array{T}) where {T<:Integer} = convert(Array{Int}, x)
 to_integer(x::Integer) = convert(Int, x)
 
 to_complex(x::Complex{Cdouble}) = x
 to_complex(x::Array{Complex{Cdouble}}) = x
-to_complex(x::AbstractArray{T}) where T<:Union{Real,Complex}= convert(Array{Complex{Cdouble}}, x)
+to_complex(x::AbstractArray{T}) where {T<:Union{Real,Complex}} =
+    convert(Array{Complex{Cdouble}}, x)
 to_complex(x::Union{Real,Complex}) = convert(Complex{Cdouble}, x)
 
 # OI-FITS files stores the following 4 different data types:
@@ -62,19 +63,19 @@ is_logical(::Array{Bool}) = true
 
 is_string(::Any) = false
 is_string(::AbstractString) = true
-is_string(::Array{T}) where T<:AbstractString = true
+is_string(::Array{T}) where {T<:AbstractString} = true
 
 is_integer(::Any) = false
 is_integer(::Integer) = true
-is_integer(::Array{T}) where T<:Integer = true
+is_integer(::Array{T}) where {T<:Integer} = true
 
 is_real(::Any) = false
 is_real(::Real) = true
-is_real(::Array{T}) where T<:Real  = true
+is_real(::Array{T}) where {T<:Real} = true
 
 is_complex(::Any) = false
 is_complex(::Complex) = true
-is_complex(::Array{T}) where T<:Complex = true
+is_complex(::Array{T}) where {T<:Complex} = true
 
 
 #################
@@ -187,12 +188,6 @@ haskey(db::OIDataBlock, key::Symbol) = haskey(db.contents, key)
 haskey(db::OIDataBlock, key::AbstractString) = haskey(db.contents, Symbol(key))
 keys(db::OIDataBlock) = keys(db.contents)
 
-# OIDataBlock can be used as iterators.
-#start(db::OIDataBlock) = start(db.contents)
-#done(db::OIDataBlock, state) = done(db.contents, state)
-#next(db::OIDataBlock, state) = next(db.contents, state)
-iterate(db::OIDataBlock, state=1) = iterate(db.contents, state)
-
 # OIMaster stores the contents of an OI-FITS file.  Data-blocks containing
 # measurements (OI_VIS, OI_VIS2 and OI_T3) are stored into a vector and
 # thus indexed by an integer.  Named data-blocks (OI_ARRAY and
@@ -207,7 +202,7 @@ mutable struct OIMaster
     ins::Dict{Name,OIWavelength}
     corr::Dict{Name,OICorrelation}
     function OIMaster()
-        new(Array{OIDataBlock}(undef,0),
+        new(Array{OIDataBlock}(undef, 0),
             false,
             nothing,
             Dict{Name,OIArray}(),
@@ -352,7 +347,7 @@ mutable struct OIDataBlockDef
     spec::Dict{Symbol,OIFieldDef} # dictionary of field specifications
     function OIDataBlockDef(dbname::AbstractString, vect::Vector{OIFieldDef})
         spec = Dict{Symbol,OIFieldDef}()
-        fields = Array{Symbol}(undef,length(vect))
+        fields = Array{Symbol}(undef, length(vect))
         for j in 1:length(vect)
             entry = vect[j]
             fields[j] = entry.symb
@@ -405,10 +400,11 @@ function get_descr(db::OIDataBlock)
     return (name, revn, get_def(name, revn))
 end
 
-function add_def(dbname::AbstractString, revn::Integer, 
-    tbl::Vector{S}) where S<:AbstractString
+function add_def(dbname::AbstractString,
+                 revn::Integer,
+                 tbl::Vector{S}) where {S<:AbstractString}
     if (! startswith(dbname, "OI_") || dbname != uppercase(dbname)
-        || occursin(" ",dbname))
+        || occursin(" ", dbname))
         error("invalid data-block name: \"$dbname\"")
     end
     if revn < 1
@@ -420,7 +416,7 @@ function add_def(dbname::AbstractString, revn::Integer,
     end
 
     fields = get(_FIELDS, dbname, Set{Symbol}())
-    def = Array{OIFieldDef}(undef,0)
+    def = Array{OIFieldDef}(undef, 0)
     keyword = true
     for j in 1:length(tbl)
         row = strip(tbl[j])
@@ -481,7 +477,7 @@ function add_def(dbname::AbstractString, revn::Integer,
     if haskey(_FORMATS, dbname)
         v = _FORMATS[dbname]
     else
-        v = Array{Union{OIDataBlockDef,Nothing}}(undef,0)
+        v = Array{Union{OIDataBlockDef,Nothing}}(undef, 0)
         _FORMATS[dbname] = v
     end
     while revn > length(v)
@@ -497,7 +493,7 @@ function symbolicname(name::AbstractString)
     if key == "oi_revn"
         return :revn
     else
-        return Symbol(replace(key, r"[^a-z0-9_]"=>'_'))
+        return Symbol(replace(key, r"[^a-z0-9_]" => '_'))
     end
 end
 
@@ -643,11 +639,29 @@ end
 # conventions.
 fixname(name::AbstractString) = uppercase(rstrip(name))
 
-# Make OIMaster an iterator.
-iterate(master::OIMaster, state=1) = iterate(master.all, state)
+# OIDataBlock and OIMaster can be used as iterators.
+@static if isdefined(Base, :iterate)
+    import Base: iterate
+
+    iterate(iter::OIDataBlock) = iterate(iter.contents)
+    iterate(iter::OIDataBlock, state) = iterate(iter.contents, state)
+
+    iterate(iter::OIMaster) = iterate(iter.all)
+    iterate(iter::OIMaster, state) = iterate(iter.all, state)
+else
+    import Base: start, done, next
+
+    start(iter::OIDataBlock) = start(iter.contents)
+    done(iter::OIDataBlock, state) = done(iter.contents, state)
+    next(iter::OIDataBlock, state) = next(iter.contents, state)
+
+    start(iter::OIMaster) = start(update!(iter).all)
+    done(iter::OIMaster, state) = done(iter.all, state)
+    next(iter::OIMaster, state) = next(iter.all, state)
+end
 
 function select(master::OIMaster, args::AbstractString...)
-    datablocks = Array{OIDataBlock}(undef,0)
+    datablocks = Array{OIDataBlock}(undef, 0)
     for db in master
         if get_dbname(db) ∈ args
             push!(datablocks, db)
@@ -723,7 +737,7 @@ yields the names of the targets defined in `mst`.
 """
 function get_targets(master::OIMaster)
     tgt = get_target(master)
-    return tgt == nothing ? Array{typeof("")}(0) : get_target(tgt)
+    return tgt == nothing ? Array{String}(undef, 0) : get_target(tgt)
 end
 
 """
@@ -899,7 +913,7 @@ function select_target(db::OIData, target::Integer)
             @assert(size(src)[end] == length(target_id))
             rank = ndims(src)
             dims = ntuple(i -> i == rank ? length(sel) : size(src, i), rank)
-            dst = Array{eltype(src)}(dims)
+            dst = Array{eltype(src)}(undef, dims)
             data[key] = dst
             if rank == 1
                 for j in 1:length(sel)
@@ -990,7 +1004,7 @@ function select_wavelength(db::Union{OIWavelength,OIVis,OIVis2,OIT3,OISpectrum},
             @assert(size(src, 1) == length(wave))
             rank = ndims(src)
             dims = ntuple(i -> i == 1 ? length(sel) : size(src, i), rank)
-            dst = Array{eltype(src)}(dims)
+            dst = Array{eltype(src)}(undef, dims)
             data[key] = dst
             if rank == 1
                 for j in 1:length(sel)
