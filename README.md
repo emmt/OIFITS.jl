@@ -1,4 +1,8 @@
-# OIFITS.jl [![Build Status](https://travis-ci.org/emmt/OIFITS.jl.svg?branch=master)](https://travis-ci.org/emmt/OIFITS.jl)
+# OIFITS.jl
+
+[![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE.md)
+[![Build Status](https://travis-ci.org/emmt/OIFITS.jl.svg?branch=master)](https://travis-ci.org/emmt/OIFITS.jl)
+[![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/OIFITS.jl?branch=master)](https://ci.appveyor.com/project/emmt/OIFITS-jl/branch/master)
 
 The `OIFITS.jl` package provides support for OI-FITS data in Julia language.
 
