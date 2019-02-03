@@ -3,6 +3,7 @@ module TestOIFITS
 using OIFITS
 using Compat
 using Compat.Test
+using Compat: @debug, @error, @info, @warn
 
 dir = dirname(@__FILE__)
 
@@ -21,10 +22,10 @@ function tryload(dir, file)
     try
         db = OIFITS.load(joinpath(dir, file))
         counter += 1
-        quiet || info("file \"", file, "\" successfully loaded")
+        quiet || @info "file \"", file, "\" successfully loaded"
         return true
     catch
-        warn("failed to load \"", file, "\"")
+        @warn "failed to load \"", file, "\""
         return false
     end
 end

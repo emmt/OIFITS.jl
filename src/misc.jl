@@ -55,7 +55,7 @@ function read_table(hdu::Union{TableHDU,ASCIITableHDU})
     for k in 1:ncols
         name = uppercase(strip(get_string(hdr, "TTYPE$k", "")))
         if haskey(data, name)
-            warn("duplicate column name: \"$name\"")
+            @warn "duplicate column name: \"$name\""
             continue
         end
         data[name] = read_column(hdu.fitsfile, k)
