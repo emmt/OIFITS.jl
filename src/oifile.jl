@@ -136,7 +136,7 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
         # Get extension name.
         extname = get_value(hdr, "EXTNAME", nothing)
         if ! isa(extname, AbstractString)
-            quiet || warn(extname == nothing ? "missing keyword \"EXTNAME\""
+            quiet || @warn(extname == nothing ? "missing keyword \"EXTNAME\""
                                              : "EXTNAME value is not a string")
             break
         end
@@ -144,29 +144,29 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
         startswith(extname, "OI_") || break
         dbname = extname
         if ! haskey(_DATABLOCKS, dbname)
-            quiet || warn("unknown OI-FITS data-block \"$extname\"")
+            quiet || @warn("unknown OI-FITS data-block \"$extname\"")
             break
         end
 
         # Get revision number.
         revn = get_value(hdr, "OI_REVN", nothing)
         if ! isa(revn, Integer)
-            quiet || warn(revn == nothing ? "missing keyword \"OI_REVN\""
+            quiet || @warn(revn == nothing ? "missing keyword \"OI_REVN\""
                                           : "\"OI_REVN\" value is not an integer")
             break
         end
         dbrevn = revn
         if dbrevn <= 0
-            quiet || warn("invalid \"OI_REVN\" value ($dbrevn)")
+            quiet || @warn("invalid \"OI_REVN\" value ($dbrevn)")
             break
         end
         if ! haskey(_FORMATS, dbname)
-            quiet || warn("unknown OI-FITS data-block \"$extname\"")
+            quiet || @warn("unknown OI-FITS data-block \"$extname\"")
             break
         end
         v = _FORMATS[dbname]
         if dbrevn > length(v)
-            quiet || warn("unsupported \"OI_REVN\" value ($dbrevn)")
+            quiet || @warn("unsupported \"OI_REVN\" value ($dbrevn)")
             break
         end
         dbdefn = v[dbrevn]
@@ -211,16 +211,18 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
         if spec.keyword
             value = get_value(hdr, name, nothing)
             if value == nothing
-                warn("missing keyword \"$name\" in OI-FITS $dbtype data-block")
-                nerrs += 1
+                if !spec.optional
+                    @warn("missing keyword \"$name\" in OI-FITS $dbtype data-block")
+                    nerrs += 1
+                end
             else
                 data[field] = value
             end
         else
             colnum = get(columns, name, 0)
             if colnum < 1
-                if ! spec.optional
-                    warn("missing column \"$name\" in OI-FITS $dbtype data-block")
+                if !spec.optional
+                    @warn("missing column \"$name\" in OI-FITS $dbtype data-block")
                     nerrs += 1
                 end
             else
@@ -228,7 +230,7 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
             end
         end
     end
-    nerrs > 0 && error("bad OI-FITS $dbtype data-block")
+    nerrs > 0 && @error("bad OI-FITS $dbtype data-block")
     return build_datablock(dbtype, revn, data)
 end
 
