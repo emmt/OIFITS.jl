@@ -17,6 +17,7 @@ isdefined(Base, :__precompile__) && __precompile__(true)
 module OIFITS
 
 using Compat
+using Compat: @debug, @error, @info, @warn
 
 import Base: getindex, setindex!, haskey, keys, show
 
