@@ -384,7 +384,7 @@ function get_def(dbname::AbstractString, revn::Integer = default_revision())
         error("unknown data-block: $db")
     end
     v = _FORMATS[dbname]
-    if revn < 1 || revn > length(v) || v[revn] == nothing
+    if revn < 1 || revn > length(v) || v[revn] === nothing
         error("unsupported revision number: $revn")
     end
     return v[revn]
@@ -421,8 +421,8 @@ function add_def(dbname::AbstractString,
     for j in 1:length(tbl)
         row = strip(tbl[j])
         m = match(r"^([^ ]+) +([^ ]+) +(.*)$", row)
-        if m == nothing
-            if match(r"^-+$", row) == nothing
+        if m === nothing
+            if match(r"^-+$", row) === nothing
                 error("syntax error in OI_FITS definition: \"$row\"")
             end
             keyword = false
@@ -435,7 +435,7 @@ function add_def(dbname::AbstractString,
         optional = (format[1] == '?')
         i = (optional ? 2 : 1)
         dtype = get(_DATATYPES, format[i], nothing)
-        if dtype == nothing
+        if dtype === nothing
             error("invalid format type in OI_FITS definition: \"$row\"")
         end
         if keyword
@@ -462,7 +462,7 @@ function add_def(dbname::AbstractString,
             end
         end
         mp = match(r"^(.*[^ ]) +\[([^\]])\]$", descr)
-        if mp == nothing
+        if mp === nothing
             units = ""
         else
             descr = mp.captures[1]
@@ -533,7 +533,7 @@ function build_datablock(dbname::AbstractString, revn::Integer, kwds)
     for (field, value) in kwds
         # Check whether this field exists.
         spec = get(def.spec, field, nothing)
-        if spec == nothing
+        if spec === nothing
             error("data-block $dbname has no field \"$field\"")
         end
 
@@ -737,7 +737,7 @@ yields the names of the targets defined in `mst`.
 """
 function get_targets(master::OIMaster)
     tgt = get_target(master)
-    return tgt == nothing ? Array{String}(undef, 0) : get_target(tgt)
+    return tgt === nothing ? Array{String}(undef, 0) : get_target(tgt)
 end
 
 """
@@ -775,7 +775,7 @@ function new_master(datablocks::Array{OIDataBlock})
 end
 
 function attach!(master::OIMaster, db::OIDataBlock)
-    db.owner == nothing || error("data-block already attached")
+    db.owner === nothing || error("data-block already attached")
     if isa(db, OITarget)
         if master.tgt != nothing
             error("only one OI_TARGET data-block can be attached")
@@ -808,28 +808,28 @@ end
 
 function update!(master::OIMaster)
     if master.update_pending
-        if master.tgt == nothing
+        if master.tgt === nothing
             error("missing mandatory OI_TARGET data-block")
         end
         for db in master.all
             if haskey(db, :insname) && ! isa(db, Union{OIWavelength,OIPolarization})
                 insname = fixname(db[:insname])
                 db.ins = get(master.ins, insname, nothing)
-                if db.ins == nothing
+                if db.ins === nothing
                     error("OI_WAVELENGTH data-block with INSNAME=\"$insname\" not found in master")
                 end
             end
             if haskey(db, :arrname) && ! isa(db, OIArray)
                 arrname = fixname(db[:arrname])
                 db.arr = get(master.arr, arrname, nothing)
-                if db.arr == nothing
+                if db.arr === nothing
                     @warn("OI_ARRAY data-block with ARRNAME=\"$arrname\" not found in master")
                 end
             end
             if haskey(db, :corrname) && ! isa(db, OICorrelation)
                 corrname = fixname(db[:corrname])
                 db.corr = get(master.corr, corrname, nothing)
-                if db.corr == nothing
+                if db.corr === nothing
                     @warn("OI_CORR data-block with CORRNAME=\"$corrname\" not found in master")
                 end
             end

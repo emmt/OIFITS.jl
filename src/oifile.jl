@@ -39,7 +39,7 @@ function read_column(ff::FITSFile, colnum::Integer, multiplier::Integer)
         data = Array{T}(undef, dims...)
         fits_read_col(ff, colnum, 1, 1, data)
         return map(rstrip, data)
-    elseif T == Nothing
+    elseif T === Nothing
         error("unsupported column data")
     else
         # Column contains numerical data.
@@ -136,8 +136,9 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
         # Get extension name.
         extname = get_value(hdr, "EXTNAME", nothing)
         if ! isa(extname, AbstractString)
-            quiet || @warn(extname == nothing ? "missing keyword \"EXTNAME\""
-                                             : "EXTNAME value is not a string")
+            quiet || @warn(extname === nothing
+                           ? "missing keyword \"EXTNAME\""
+                           : "EXTNAME value is not a string")
             break
         end
         extname = fixname(extname)
@@ -151,8 +152,9 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
         # Get revision number.
         revn = get_value(hdr, "OI_REVN", nothing)
         if ! isa(revn, Integer)
-            quiet || @warn(revn == nothing ? "missing keyword \"OI_REVN\""
-                                          : "\"OI_REVN\" value is not an integer")
+            quiet || @warn(revn === nothing
+                           ? "missing keyword \"OI_REVN\""
+                           : "\"OI_REVN\" value is not an integer")
             break
         end
         dbrevn = revn
@@ -201,7 +203,7 @@ end
 function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
     ff = get_file_handle(hdu)
     (dbtype, revn, defn) = check_datablock(hdr, quiet=quiet)
-    defn == nothing && return nothing
+    defn === nothing && return nothing
     columns = hash_column_names(hdr)
     nerrs = 0
     data = Dict{Symbol,Any}(:revn => revn)
@@ -210,7 +212,7 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
         name = spec.name
         if spec.keyword
             value = get_value(hdr, name, nothing)
-            if value == nothing
+            if value === nothing
                 if !spec.optional
                     @warn("missing keyword \"$name\" in OI-FITS $dbtype data-block")
                     nerrs += 1
@@ -230,7 +232,7 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
             end
         end
     end
-    nerrs > 0 && @error("bad OI-FITS $dbtype data-block")
+    nerrs > 0 && error("bad OI-FITS $dbtype data-block")
     return build_datablock(dbtype, revn, data)
 end
 
@@ -244,7 +246,7 @@ function load(f::FITS; quiet::Bool=true)
     # Read all contents, skipping first HDU.
     for hdu in 2:length(f)
         db = read_datablock(f[hdu], quiet=quiet)
-        if db == nothing
+        if db === nothing
             quiet || println("skipping HDU $hdu (no OI-FITS data)")
             continue
         end
