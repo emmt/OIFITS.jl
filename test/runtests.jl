@@ -5,7 +5,7 @@ using Compat
 using Compat.Test
 using Compat: @debug, @error, @info, @warn
 
-dir = dirname(@__FILE__)
+dir = @__DIR__
 
 files = ("contest-2004-obj1.oifits" ,"contest-2004-obj2.oifits",
          "contest-2008-binary.oifits", "contest-2008-obj1-H.oifits",
