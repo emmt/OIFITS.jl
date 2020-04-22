@@ -36,7 +36,7 @@
 #       for columns, a letter indicating the type followed by list of
 #                    dimensions in parenthesis (letter W for a dimension means
 #                    NWAVE).
-#   DESCR = description/comment; units, if any are indicated at the end
+#   DESCR = description/comment; units, if any, are indicated at the end
 #           between square brackets.
 #
 # There may be any number of keyword definitions and any number of column

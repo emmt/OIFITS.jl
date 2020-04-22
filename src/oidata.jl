@@ -162,6 +162,29 @@ mutable struct OISpectrum <: OIDataBlock
         new(false, nothing, nothing, nothing, contents)
 end
 
+"""
+    contents(db)
+
+yields the contents of data-block `db`.
+
+"""
+contents(db::OIDataBlock) = getfield(db, :contents)
+
+
+"""
+    is_attached(db)
+
+yields whether data-block `db` is attached to a master structure.
+
+"""
+is_attached(db::OIDataBlock) = getfield(db, :attached)
+
+Base.getproperty(db::OIDataBlock, sym::Symbol) =
+    getindex(contents(db), sym)
+
+Base.setproperty!(db::OIDataBlock, sym::Symbol, val) =
+    setindex!(contents(db), val, sym)
+
 # Correspondance between OI-FITS data-block names and Julia types.
 const _DATABLOCKS = Dict("OI_TARGET"     => OITarget,
                          "OI_WAVELENGTH" => OIWavelength,
@@ -191,11 +214,11 @@ const OIData = Union{OIVis,OIVis2,OIT3}
 
 # OIDataBlock can be indexed by the name (either as a string or as a
 # symbol) of the field.
-getindex(db::OIDataBlock, key::Symbol) = get(db.contents, key, nothing)
+getindex(db::OIDataBlock, key::Symbol) = get(contents(db), key, nothing)
 getindex(db::OIDataBlock, key::AbstractString) = getindex(db, Symbol(key))
-haskey(db::OIDataBlock, key::Symbol) = haskey(db.contents, key)
-haskey(db::OIDataBlock, key::AbstractString) = haskey(db.contents, Symbol(key))
-keys(db::OIDataBlock) = keys(db.contents)
+haskey(db::OIDataBlock, key::Symbol) = haskey(contents(db), key)
+haskey(db::OIDataBlock, key::AbstractString) = haskey(contents(db), Symbol(key))
+keys(db::OIDataBlock) = keys(contents(db))
 
 # OIMaster stores the contents of an OI-FITS file.  Data-blocks containing
 # measurements (OI_VIS, OI_VIS2 and OI_T3) are stored into a vector and
@@ -649,11 +672,11 @@ end
 fixname(name::AbstractString) = uppercase(rstrip(name))
 
 # OIDataBlock and OIMaster can be used as iterators.
-Base.iterate(iter::OIDataBlock) = iterate(iter.contents)
-Base.iterate(iter::OIDataBlock, state) = iterate(iter.contents, state)
+Base.iterate(db::OIDataBlock) = iterate(contents(db))
+Base.iterate(db::OIDataBlock, state) = iterate(contents(db), state)
 
-Base.iterate(iter::OIMaster) = iterate(iter.all)
-Base.iterate(iter::OIMaster, state) = iterate(iter.all, state)
+Base.iterate(mst::OIMaster) = iterate(mst.all)
+Base.iterate(mst::OIMaster, state) = iterate(mst.all, state)
 
 function select(master::OIMaster, args::AbstractString...)
     datablocks = Array{OIDataBlock}(undef, 0)
@@ -680,7 +703,7 @@ Assuming `tgt` is an instance of `OITarget`, then:
 yields the "TARGET" column of `tgt` which is an array of target names.
 
 """
-get_target(master::OIMaster) = update!(master).tgt
+get_target(master::OIMaster) = getfield(update!(master), :tgt)
 
 
 """
@@ -700,11 +723,11 @@ yields corresponding instance of `OIArray` if any, `nothing` otherwise.
 
 """
 function get_array(master::OIMaster, arrname::AbstractString)
-    get(update!(master).arr, fixname(arrname), nothing)
+    get(get_array(update!(master)), fixname(arrname), nothing)
 end
 get_array(db::OIDataBlock) = nothing
-get_array(db::Union{OIVis,OIVis2,OIT3}) = db.arr
 get_array(db::OIArray) = db
+get_array(obj::Union{OIMaster,OIVis,OIVis2,OIT3}) = getfield(obj, :arr)
 
 """
 
@@ -723,11 +746,11 @@ yields corresponding instance of `OIWavelength` if any, `nothing` otherwise.
 
 """
 function get_instrument(master::OIMaster, insname::AbstractString)
-    get(update!(master).ins, fixname(insname), nothing)
+    get(get_instrument(update!(master)), fixname(insname), nothing)
 end
 get_instrument(db::OIDataBlock) = nothing
-get_instrument(db::Union{OIVis,OIVis2,OIT3}) = db.ins
 get_instrument(db::OIWavelength) = db
+get_instrument(obj::Union{OIMaster,OIVis,OIVis2,OIT3}) = getfield(obj, :ins)
 
 """
 
@@ -782,7 +805,7 @@ function new_master(datablocks::Array{OIDataBlock})
 end
 
 function attach!(master::OIMaster, db::OIDataBlock)
-    db.attached && error("data-block already attached")
+    is_attached(db) && error("data-block already attached")
     if isa(db, OITarget)
         if master.tgt != nothing
             error("only one OI_TARGET data-block can be attached")
@@ -809,7 +832,7 @@ function attach!(master::OIMaster, db::OIDataBlock)
     end
     push!(master.all, db)
     master.update_pending = true
-    db.attached = true
+    setfield!(db, :attached, true)
     nothing
 end
 
@@ -821,24 +844,27 @@ function update!(master::OIMaster)
         for db in master.all
             if haskey(db, :insname) && ! isa(db, Union{OIWavelength,OIPolarization})
                 insname = fixname(db[:insname])
-                db.ins = get(master.ins, insname, nothing)
-                if db.ins === nothing
+                ins = get(master.ins, insname, nothing)
+                if ins === nothing
                     error("OI_WAVELENGTH data-block with INSNAME=\"$insname\" not found in master")
                 end
+                setfield!(db, :ins, ins)
             end
             if haskey(db, :arrname) && ! isa(db, OIArray)
                 arrname = fixname(db[:arrname])
-                db.arr = get(master.arr, arrname, nothing)
-                if db.arr === nothing
+                arr = get(master.arr, arrname, nothing)
+                if arr === nothing
                     @warn("OI_ARRAY data-block with ARRNAME=\"$arrname\" not found in master")
                 end
+                setfield!(db, :arr, arr)
             end
             if haskey(db, :corrname) && ! isa(db, OICorrelation)
                 corrname = fixname(db[:corrname])
-                db.corr = get(master.corr, corrname, nothing)
-                if db.corr === nothing
+                corr = get(master.corr, corrname, nothing)
+                if corr === nothing
                     @warn("OI_CORR data-block with CORRNAME=\"$corrname\" not found in master")
                 end
+                setfield!(db, :corr, corr)
             end
         end
         master.update_pending = false
@@ -860,7 +886,7 @@ a data-block from a given `OIMaster` instance is to be attached to another
 function clone(db::OIDataBlock)
     (name, revn, defn) = get_descr(db)
     data = Dict{Symbol,Any}()
-    for (key, val) in db.contents
+    for (key, val) in contents(db)
         if haskey(defn.spec, key)
             data[key] = val
         end
@@ -893,7 +919,7 @@ function select_target(db::OITarget, target::Integer)
     k = findfirst(id -> id == target, get_target_id(db))
     k == 0 && return
     data = Dict{Symbol,Any}()
-    for (key, val) in db.contents
+    for (key, val) in contents(db)
         spec = get(defn.spec, key, nothing)
         spec != nothing || continue
         if spec.keyword
@@ -912,7 +938,7 @@ function select_target(db::OIData, target::Integer)
     length(sel) > 0 || return
     data = Dict{Symbol,Any}()
     cpy = (length(sel) == length(target_id)) # just copy?
-    for (key, val) in db.contents
+    for (key, val) in contents(db)
         spec = get(defn.spec, key, nothing)
         spec != nothing || continue
         if cpy || spec.keyword
@@ -1005,7 +1031,7 @@ function select_wavelength(db::Union{OIWavelength,OIVis,OIVis2,OIT3,OISpectrum},
     data = Dict{Symbol,Any}()
     cpy = (length(sel) == length(wave)) # just copy?
     iswave = (typeof(db) == OIWavelength)
-    for (key, val) in db.contents
+    for (key, val) in contents(db)
         spec = get(defn.spec, key, nothing)
         spec != nothing || continue
         if cpy || spec.keyword || (spec.multiplier >= 0 && ! iswave)
