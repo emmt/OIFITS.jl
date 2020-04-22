@@ -24,7 +24,7 @@ function read_column(ff::FITSFile, colnum::Integer, multiplier::Integer)
     nrows = fits_get_num_rows(ff)
 
     # Allocate the array and read the column contents.
-    T = cfitsio_datatype(typecode)
+    T = coltype_to_type(typecode) # FIXME: improve type stability
     if T <: AbstractString
         # Column contains an array of strings.  Strip the leading dimension
         # which is the maximum length of each strings.  On return trailing

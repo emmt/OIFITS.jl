@@ -8,11 +8,10 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015-2019: Éric Thiébaut.
+# Copyright (C) 2015-2020, Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
-
-
+#
 # OI-FITS FORMAT DESCRIPTION TABLES
 #
 # The format of the OI-FITS data block is described by a vector of strings
@@ -32,12 +31,11 @@
 #   KEYWORD = keyword for HDU header.
 #   COLUMN = column name for table (TTYPE).
 #   FORMAT = (may be prefixed with a ? to indicate optional field):
-#       for keywords, a single letter indicating the type,
-#       for columns, a letter indicating the type followed by list of
-#                    dimensions in parenthesis (letter W for a dimension means
-#                    NWAVE).
+#       - for keywords, a single letter indicating the type,
+#       - for columns, a letter indicating the type followed by list of
+#         dimensions in parenthesis (letter W for a dimension means NWAVE).
 #   DESCR = description/comment; units, if any, are indicated at the end
-#           between square brackets.
+#       between square brackets.
 #
 # There may be any number of keyword definitions and any number of column
 # definitions, the two parts are separated by a dash line like

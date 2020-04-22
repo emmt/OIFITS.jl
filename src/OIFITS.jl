@@ -18,8 +18,14 @@ module OIFITS
 
 import Base: getindex, setindex!, haskey, keys, show
 
+using FITSIO
+using FITSIO.Libcfitsio
+
+import FITSIO: libcfitsio, fits_assert_ok, fits_assert_open
+import FITSIO.Libcfitsio: fits_get_errstatus
+
 include("oidata.jl")
-include("fix-fitsio.jl")
+include("bitpix.jl")
 include("misc.jl")
 include("oifile.jl")
 include("oiformat1.jl")
