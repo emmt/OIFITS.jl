@@ -87,70 +87,79 @@ const OIContents = Dict{Symbol,Any}
 abstract type OIDataBlock end
 
 mutable struct OITarget <: OIDataBlock
-    owner
+    attached::Bool
     contents::OIContents
-    OITarget(contents::OIContents) = new(nothing, contents)
+    OITarget(contents::OIContents) =
+        new(false, contents)
 end
 
 mutable struct OIArray <: OIDataBlock
-    owner
+    attached::Bool
     contents::OIContents
-    OIArray(contents::OIContents) = new(nothing, contents)
+    OIArray(contents::OIContents) =
+        new(false, contents)
 end
 
 mutable struct OIWavelength <: OIDataBlock
-    owner
+    attached::Bool
     contents::OIContents
-    OIWavelength(contents::OIContents) = new(nothing, contents)
+    OIWavelength(contents::OIContents) =
+        new(false, contents)
 end
 
 mutable struct OICorrelation <: OIDataBlock
-    owner
+    attached::Bool
     contents::OIContents
-    OICorrelation(contents::OIContents) = new(nothing, contents)
+    OICorrelation(contents::OIContents) =
+        new(false, contents)
 end
 
 mutable struct OIPolarization <: OIDataBlock
-    owner
+    attached::Bool
     arr::Union{OIArray,Nothing}
     contents::OIContents
-    OIPolarization(contents::OIContents) = new(nothing, nothing, contents)
+    OIPolarization(contents::OIContents) =
+        new(false, nothing, contents)
 end
 
 mutable struct OIVis <: OIDataBlock
-    owner
+    attached::Bool
     arr::Union{OIArray,Nothing}
     ins::Union{OIWavelength,Nothing}
     corr::Union{OICorrelation,Nothing}
     contents::OIContents
-    OIVis(contents::OIContents) = new(nothing, nothing, nothing, nothing, contents)
+    OIVis(contents::OIContents) =
+        new(false, nothing, nothing, nothing, contents)
 end
 
 mutable struct OIVis2 <: OIDataBlock
-    owner
+    attached::Bool
     arr::Union{OIArray,Nothing}
     ins::Union{OIWavelength,Nothing}
     corr::Union{OICorrelation,Nothing}
     contents::OIContents
-    OIVis2(contents::OIContents) = new(nothing, nothing, nothing, nothing, contents)
+    OIVis2(contents::OIContents) =
+        new(false, nothing, nothing, nothing, contents)
 end
 
 mutable struct OIT3 <: OIDataBlock
-    owner
+    attached::Bool
     arr::Union{OIArray,Nothing}
     ins::Union{OIWavelength,Nothing}
     corr::Union{OICorrelation,Nothing}
     contents::OIContents
-    OIT3(contents::OIContents) = new(nothing, nothing, nothing, nothing, contents)
+    OIT3(contents::OIContents) =
+        new(false, nothing, nothing, nothing, contents)
 end
 
 mutable struct OISpectrum <: OIDataBlock
-    owner
+    attached::Bool
     arr::Union{OIArray,Nothing}
     ins::Union{OIWavelength,Nothing}
     corr::Union{OICorrelation,Nothing}
     contents::OIContents
-    OISpectrum(contents::OIContents) = new(nothing, nothing, nothing, nothing, contents)
+    OISpectrum(contents::OIContents) =
+        new(false, nothing, nothing, nothing, contents)
 end
 
 # Correspondance between OI-FITS data-block names and Julia types.
@@ -773,7 +782,7 @@ function new_master(datablocks::Array{OIDataBlock})
 end
 
 function attach!(master::OIMaster, db::OIDataBlock)
-    db.owner === nothing || error("data-block already attached")
+    db.attached && error("data-block already attached")
     if isa(db, OITarget)
         if master.tgt != nothing
             error("only one OI_TARGET data-block can be attached")
@@ -800,7 +809,7 @@ function attach!(master::OIMaster, db::OIDataBlock)
     end
     push!(master.all, db)
     master.update_pending = true
-    db.owner = master
+    db.attached = true
     nothing
 end
 
