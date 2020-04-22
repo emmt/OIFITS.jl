@@ -8,7 +8,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015-2019: Éric Thiébaut.
+# Copyright (C) 2015-2020, Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
@@ -88,7 +88,7 @@ for (sym, val, T) in ((:TBIT       , Cint(  1), Nothing),
                       (:TBYTE      , Cint( 11), UInt8),
                       (:TSBYTE     , Cint( 12), Int8),
                       (:TLOGICAL   , Cint( 14), Bool),
-                      (:TSTRING    , Cint( 16), Name),
+                      (:TSTRING    , Cint( 16), String),
                       (:TUSHORT    , Cint( 20), Cushort),          # Uint16
                       (:TSHORT     , Cint( 21), Cshort),           # Int16
                       (:TUINT      , Cint( 30), Cuint),            # Uint32

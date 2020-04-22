@@ -8,7 +8,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015-2019: Éric Thiébaut.
+# Copyright (C) 2015-2020, Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
@@ -178,7 +178,7 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
 end
 
 function hash_column_names(hdr::FITSHeader)
-    columns = Dict{Name,Int}()
+    columns = Dict{String,Int}()
     hdutype = get_hdutype(hdr)
     if hdutype == :binary_table || hdutype == :ascii_table
         ncols = get_integer(hdr, "TFIELDS", 0)

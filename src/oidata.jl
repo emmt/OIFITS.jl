@@ -8,7 +8,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015-2020: Éric Thiébaut.
+# Copyright (C) 2015-2020, Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
@@ -198,16 +198,16 @@ mutable struct OIMaster
     all::Vector{OIDataBlock}            # All data-blocks
     update_pending::Bool                # Update is needed?
     tgt::Union{OITarget,Nothing}
-    arr::Dict{Name,OIArray}
-    ins::Dict{Name,OIWavelength}
-    corr::Dict{Name,OICorrelation}
+    arr::Dict{String,OIArray}
+    ins::Dict{String,OIWavelength}
+    corr::Dict{String,OICorrelation}
     function OIMaster()
         new(Array{OIDataBlock}(undef, 0),
             false,
             nothing,
-            Dict{Name,OIArray}(),
-            Dict{Name,OIWavelength}(),
-            Dict{Name,OICorrelation}())
+            Dict{String,OIArray}(),
+            Dict{String,OIWavelength}(),
+            Dict{String,OICorrelation}())
     end
 end
 
@@ -328,7 +328,7 @@ end
 
 # OIFieldDef is used to store the definition of a keyword/column field.
 mutable struct OIFieldDef
-    name::Name      # Keyword/column name as a string.
+    name::String    # Keyword/column name as a string.
     symb::Symbol    # Keyword/column symbolic name.
     keyword::Bool   # Is keyword? (otherwise column)
     optional::Bool  # Optional field?
@@ -336,13 +336,13 @@ mutable struct OIFieldDef
                     # (a negative number -N means an array of N dimensions each
                     # equal to the number of spectral channels.
     dtype::Int      # Data type.
-    units::Name     # Units.
-    descr::Name     # Description.
+    units::String   # Units.
+    descr::String   # Description.
 end
 
 # OIDataBlockDef is used to store the definition of data-block.
 mutable struct OIDataBlockDef
-    dbname::Name
+    dbname::String
     fields::Vector{Symbol}        # ordered field symbolic names
     spec::Dict{Symbol,OIFieldDef} # dictionary of field specifications
     function OIDataBlockDef(dbname::AbstractString, vect::Vector{OIFieldDef})
@@ -359,18 +359,18 @@ end
 
 # OIFormatDef is used to store all the data-block definitions for a given
 # revision number.
-const OIFormatDef = Dict{Name,OIDataBlockDef}
+const OIFormatDef = Dict{String,OIDataBlockDef}
 
 # _FORMATS table is indexed by the datablock name and then by the revision
 # number of the corresponding OI-FITS table.
-const _FORMATS = Dict{Name,Vector{Union{OIDataBlockDef,Nothing}}}()
+const _FORMATS = Dict{String,Vector{Union{OIDataBlockDef,Nothing}}}()
 
 # The default format version number.
 default_revision() = 2
 
 # _FIELDS is a dictionary indexed by the data-block name (e,g., "OI_VIS"), each
 # entry stores a set of its fields.
-const _FIELDS = Dict{Name,Set{Symbol}}()
+const _FIELDS = Dict{String,Set{Symbol}}()
 
 """
     get_def(db, revn = default_revision())
