@@ -8,16 +8,13 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015-2019: Éric Thiébaut.
+# Copyright (C) 2015-2020: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
 isdefined(Base, :__precompile__) && __precompile__(true)
 
 module OIFITS
-
-using Compat
-using Compat: @debug, @error, @info, @warn
 
 import Base: getindex, setindex!, haskey, keys, show
 

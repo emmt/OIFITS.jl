@@ -1,9 +1,6 @@
 module TestOIFITS
 
-using OIFITS
-using Compat
-using Compat.Test
-using Compat: @debug, @error, @info, @warn
+using OIFITS, Test, Printf
 
 dir = @__DIR__
 

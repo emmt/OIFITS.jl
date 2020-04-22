@@ -8,7 +8,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015-2019: Éric Thiébaut.
+# Copyright (C) 2015-2020: Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
@@ -84,7 +84,7 @@ is_complex(::Array{T}) where {T<:Complex} = true
 
 const OIContents = Dict{Symbol,Any}
 
-@compat abstract type OIDataBlock end
+abstract type OIDataBlock end
 
 mutable struct OITarget <: OIDataBlock
     owner
