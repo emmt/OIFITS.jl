@@ -9,7 +9,7 @@
 # This file is part of OIFITS.jl which is licensed under the MIT "Expat"
 # License:
 #
-# Copyright (C) 2015-2019: Éric Thiébaut.
+# Copyright (C) 2015-2020, Éric Thiébaut.
 #
 #------------------------------------------------------------------------------
 
@@ -24,10 +24,12 @@ end
 get_eff_wave(db::Union{OIVis,OIVis2,OIT3}) = db.ins[:eff_wave]
 get_eff_band(db::Union{OIVis,OIVis2,OIT3}) = db.ins[:eff_band]
 
-@doc """
+"""
+
 Assuming `db` is an instance of `OITarget`, `OIVis`, `OIVis2` or `OIT3`, then:
-```
+
     get_target_id(db)
-```
+
 yields the "TARGET_ID" column of `db` which is an array of integers.
+
 """ get_target_id

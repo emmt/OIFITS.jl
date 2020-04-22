@@ -640,25 +640,11 @@ end
 fixname(name::AbstractString) = uppercase(rstrip(name))
 
 # OIDataBlock and OIMaster can be used as iterators.
-@static if isdefined(Base, :iterate)
-    import Base: iterate
+Base.iterate(iter::OIDataBlock) = iterate(iter.contents)
+Base.iterate(iter::OIDataBlock, state) = iterate(iter.contents, state)
 
-    iterate(iter::OIDataBlock) = iterate(iter.contents)
-    iterate(iter::OIDataBlock, state) = iterate(iter.contents, state)
-
-    iterate(iter::OIMaster) = iterate(iter.all)
-    iterate(iter::OIMaster, state) = iterate(iter.all, state)
-else
-    import Base: start, done, next
-
-    start(iter::OIDataBlock) = start(iter.contents)
-    done(iter::OIDataBlock, state) = done(iter.contents, state)
-    next(iter::OIDataBlock, state) = next(iter.contents, state)
-
-    start(iter::OIMaster) = start(update!(iter).all)
-    done(iter::OIMaster, state) = done(iter.all, state)
-    next(iter::OIMaster, state) = next(iter.all, state)
-end
+Base.iterate(iter::OIMaster) = iterate(iter.all)
+Base.iterate(iter::OIMaster, state) = iterate(iter.all, state)
 
 function select(master::OIMaster, args::AbstractString...)
     datablocks = Array{OIDataBlock}(undef, 0)
@@ -671,34 +657,38 @@ function select(master::OIMaster, args::AbstractString...)
 end
 
 """
+
 Assuming `mst` is an instance of `OIMaster`, then:
-```
+
     get_target(mst)
-```
+
 yields the `OITarget` data-block of `mst` if any, `nothing` otherwise.
 
 Assuming `tgt` is an instance of `OITarget`, then:
-```
+
     get_target(tgt)
-```
+
 yields the "TARGET" column of `tgt` which is an array of target names.
+
 """
 get_target(master::OIMaster) = update!(master).tgt
 
 
 """
+
 Assuming `mst` is an instance of `OIMaster`, then:
-```
+
     get_array(mst, arrname)
-```
+
 yields the `OIArray` data-block of `mst` whose name is `arrname` if any,
 `nothing` otherwise.
 
 Assuming `db` is an instance of a sub-type of `OIDataBlock`, then:
-```
+
     get_array(db)
-```
+
 yields corresponding instance of `OIArray` if any, `nothing` otherwise.
+
 """
 function get_array(master::OIMaster, arrname::AbstractString)
     get(update!(master).arr, fixname(arrname), nothing)
@@ -708,18 +698,20 @@ get_array(db::Union{OIVis,OIVis2,OIT3}) = db.arr
 get_array(db::OIArray) = db
 
 """
+
 Assuming `mst` is an instance of `OIMaster`, then:
-```
+
     get_instrument(mst, insname)
-```
+
 yields the `OIWavelength` data-block of `mst` whose name is `insname` if any,
 `nothing` otherwise.
 
 Assuming `db` is an instance of a sub-type of `OIDataBlock`, then:
-```
+
     get_instrument(db)
-```
+
 yields corresponding instance of `OIWavelength` if any, `nothing` otherwise.
+
 """
 function get_instrument(master::OIMaster, insname::AbstractString)
     get(update!(master).ins, fixname(insname), nothing)
@@ -729,11 +721,13 @@ get_instrument(db::Union{OIVis,OIVis2,OIT3}) = db.ins
 get_instrument(db::OIWavelength) = db
 
 """
+
 Assuming `mst` is an instance of `OIMaster`, then:
-```
+
     get_targets(mst)
-```
+
 yields the names of the targets defined in `mst`.
+
 """
 function get_targets(master::OIMaster)
     tgt = get_target(master)
@@ -741,20 +735,24 @@ function get_targets(master::OIMaster)
 end
 
 """
+
 Assuming `mst` is an instance of `OIMaster`, then:
-```
+
     get_arrays(mst)
-```
+
 yields the names of the interferometric arrays defined in `mst`.
+
 """
 get_arrays(master::OIMaster) = collect(keys(update!(master).arr))
 
 """
+
 Assuming `mst` is an instance of `OIMaster`, then:
-```
+
     get_instruments(mst)
-```
+
 yields the names of the instruments defined in `mst`.
+
 """
 get_instruments(master::OIMaster) = collect(keys(update!(master).ins))
 
@@ -840,6 +838,7 @@ function update!(master::OIMaster)
 end
 
 """
+
 ### Clone a data-block
 
 This method clones an existing data-block.  The array data are shared between
@@ -847,6 +846,7 @@ the clones but not the links (owner, target, instrument, etc.).  Only the
 fields defined by OI-FITS standard are cloned.  This method is intended when
 a data-block from a given `OIMaster` instance is to be attached to another
 `OIMaster` instance.
+
 """
 function clone(db::OIDataBlock)
     (name, revn, defn) = get_descr(db)
@@ -861,19 +861,21 @@ end
 
 
 """
+
 ### Select data for a given target
 
 The method `select_target` selects a subset of data corresponding to a given
 target.   The general syntax is:
-```
+
     out = select_target(inp, tgt)
-```
+
 where `inp` is the input data (can be an instance of `OIMaster` or of any
 `OIDataBlock` sub-types), `tgt` is the target number or name.
 
 The result `out` may share part of its contents with the input data `inp`.
 
 The result may be `nothing` if the input contains no data for the given target.
+
 """
 select_target(db::OIDataBlock, target::Integer) = clone(db)
 
@@ -950,22 +952,23 @@ function select_target(master::OIMaster, target::AbstractString)
 end
 
 """
+
 ### Select data at given wavelengths
 
 The method `select_wavelength` selects a subset of data on the basis of their
 wavelength.   The general syntax is:
-```
+
     out = select_wavelength(inp, sel)
-```
+
 where `inp` is the input data (can be an instance of `OIMaster` or of any
 `OIDataBlock` sub-types), `sel` is a predicate function which takes a
 wavelength (in meters) as argument and returns true if this wavelength is to be
 selected and false otherwise.
 
 An alternative is:
-```
+
     out = select_wavelength(inp, wmin, wmax)
-```
+
 to select wavelengths `w` such that `wmin ≤ w ≤ wmax`.  The wavelength
 bounds are in meters.
 
@@ -973,6 +976,7 @@ The result `out` may share part of its contents with the input data `inp`.
 
 The result may be `nothing` if the input contains no data at selected
 wavelengths.
+
 """
 function select_wavelength(inp::Union{OIMaster,OIDataBlock},
                            wavemin::Real, wavemax::Real)
