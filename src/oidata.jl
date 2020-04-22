@@ -49,28 +49,40 @@ to_string(x::Tuple{Vararg{String}}) = x
 to_string(x::Tuple{Vararg{Union{AbstractString,Symbol}}}) = map(to_string, x)
 
 # OI-FITS files stores the following 4 different data types:
-const _DTYPE_LOGICAL = 1 # for format letter 'L'
-const _DTYPE_INTEGER = 2 # for format letters 'I' or 'J'
-const _DTYPE_REAL    = 3 # for format letters 'D' or 'E'
-const _DTYPE_COMPLEX = 4 # for format letter 'C'
-const _DTYPE_STRING  = 5 # for format letter 'A'
+const DTYPE_LOGICAL = 1 # for format letter 'L'
+const DTYPE_INTEGER = 2 # for format letters 'I' or 'J'
+const DTYPE_REAL    = 3 # for format letters 'D' or 'E'
+const DTYPE_COMPLEX = 4 # for format letter 'C'
+const DTYPE_STRING  = 5 # for format letter 'A'
 
-# The following dictionary is used for quick conversion of FITS format
-# letter to data type.
-const _DATATYPES = Dict('l' =>  _DTYPE_LOGICAL,
-                        'L' =>  _DTYPE_LOGICAL,
-                        'i' =>  _DTYPE_INTEGER,
-                        'I' =>  _DTYPE_INTEGER,
-                        'j' =>  _DTYPE_INTEGER,
-                        'J' =>  _DTYPE_INTEGER,
-                        'e' =>  _DTYPE_REAL,
-                        'E' =>  _DTYPE_REAL,
-                        'd' =>  _DTYPE_REAL,
-                        'D' =>  _DTYPE_REAL,
-                        'c' =>  _DTYPE_COMPLEX,
-                        'C' =>  _DTYPE_COMPLEX,
-                        'a' =>  _DTYPE_STRING,
-                        'A' =>  _DTYPE_STRING)
+"""
+    get_dtype(c)
+
+yields the DTYPE code of a FITS table column defined by the letter `c`.
+
+"""
+get_dtype(c::Char) =
+    # It is about 2 times faster to search with a series of tests instead of
+    # using a dictionary.  Converting to uppercase/lowercase is much longer so
+    # we keep upper- and lowercase version of each letter.
+    (c == 'A' ? DTYPE_STRING  :
+     c == 'C' ? DTYPE_COMPLEX :
+     c == 'D' ? DTYPE_REAL    :
+     c == 'E' ? DTYPE_REAL    :
+     c == 'I' ? DTYPE_INTEGER :
+     c == 'J' ? DTYPE_INTEGER :
+     c == 'L' ? DTYPE_LOGICAL :
+     c == 'a' ? DTYPE_STRING  :
+     c == 'c' ? DTYPE_COMPLEX :
+     c == 'd' ? DTYPE_REAL    :
+     c == 'e' ? DTYPE_REAL    :
+     c == 'i' ? DTYPE_INTEGER :
+     c == 'j' ? DTYPE_INTEGER :
+     c == 'l' ? DTYPE_LOGICAL :
+     bad_column_type(c))
+
+@noinline  bad_column_type(c::Char) =
+    error("bad FITS column type '$c'")
 
 is_logical(::Any) = false
 is_logical(::Bool) = true
@@ -130,21 +142,57 @@ const _DATABLOCKS = Dict("OI_TARGET"     => OITarget,
                          "OI_CORR"       => OICorrelation,
                          "OI_INSPOL"     => OIPolarization)
 
-const _EXTNAMES = Dict{valtype(_DATABLOCKS), keytype(_DATABLOCKS)}()
+"""
+    get_oitype(extname) -> T
 
-function __init__()
-    # Dictionaries whose keys are types may not be precompiled (at least for
-    # Julia versions anterior to 0.5).
-    for (key, val) in _DATABLOCKS
-        haskey(_EXTNAMES, val) && error("values must be unique")
-        _EXTNAMES[val] = key
-    end
-end
+yields the data-block type `T` associated to the OI-FITS extension `extname`.
 
-get_dbname(db::OIDataBlock) = _EXTNAMES[typeof(db)]
+"""
+get_oitype(extname::Symbol) =
+    (extname == :OI_TARGET     ? OITarget       :
+     extname == :OI_WAVELENGTH ? OIWavelength   :
+     extname == :OI_ARRAY      ? OIArray        :
+     extname == :OI_VIS        ? OIVis          :
+     extname == :OI_VIS2       ? OIVis2         :
+     extname == :OI_T3         ? OIT3           :
+     extname == :OI_SPECTRUM   ? OISpectrum     :
+     extname == :OI_CORR       ? OICorrelation  :
+     extname == :OI_INSPOL     ? OIPolarization :
+     bad_extname(extname))
 
-# OIData is any OI-FITS data-block which contains interferometric data.
-const OIData = Union{OIVis,OIVis2,OIT3}
+get_oitype(extname::AbstractString) =
+    (extname == "OI_TARGET"     ? OITarget       :
+     extname == "OI_WAVELENGTH" ? OIWavelength   :
+     extname == "OI_ARRAY"      ? OIArray        :
+     extname == "OI_VIS"        ? OIVis          :
+     extname == "OI_VIS2"       ? OIVis2         :
+     extname == "OI_T3"         ? OIT3           :
+     extname == "OI_SPECTRUM"   ? OISpectrum     :
+     extname == "OI_CORR"       ? OICorrelation  :
+     extname == "OI_INSPOL"     ? OIPolarization :
+     bad_extname(extname))
+
+ @noinline bad_extname(extname::Union{Symbol,AbstractString}) =
+    error("bad OI-FITS datablock name \"$extname\"")
+
+
+"""
+    get_extname(db) -> str
+
+yields the FITS extension name of an OI-FITS data-block `db`.  Argument can be
+a sub-type of `OIDataBlock` or an instance of such a sub-type.
+
+"""
+get_extname(::T) where {T<:OIDataBlock} = get_extname(T)
+get_extname(::Type{OITarget})       = "OI_TARGET"
+get_extname(::Type{OIWavelength})   = "OI_WAVELENGTH"
+get_extname(::Type{OIArray})        = "OI_ARRAY"
+get_extname(::Type{OIVis})          = "OI_VIS"
+get_extname(::Type{OIVis2})         = "OI_VIS2"
+get_extname(::Type{OIT3})           = "OI_T3"
+get_extname(::Type{OISpectrum})     = "OI_SPECTRUM"
+get_extname(::Type{OICorrelation})  = "OI_CORR"
+get_extname(::Type{OIPolarization}) = "OI_INSPOL"
 
 # OIDataBlock can be indexed by the name (either as a string or as a
 # symbol) of the field.
@@ -313,10 +361,10 @@ get_def(name::AbstractString, revn::Integer, def) =
     get(_FORMATS, _FORMATS_key(name, revn), def)
 
 get_def(db::OIDataBlock) =
-    get_def(get_dbname(db), get_revn(db))
+    get_def(get_extname(db), get_revn(db))
 
 function get_descr(db::OIDataBlock)
-    name = get_dbname(db)
+    name = get_extname(db)
     revn = get_revn(db)
     return (name, revn, get_def(name, revn))
 end
@@ -354,10 +402,7 @@ function add_def(dbname::AbstractString,
         descr = m.captures[3]
         optional = (format[1] == '?')
         i = (optional ? 2 : 1)
-        dtype = get(_DATATYPES, format[i], nothing)
-        if dtype === nothing
-            error("invalid format type in OI_FITS definition: \"$row\"")
-        end
+        dtype = get_dtype(format[i])
         if keyword
             if length(format) != i
                 error("invalid keyword format in OI_FITS definition: \"$row\"")
@@ -449,26 +494,26 @@ function build_datablock(dbname::AbstractString, revn::Integer, kwds)
         end
 
         # Check value type.
-        if spec.dtype == _DTYPE_LOGICAL
+        if spec.dtype == DTYPE_LOGICAL
             if ! is_logical(value)
                 error("expecting boolean value for field \"$field\" in $dbname")
             end
-        elseif spec.dtype == _DTYPE_INTEGER
+        elseif spec.dtype == DTYPE_INTEGER
             if ! is_integer(value)
                 error("expecting integer value for field \"$field\" in $dbname")
             end
             value = to_integer(value)
-        elseif spec.dtype == _DTYPE_REAL
+        elseif spec.dtype == DTYPE_REAL
             if ! is_float(value)
                 error("expecting real value for field \"$field\" in $dbname")
             end
             value = to_float(value)
-        elseif spec.dtype == _DTYPE_COMPLEX
+        elseif spec.dtype == DTYPE_COMPLEX
             if ! is_complex(value)
                 error("expecting complex value for field \"$field\" in $dbname")
             end
             value = to_complex(value)
-        elseif spec.dtype == _DTYPE_STRING
+        elseif spec.dtype == DTYPE_STRING
             if ! is_string(value)
                 error("expecting string value for field \"$field\" in $dbname")
             end
@@ -486,7 +531,7 @@ function build_datablock(dbname::AbstractString, revn::Integer, kwds)
         else
             # Check array rank.
             mult = spec.multiplier
-            maxrank = (spec.dtype == _DTYPE_STRING || mult == 1 ? 1 :
+            maxrank = (spec.dtype == DTYPE_STRING || mult == 1 ? 1 :
                        mult == -2 ? 3 :
                        2)
             if rank > maxrank
@@ -517,7 +562,7 @@ function build_datablock(dbname::AbstractString, revn::Integer, kwds)
                 elseif channels != dim1
                     error("incompatible number of spectral channels for field \"$field\" in $dbname")
                 end
-            elseif spec.dtype != _DTYPE_STRING && dim1 != mult
+            elseif spec.dtype != DTYPE_STRING && dim1 != mult
                 error("bad dimensions for field \"$field\" in $dbname")
             end
         end
@@ -560,7 +605,7 @@ Base.iterate(mst::OIMaster, state) = iterate(mst.all, state)
 function select(master::OIMaster, args::AbstractString...)
     datablocks = Array{OIDataBlock}(undef, 0)
     for db in master
-        if get_dbname(db) ∈ args
+        if get_extname(db) ∈ args
             push!(datablocks, db)
         end
     end

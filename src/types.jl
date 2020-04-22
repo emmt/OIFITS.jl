@@ -85,6 +85,9 @@ mutable struct OISpectrum <: OIDataBlock
         new(false, nothing, nothing, nothing, contents)
 end
 
+# OIData is any OI-FITS data-block which contains interferometric data.
+const OIData = Union{OIVis,OIVis2,OIT3}
+
 """
 
 `OIMaster` stores the contents of an OI-FITS file.  All data-blocks containing

@@ -245,8 +245,7 @@ function load(f::FITS; quiet::Bool=true)
             quiet || println("skipping HDU $hdu (no OI-FITS data)")
             continue
         end
-        dbname = _EXTNAMES[typeof(db)]
-        quiet || println("reading OI-FITS $dbname in HDU $hdu")
+        quiet || println("reading OI-FITS $(get_extname(db)) in HDU $hdu")
         attach!(master, db)
     end
     update!(master)
