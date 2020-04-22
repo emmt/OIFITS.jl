@@ -16,22 +16,44 @@
 # BASIC TYPES #
 ###############
 
-# Conversion to real type (no-op. if already of the correct type).
-to_real(x::Cdouble) = x
-to_real(x::Array{Cdouble}) = x
-to_real(x::Array{T}) where {T<:Real} = convert(Array{Cdouble}, x)
-to_real(x::Real) = convert(Cdouble, x)
-
+# Conversion to integer(s) of type `Int`.
 to_integer(x::Int) = x
+to_integer(x::Integer) = Int(x)
 to_integer(x::Array{Int}) = x
-to_integer(x::Array{T}) where {T<:Integer} = convert(Array{Int}, x)
-to_integer(x::Integer) = convert(Int, x)
+to_integer(x::AbstractArray{<:Integer,N}) where {N} = convert(Array{Int,N}, x)
+to_integer(x::Tuple{Vararg{Int}}) = x
+to_integer(x::Tuple{Vararg{Integer}}) = map(to_integer, x)
 
+# Conversion to floating-point(s) of type `Cdouble`.
+to_float(x::Cdouble) = x
+to_float(x::Real) = Cdouble(x)
+to_float(x::Array{Cdouble}) = x
+to_float(x::AbstractArray{<:Real,N}) where {N} = convert(Array{Cdouble,N}, x)
+to_float(x::Tuple{Vararg{Cdouble}}) = x
+to_float(x::Tuple{Vararg{Real}}) = map(to_float, x)
+
+# Conversion to complex(es) of type `Complex{Cdouble}`.
 to_complex(x::Complex{Cdouble}) = x
+to_complex(x::Union{Real,Complex{<:Real}}) = convert(Complex{Cdouble}, x)
 to_complex(x::Array{Complex{Cdouble}}) = x
-to_complex(x::AbstractArray{T}) where {T<:Union{Real,Complex}} =
-    convert(Array{Complex{Cdouble}}, x)
-to_complex(x::Union{Real,Complex}) = convert(Complex{Cdouble}, x)
+to_complex(x::AbstractArray{<:Union{Real,Complex{<:Real}},N}) where {N} =
+    convert(Array{Complex{Cdouble},N}, x)
+to_complex(x::Tuple{Vararg{Complex{Cdouble}}}) = x
+to_complex(x::Tuple{Vararg{Union{Real,Complex{<:Real}}}}) = map(to_complex, x)
+
+# Conversion to a string(s) of type `String`.
+#
+# `string(x::SubString)` calls `String(x)` so the two are as
+# fast. `string(x::Symbol)` is 2-3 tiles slower than `String(x::Symbol)`.
+# Hence we call `String`, not `string` in all other cases.
+to_string(x::String) = x
+to_string(x::AbstractString) = String(x)
+to_string(x::Symbol) = String(x)
+to_string(x::Array{String}) = x
+to_string(x::AbstractArray{<:Union{<:AbstractString,Symbol},N}) where {N} =
+    convert(Array{String,N}, x)
+to_string(x::Tuple{Vararg{String}}) = x
+to_string(x::Tuple{Vararg{Union{AbstractString,Symbol}}}) = map(to_string, x)
 
 # OI-FITS files stores the following 4 different data types:
 const _DTYPE_LOGICAL = 1 # for format letter 'L'
@@ -69,9 +91,9 @@ is_integer(::Any) = false
 is_integer(::Integer) = true
 is_integer(::Array{T}) where {T<:Integer} = true
 
-is_real(::Any) = false
-is_real(::Real) = true
-is_real(::Array{T}) where {T<:Real} = true
+is_float(::Any) = false
+is_float(::Real) = true
+is_float(::Array{T}) where {T<:Real} = true
 
 is_complex(::Any) = false
 is_complex(::Complex) = true
@@ -397,13 +419,7 @@ const OIFormatDef = Dict{String,OIDataBlockDef}
 # and by the revision number of the corresponding OI-FITS table.
 const _FORMATS = Dict{Tuple{String,Int},OIDataBlockDef}()
 _FORMATS_key(name::AbstractString, revn::Integer) =
-    (to_string(name), to_int(revn))
-
-to_int(x::Int) = x
-to_int(x::Integer) = Int(x)
-to_string(x::String) = x
-to_string(x::AbstractString) = String(x) # FIXME: string(x) may be faster
-to_string(x::Symbol) = String(x)         # FIXME: string(x) may be faster
+    (to_string(name), to_integer(revn))
 
 # The default format version number.
 default_revision() = 2
@@ -501,8 +517,8 @@ function add_def(dbname::AbstractString,
             elseif format == "W,W"
                 multiplier = -2
             else
-                multiplier = parse(Int, format)
-                if multiplier <= 0
+                multiplier = tryparse(Int, format)
+                if multiplier === nothing || multiplier < 1
                     error("invalid multiplier in OI_FITS definition: \"$row\"")
                 end
             end
@@ -585,10 +601,10 @@ function build_datablock(dbname::AbstractString, revn::Integer, kwds)
             end
             value = to_integer(value)
         elseif spec.dtype == _DTYPE_REAL
-            if ! is_real(value)
+            if ! is_float(value)
                 error("expecting real value for field \"$field\" in $dbname")
             end
-            value = to_real(value)
+            value = to_float(value)
         elseif spec.dtype == _DTYPE_COMPLEX
             if ! is_complex(value)
                 error("expecting complex value for field \"$field\" in $dbname")
