@@ -31,6 +31,7 @@ support for the actual FITS files is provided by the
 OIFITS is a [registered Julia package](http://pkg.julialang.org/), the
 installation is as simple as:
 ```julia
+using Pkg
 Pkg.add("OIFITS")
 Pkg.update()
 ```
