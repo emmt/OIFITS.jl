@@ -393,9 +393,17 @@ end
 # revision number.
 const OIFormatDef = Dict{String,OIDataBlockDef}
 
-# _FORMATS table is indexed by the datablock name and then by the revision
-# number of the corresponding OI-FITS table.
-const _FORMATS = Dict{String,Vector{Union{OIDataBlockDef,Nothing}}}()
+# _FORMATS table is indexed by a 2-tuple composed by the datablock name
+# and by the revision number of the corresponding OI-FITS table.
+const _FORMATS = Dict{Tuple{String,Int},OIDataBlockDef}()
+_FORMATS_key(name::AbstractString, revn::Integer) =
+    (to_string(name), to_int(revn))
+
+to_int(x::Int) = x
+to_int(x::Integer) = Int(x)
+to_string(x::String) = x
+to_string(x::AbstractString) = String(x) # FIXME: string(x) may be faster
+to_string(x::Symbol) = String(x)         # FIXME: string(x) may be faster
 
 # The default format version number.
 default_revision() = 2
@@ -405,26 +413,33 @@ default_revision() = 2
 const _FIELDS = Dict{String,Set{Symbol}}()
 
 """
-    get_def(db, revn = default_revision())
+    get_def(db)
 
-yields the `OIDataBlockDef` for datablock of type `db` (e.g., "OI_TARGET") in
-revison `revn` of OI-FITS standard.
+or
+
+    get_def(name, revn = default_revision())
+
+yield the format definition for datablock `db` of for the OI-FITS datablock
+named `name` (e.g., "OI_TARGET") in revision `revn` of OI-FITS standard,
+throwing an error if not found.  The returned value is an instance of
+`OIDataBlockDef`.
+
+    get_def(name, revn, def)
+
+is similar but returns `def` if the format is not found.
 
 """
-function get_def(dbname::AbstractString, revn::Integer = default_revision())
-    if ! haskey(_FORMATS, dbname)
-        error("unknown data-block: $db")
-    end
-    v = _FORMATS[dbname]
-    if revn < 1 || revn > length(v) || v[revn] === nothing
-        error("unsupported revision number: $revn")
-    end
-    return v[revn]
+function get_def(name::AbstractString, revn::Integer = default_revision())
+    val = get_def(name, revn, nothing)
+    val === nothing && error("unknown data-block $name in version $revn")
+    return val
 end
 
-function get_def(db::OIDataBlock)
+get_def(name::AbstractString, revn::Integer, def) =
+    get(_FORMATS, _FORMATS_key(name, revn), def)
+
+get_def(db::OIDataBlock) =
     get_def(get_dbname(db), get_revn(db))
-end
 
 function get_descr(db::OIDataBlock)
     name = get_dbname(db)
@@ -442,10 +457,9 @@ function add_def(dbname::AbstractString,
     if revn < 1
         error("invalid revision number: $revn")
     end
-    if haskey(_FORMATS, dbname) && revn <= length(_FORMATS[dbname]) &&
-        _FORMATS[dbname][revn] != nothing
+    fmtkey = _FORMATS_key(dbname, revn)
+    haskey(_FORMATS, fmtkey) &&
         error("data-block \"$dbname\" version $revn already defined")
-    end
 
     fields = get(_FIELDS, dbname, Set{Symbol}())
     def = Array{OIFieldDef}(undef, 0)
@@ -506,16 +520,7 @@ function add_def(dbname::AbstractString,
     end
 
     # Insert the data-block definition in the global table.
-    if haskey(_FORMATS, dbname)
-        v = _FORMATS[dbname]
-    else
-        v = Array{Union{OIDataBlockDef,Nothing}}(undef, 0)
-        _FORMATS[dbname] = v
-    end
-    while revn > length(v)
-        push!(v, nothing)
-    end
-    v[revn] = OIDataBlockDef(dbname, def)
+    _FORMATS[fmtkey] = OIDataBlockDef(dbname, def)
     _FIELDS[dbname] = fields
 end
 

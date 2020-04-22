@@ -143,11 +143,11 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
         end
         extname = fixname(extname)
         startswith(extname, "OI_") || break
-        dbname = extname
-        if ! haskey(_DATABLOCKS, dbname)
+        if ! haskey(_DATABLOCKS, extname)
             quiet || @warn("unknown OI-FITS data-block \"$extname\"")
             break
         end
+        dbname = extname
 
         # Get revision number.
         revn = get_value(hdr, "OI_REVN", nothing)
@@ -162,16 +162,11 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
             quiet || @warn("invalid \"OI_REVN\" value ($dbrevn)")
             break
         end
-        if ! haskey(_FORMATS, dbname)
-            quiet || @warn("unknown OI-FITS data-block \"$extname\"")
+        dbdefn = get_def(extname, dbrevn, nothing)
+        if dbdefn === nothing
+            quiet || @warn("unknown OI-FITS data-block \"$extname\" version $dbrevn")
             break
         end
-        v = _FORMATS[dbname]
-        if dbrevn > length(v)
-            quiet || @warn("unsupported \"OI_REVN\" value ($dbrevn)")
-            break
-        end
-        dbdefn = v[dbrevn]
         break
     end
     return (dbname, dbrevn, dbdefn)
