@@ -526,10 +526,13 @@ for (func, name) in ((:new_target,     "OI_TARGET"),
     end
 end
 
-function build_datablock(extname::AbstractString, revn::Integer, kwds)
+build_datablock(extname::AbstractString, revn::Integer, kwds) =
+    build_datablock(to_string(extname), to_integer(revn), kwds)
+
+function build_datablock(extname::String, revn::Int, kwds)
     def = get_def(extname, revn)
     contents = OIContents()
-    contents[:revn] = to_integer(revn)
+    contents[:revn] = revn
     rows = -1         # number of rows in the OI-FITS table
     channels = -1     # number of spectral channels
     for (field, value) in kwds
@@ -650,7 +653,7 @@ end
 
 # Letter case and trailing spaces are insignificant according to FITS
 # conventions.
-fixname(name::AbstractString) = uppercase(rstrip(name))
+fixname(name::AbstractString) = to_string(uppercase(rstrip(name)))
 
 # OIDataBlock and OIMaster can be used as iterators.
 Base.iterate(db::OIDataBlock) = iterate(contents(db))
