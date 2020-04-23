@@ -117,16 +117,16 @@ end
 
 # OIFieldDef is used to store the definition of a keyword/column field.
 mutable struct OIFieldDef
-    name::String    # Keyword/column name as a string.
-    symb::Symbol    # Keyword/column symbolic name.
-    keyword::Bool   # Is keyword? (otherwise column)
-    optional::Bool  # Optional field?
-    multiplier::Int # Multiplier: 1 for keywords, number of cells for columns
-                    # (a negative number -N means an array of N dimensions each
-                    # equal to the number of spectral channels.
-    dtype::Int      # Data type.
-    units::String   # Units.
-    descr::String   # Description.
+    name::String     # Keyword/column name as a string.
+    symb::Symbol     # Keyword/column symbolic name.
+    iskeyword::Bool  # Is keyword? (otherwise column)
+    isoptional::Bool # Optional field?
+    multiplier::Int  # Multiplier: 1 for keywords, number of cells for columns
+                     # (a negative number -N means an array of N dimensions
+                     # each equal to the number of spectral channels.
+    dtype::Int       # Data type.
+    units::String    # Units.
+    descr::String    # Description.
 end
 
 # OIDataBlockDef is used to store the definition of data-block.

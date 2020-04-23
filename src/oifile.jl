@@ -53,7 +53,7 @@ end
 const _COMMENT = Set(["HISTORY", "COMMENT"])
 
 function get_value(hdr::FITSHeader, key::AbstractString)
-    haskey(hdr, key) || error("missing FITS keyword \"$key\"")
+    haskey(hdr, key) || error("missing FITS keyword \"", key, "\"")
     hdr[key]
 end
 
@@ -62,7 +62,7 @@ function get_value(hdr::FITSHeader, key::AbstractString, def)
 end
 
 function get_comment(hdr::FITSHeader, key::AbstractString)
-    haskey(hdr, key) || error("missing FITS keyword \"$key\"")
+    haskey(hdr, key) || error("missing FITS keyword \"", key, "\"")
     FITSIO.get_comment(hdr, key)
 end
 
@@ -78,13 +78,13 @@ for (fn, T, S) in ((:get_integer, Integer,        Int),
         @eval begin
             function $fn(hdr::FITSHeader, key::AbstractString, def::$T)
                 val = haskey(hdr, key) ? hdr[key] : def
-                isa(val, $T) || error("bad type for FITS keyword \"$key\"")
+                isa(val, $T) || error("bad type for FITS keyword \"",key,"\"")
                 return val
             end
             function $fn(hdr::FITSHeader, key::AbstractString)
-                haskey(hdr, key) || error("missing FITS keyword \"$key\"")
+                haskey(hdr, key) || error("missing FITS keyword \"",key,"\"")
                 val = hdr[key]
-                isa(val, $T) || error("bad type for FITS keyword \"$key\"")
+                isa(val, $T) || error("bad type for FITS keyword \"",key,"\"")
                 return val
             end
         end
@@ -92,13 +92,13 @@ for (fn, T, S) in ((:get_integer, Integer,        Int),
         @eval begin
             function $fn(hdr::FITSHeader, key::AbstractString, def::$T)
                 val = haskey(hdr, key) ? hdr[key] : def
-                isa(val, $T) || error("bad type for FITS keyword \"$key\"")
+                isa(val, $T) || error("bad type for FITS keyword \"",key,"\"")
                 return convert($S, val)
             end
             function $fn(hdr::FITSHeader, key::AbstractString)
-                haskey(hdr, key) || error("missing FITS keyword \"$key\"")
+                haskey(hdr, key) || error("missing FITS keyword \"",key,"\"")
                 val = hdr[key]
-                isa(val, $T) || error("bad type for FITS keyword \"$key\"")
+                isa(val, $T) || error("bad type for FITS keyword \"",key,"\"")
                 return convert($S, val)
             end
         end
@@ -125,7 +125,7 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
     end
     startswith(extname, "OI_") || return nothing
     if ! haskey(_DATABLOCKS, extname)
-        quiet || warn("unknown OI-FITS extension \"$extname\"")
+        quiet || warn("unknown OI-FITS extension \"", extname, "\"")
         return nothing
     end
 
@@ -193,10 +193,10 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
     for field in defn.fields
         spec = defn.spec[field]
         name = spec.name
-        if spec.keyword
+        if spec.iskeyword
             let val = get_value(hdr, name, nothing)
                 if val === nothing
-                    if !spec.optional
+                    if spec.isoptional == false
                         warn("missing keyword \"", name,
                              "\" in OI-FITS extension ", extname)
                         nerrs += 1
@@ -208,7 +208,7 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
         else
             colnum = get(columns, name, 0)
             if colnum < 1
-                if !spec.optional
+                if spec.isoptional == false
                     warn("missing column \"", name,
                          "\" in OI-FITS extension ", extname)
                     nerrs += 1
@@ -232,10 +232,10 @@ function load(f::FITS; quiet::Bool=true)
     for hdu in 2:length(f)
         db = read_datablock(f[hdu], quiet=quiet)
         if db === nothing
-            quiet || println("skipping HDU $hdu (no OI-FITS data)")
+            quiet || println("skipping HDU ", hdu, " (no OI-FITS data)")
             continue
         end
-        quiet || println("reading OI-FITS $(get_extname(db)) in HDU $hdu")
+        quiet || println("reading OI-FITS ", get_extname(db), " in HDU ", hdu)
         attach!(master, db)
     end
     update!(master)

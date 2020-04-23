@@ -184,7 +184,7 @@ get_oitype(extname::AbstractString) =
      bad_extname(extname))
 
  @noinline bad_extname(extname::Union{Symbol,AbstractString}) =
-    error("bad OI-FITS datablock name \"$extname\"")
+    error("bad OI-FITS extension name \"", extname, "\"")
 
 
 """
@@ -431,7 +431,7 @@ function add_def(extname::AbstractString,
     (startswith(extname, "OI_") && extname == uppercase(extname) &&
      ! occursin(" ", extname)) || error("invalid OI-FITS extension name: \"",
                                         extname, "\"")
-    revn ≥ 1 || error("invalid OI-FITS revision number: $revn")
+    revn ≥ 1 || error("invalid OI-FITS revision number: ", revn)
     fmtkey = _FORMATS_key(extname, revn)
     haskey(_FORMATS, fmtkey) && error("revision ", revn,
                                       " of OI-FITS extension ", extname,
@@ -445,25 +445,25 @@ function add_def(extname::AbstractString,
     end
     fields = get(_FIELDS, extname, Set{Symbol}())
     def = Array{OIFieldDef}(undef, 0)
-    keyword = true
+    iskeyword = true
     for rownum in 1:length(tbl)
         row = strip(tbl[rownum])
         m = match(r"^([^ ]+) +([^ ]+) +(.*)$", row)
         if m === nothing
             match(r"^-+$", row) === nothing &&
                 bad_def("syntax error", extname, revn, rownum, row)
-            keyword = false
+            iskeyword = false
             continue
         end
         name = uppercase(m.captures[1])
         symb = to_fieldname(name)
         format = m.captures[2]
         descr = m.captures[3]
-        optional = (format[1] == '?')
-        i = (optional ? 2 : 1)
+        isoptional = (format[1] == '?')
+        i = (isoptional ? 2 : 1)
         dtype = get_dtype(format[i])
         dtype > 0 || bad_def("invalid type letter", extname, revn, rownum, row)
-        if keyword
+        if iskeyword
             length(format) == i ||
                 bad_def("invalid keyword format", extname, revn, rownum, row)
             multiplier = 1
@@ -490,7 +490,7 @@ function add_def(extname::AbstractString,
             descr = mp.captures[1]
             units = mp.captures[2]
         end
-        push!(def, OIFieldDef(name, symb, keyword, optional, multiplier,
+        push!(def, OIFieldDef(name, symb, iskeyword, isoptional, multiplier,
                               dtype, units, descr))
         push!(fields, symb)
     end
@@ -571,7 +571,7 @@ function build_datablock(extname::String, revn::Int, kwds)
         # Check value dimensions.
         dims = (isa(value, Array) ? size(value) : ())
         rank = length(dims)
-        if spec.keyword
+        if spec.iskeyword
             rank == 0 || error("expecting a scalar value for `", field,
                                "` field in OI-FITS extension ", extname)
         else
@@ -626,7 +626,7 @@ function build_datablock(extname::String, revn::Int, kwds)
     nerrs = 0
     for field in def.fields
         spec = def.spec[field]
-        if ! haskey(contents, field) && ! spec.optional
+        if ! haskey(contents, field) && ! spec.isoptional
             warn("missing value for `", field, "` field of OI-FITS extension ",
                  extname)
             nerrs += 1
@@ -906,7 +906,7 @@ function select_target(db::OITarget, target::Integer)
     for (key, val) in contents(db)
         spec = get(defn.spec, key, nothing)
         spec != nothing || continue
-        if spec.keyword
+        if spec.iskeyword
             data[key] = db[key]
         else
             data[key] = db[key][k:k]
@@ -925,7 +925,7 @@ function select_target(db::OIData, target::Integer)
     for (key, val) in contents(db)
         spec = get(defn.spec, key, nothing)
         spec != nothing || continue
-        if cpy || spec.keyword
+        if cpy || spec.iskeyword
             data[key] = db[key]
         else
             # Copy a sub-array corresponding to the selection.  (The target is
@@ -945,7 +945,7 @@ function select_target(db::OIData, target::Integer)
                     dst[:,j] = src[:,sel[j]]
                 end
             else
-                error("unexpected rank $rank")
+                error("unexpected rank ", rank)
             end
         end
     end
@@ -1018,7 +1018,7 @@ function select_wavelength(db::Union{OIWavelength,OIVis,OIVis2,OIT3,OISpectrum},
     for (key, val) in contents(db)
         spec = get(defn.spec, key, nothing)
         spec != nothing || continue
-        if cpy || spec.keyword || (spec.multiplier >= 0 && ! iswave)
+        if cpy || spec.iskeyword || (spec.multiplier >= 0 && ! iswave)
             data[key] = db[key]
         else
             # Copy a sub-array corresponding to the selection.  (The wavelength
@@ -1038,7 +1038,7 @@ function select_wavelength(db::Union{OIWavelength,OIVis,OIVis2,OIT3,OISpectrum},
                     dst[j,:] = src[sel[j],:]
                 end
             else
-                error("unexpected rank $rank")
+                error("unexpected rank ", rank)
             end
         end
     end
