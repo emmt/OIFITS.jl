@@ -2,6 +2,9 @@
 
 import Base: @deprecate
 
+# Deprecated in v0.5
+@deprecate symbolicname(name::AbstractString) to_fieldname(name)
+
 # Deprecated in v0.2
 @deprecate readtable(ff::FITSFile) read_table(ff::FITSFile)
 

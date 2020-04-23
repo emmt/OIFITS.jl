@@ -131,10 +131,10 @@ end
 
 # OIDataBlockDef is used to store the definition of data-block.
 mutable struct OIDataBlockDef
-    dbname::String
+    extname::String
     fields::Vector{Symbol}        # ordered field symbolic names
     spec::Dict{Symbol,OIFieldDef} # dictionary of field specifications
-    function OIDataBlockDef(dbname::AbstractString, vect::Vector{OIFieldDef})
+    function OIDataBlockDef(extname::AbstractString, vect::Vector{OIFieldDef})
         spec = Dict{Symbol,OIFieldDef}()
         fields = Array{Symbol}(undef, length(vect))
         for j in 1:length(vect)
@@ -142,6 +142,6 @@ mutable struct OIDataBlockDef
             fields[j] = entry.symb
             spec[entry.symb] = entry
         end
-        new(dbname, fields, spec)
+        new(extname, fields, spec)
     end
 end

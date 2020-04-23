@@ -5,18 +5,11 @@
 # file included by the main OIFITS.jl source file.
 #
 #------------------------------------------------------------------------------
-#
-# This file is part of OIFITS.jl which is licensed under the MIT "Expat"
-# License:
-#
-# Copyright (C) 2015-2020, Éric Thiébaut.
-#
-#------------------------------------------------------------------------------
 
 # Automatically define getters from all fields of a data-block.
-for (dbname, dbtype) in _DATABLOCKS
-    for symb in _FIELDS[dbname]
-        eval(Meta.parse("get_$symb(db::$dbtype) = db.$symb"))
+for (extname, T) in _DATABLOCKS
+    for symb in _FIELDS[extname]
+        eval(Meta.parse("get_$symb(db::$T) = db.$symb"))
     end
 end
 

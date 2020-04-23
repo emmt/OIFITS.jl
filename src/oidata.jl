@@ -48,17 +48,32 @@ to_string(x::AbstractArray{<:Union{<:AbstractString,Symbol},N}) where {N} =
 to_string(x::Tuple{Vararg{String}}) = x
 to_string(x::Tuple{Vararg{Union{AbstractString,Symbol}}}) = map(to_string, x)
 
+"""
+    to_fieldname(s)
+
+converts OI-FITS column name `s` into a `Symbol` that can be used as a field
+name in OI-FITS structures.
+
+"""
+to_fieldname(sym::Symbol) = sym
+function to_fieldname(name::AbstractString)
+    key = lowercase(name)
+    key == "oi_revn" ? :revn : Symbol(replace(key, r"[^a-z0-9_]" => '_'))
+end
+
 # OI-FITS files stores the following 4 different data types:
-const DTYPE_LOGICAL = 1 # for format letter 'L'
-const DTYPE_INTEGER = 2 # for format letters 'I' or 'J'
-const DTYPE_REAL    = 3 # for format letters 'D' or 'E'
-const DTYPE_COMPLEX = 4 # for format letter 'C'
-const DTYPE_STRING  = 5 # for format letter 'A'
+const DTYPE_LOGICAL =  1 # for format letter 'L'
+const DTYPE_INTEGER =  2 # for format letters 'I' or 'J'
+const DTYPE_REAL    =  3 # for format letters 'D' or 'E'
+const DTYPE_COMPLEX =  4 # for format letter 'C'
+const DTYPE_STRING  =  5 # for format letter 'A'
+const DTYPE_UNKNOWN = -1 # for other letters
 
 """
     get_dtype(c)
 
 yields the DTYPE code of a FITS table column defined by the letter `c`.
+In case of error, `DTYPE_UNKNOWN` (-1) is returned.
 
 """
 get_dtype(c::Char) =
@@ -78,11 +93,7 @@ get_dtype(c::Char) =
      c == 'e' ? DTYPE_REAL    :
      c == 'i' ? DTYPE_INTEGER :
      c == 'j' ? DTYPE_INTEGER :
-     c == 'l' ? DTYPE_LOGICAL :
-     bad_column_type(c))
-
-@noinline  bad_column_type(c::Char) =
-    error("bad FITS column type '$c'")
+     c == 'l' ? DTYPE_LOGICAL : DTYPE_UNKNOWN)
 
 is_logical(::Any) = false
 is_logical(::Bool) = true
@@ -179,8 +190,9 @@ get_oitype(extname::AbstractString) =
 """
     get_extname(db) -> str
 
-yields the FITS extension name of an OI-FITS data-block `db`.  Argument can be
-a sub-type of `OIDataBlock` or an instance of such a sub-type.
+yields the FITS extension name of an OI-FITS data-block `db`.  Argument can
+also be a sub-type of `OIDataBlock` or an instance of such a sub-type or a FITS
+header instance.
 
 """
 get_extname(::T) where {T<:OIDataBlock} = get_extname(T)
@@ -193,6 +205,10 @@ get_extname(::Type{OIT3})           = "OI_T3"
 get_extname(::Type{OISpectrum})     = "OI_SPECTRUM"
 get_extname(::Type{OICorrelation})  = "OI_CORR"
 get_extname(::Type{OIPolarization}) = "OI_INSPOL"
+
+get_extname(hdr::FITSHeader) =
+    (get_hdutype(hdr) == :binary_table ?
+     fixname(get_string(hdr, "EXTNAME", "")) : "")
 
 # OIDataBlock can be indexed by the name (either as a string or as a
 # symbol) of the field.
@@ -339,26 +355,26 @@ const _FIELDS = Dict{String,Set{Symbol}}()
 
 or
 
-    get_def(name, revn = default_revision())
+    get_def(extname, revn = default_revision())
 
-yield the format definition for datablock `db` of for the OI-FITS datablock
-named `name` (e.g., "OI_TARGET") in revision `revn` of OI-FITS standard,
-throwing an error if not found.  The returned value is an instance of
-`OIDataBlockDef`.
+yield the format definition for datablock `db` of for the OI-FITS extension
+`extname` (e.g., "OI_TARGET") in revision `revn` of OI-FITS standard, throwing
+an error if not found.  The returned value is an instance of `OIDataBlockDef`.
 
-    get_def(name, revn, def)
+    get_def(extname, revn, def)
 
 is similar but returns `def` if the format is not found.
 
 """
-function get_def(name::AbstractString, revn::Integer = default_revision())
-    val = get_def(name, revn, nothing)
-    val === nothing && error("unknown data-block $name in version $revn")
+function get_def(extname::AbstractString, revn::Integer = default_revision())
+    val = get_def(extname, revn, nothing)
+    val === nothing && error("unknown OI-FITS extension \"", extname,
+                             "\" (revision ", revn, ")")
     return val
 end
 
-get_def(name::AbstractString, revn::Integer, def) =
-    get(_FORMATS, _FORMATS_key(name, revn), def)
+get_def(extname::AbstractString, revn::Integer, def) =
+    get(_FORMATS, _FORMATS_key(extname, revn), def)
 
 get_def(db::OIDataBlock) =
     get_def(get_extname(db), get_revn(db))
@@ -369,51 +385,93 @@ function get_descr(db::OIDataBlock)
     return (name, revn, get_def(name, revn))
 end
 
-function add_def(dbname::AbstractString,
-                 revn::Integer,
-                 tbl::Vector{S}) where {S<:AbstractString}
-    if (! startswith(dbname, "OI_") || dbname != uppercase(dbname)
-        || occursin(" ", dbname))
-        error("invalid data-block name: \"$dbname\"")
-    end
-    if revn < 1
-        error("invalid revision number: $revn")
-    end
-    fmtkey = _FORMATS_key(dbname, revn)
-    haskey(_FORMATS, fmtkey) &&
-        error("data-block \"$dbname\" version $revn already defined")
+"""
+    add_def(extname, revn, defs)
 
-    fields = get(_FIELDS, dbname, Set{Symbol}())
+defines revision `revn` of the OI-FITS extension `extname`.  The format of the
+OI-FITS extension is described `defs`, a vector of strings like:
+
+    ["KEYWORD FORMAT DESCR",
+      ...,
+      ...,
+     "---------------------------",
+     "COLUMN  FORMAT DESCR",
+      ...,
+      ...,
+      ...]
+
+where:
+
+- `KEYWORD` is the keyword name in FITS header.
+
+- `COLUMN` is the column name in FITS table (`TTYPE`).
+
+- `FORMAT` may be prefixed with a `?` to indicate an optional field and is:
+
+  - for keywords, a single letter indicating the type,
+
+  - for columns, a letter indicating the type followed by list of dimensions in
+    parenthesis (letter `W` for a dimension means number of wavelengths).
+
+- `DESCR` is a short description; units, if any, are indicated at the end
+  between square brackets.
+
+There may be any number of keyword definitions and any number of column
+definitions, the two parts are separated by a dash line like
+
+    "--------------".
+
+See also [`get_def`](@ref).
+
+"""
+function add_def(extname::AbstractString,
+                 revn::Integer,
+                 tbl::Vector{<:AbstractString})
+    # Check OI-FITS extension name and revision number.
+    (startswith(extname, "OI_") && extname == uppercase(extname) &&
+     ! occursin(" ", extname)) || error("invalid OI-FITS extension name: \"",
+                                        extname, "\"")
+    revn ≥ 1 || error("invalid OI-FITS revision number: $revn")
+    fmtkey = _FORMATS_key(extname, revn)
+    haskey(_FORMATS, fmtkey) && error("revision ", revn,
+                                      " of OI-FITS extension ", extname,
+                                      " already defined")
+
+    # Parse table of definitions.
+    function bad_def(reason::AbstractString, extname::AbstractString,
+                     revn::Integer, linenum::Integer, code::AbstractString)
+        error(reason, " in definition of OI-FITS extension ", extname,
+              " (revision ", revn, ", line ", linenum, "): \"", code, "\"")
+    end
+    fields = get(_FIELDS, extname, Set{Symbol}())
     def = Array{OIFieldDef}(undef, 0)
     keyword = true
-    for j in 1:length(tbl)
-        row = strip(tbl[j])
+    for rownum in 1:length(tbl)
+        row = strip(tbl[rownum])
         m = match(r"^([^ ]+) +([^ ]+) +(.*)$", row)
         if m === nothing
-            if match(r"^-+$", row) === nothing
-                error("syntax error in OI_FITS definition: \"$row\"")
-            end
+            match(r"^-+$", row) === nothing &&
+                bad_def("syntax error", extname, revn, rownum, row)
             keyword = false
             continue
         end
         name = uppercase(m.captures[1])
-        symb = symbolicname(name)
+        symb = to_fieldname(name)
         format = m.captures[2]
         descr = m.captures[3]
         optional = (format[1] == '?')
         i = (optional ? 2 : 1)
         dtype = get_dtype(format[i])
+        dtype > 0 || bad_def("invalid type letter", extname, revn, rownum, row)
         if keyword
-            if length(format) != i
-                error("invalid keyword format in OI_FITS definition: \"$row\"")
-            end
+            length(format) == i ||
+                bad_def("invalid keyword format", extname, revn, rownum, row)
             multiplier = 1
         else
             # Very naive code to parse the dimension list of the column format.
-            if length(format) < i + 3 || format[i+1] != '(' ||
-                format[end] != ')'
-                error("missing column dimensions in OI_FITS definition: \"$row\"")
-            end
+            (length(format) > i + 2 && format[i+1] == '('
+             && format[end] == ')') || bad_def("missing column dimension(s)",
+                                               extname, revn, rownum, row)
             format = uppercase(format[i+2:end-1])
             if format == "W"
                 multiplier = -1
@@ -421,9 +479,8 @@ function add_def(dbname::AbstractString,
                 multiplier = -2
             else
                 multiplier = tryparse(Int, format)
-                if multiplier === nothing || multiplier < 1
-                    error("invalid multiplier in OI_FITS definition: \"$row\"")
-                end
+                (multiplier === nothing || multiplier < 1) &&
+                    bad_def("invalid multiplier", extname, revn, rownum, row)
             end
         end
         mp = match(r"^(.*[^ ]) +\[([^\]])\]$", descr)
@@ -439,24 +496,13 @@ function add_def(dbname::AbstractString,
     end
 
     # Insert the data-block definition in the global table.
-    _FORMATS[fmtkey] = OIDataBlockDef(dbname, def)
-    _FIELDS[dbname] = fields
+    _FORMATS[fmtkey] = OIDataBlockDef(extname, def)
+    _FIELDS[extname] = fields
 end
 
-# Convert the name of an OI-FITS keyword/column into a valid symbol.
-function symbolicname(name::AbstractString)
-    key = lowercase(name)
-    if key == "oi_revn"
-        return :revn
-    else
-        return Symbol(replace(key, r"[^a-z0-9_]" => '_'))
-    end
-end
-
-
-#########################
-# BUILDING OF DATABLOCK #
-#########################
+##########################
+# BUILDING OF DATABLOCKS #
+##########################
 
 # Build constructors for the various data-blocks types.
 for (func, name) in ((:new_target,     "OI_TARGET"),
@@ -480,8 +526,8 @@ for (func, name) in ((:new_target,     "OI_TARGET"),
     end
 end
 
-function build_datablock(dbname::AbstractString, revn::Integer, kwds)
-    def = get_def(dbname, revn)
+function build_datablock(extname::AbstractString, revn::Integer, kwds)
+    def = get_def(extname, revn)
     contents = OIContents()
     contents[:revn] = to_integer(revn)
     rows = -1         # number of rows in the OI-FITS table
@@ -489,34 +535,32 @@ function build_datablock(dbname::AbstractString, revn::Integer, kwds)
     for (field, value) in kwds
         # Check whether this field exists.
         spec = get(def.spec, field, nothing)
-        if spec === nothing
-            error("data-block $dbname has no field \"$field\"")
-        end
+        spec === nothing && error("OI-FITS extension ", extname,
+                                  " has no field `", field, "`")
 
         # Check value type.
         if spec.dtype == DTYPE_LOGICAL
-            if ! is_logical(value)
-                error("expecting boolean value for field \"$field\" in $dbname")
-            end
+            is_logical(value) || error("expecting boolean value for `", field,
+                                       "` field of OI-FITS extension ",
+                                       extname)
         elseif spec.dtype == DTYPE_INTEGER
-            if ! is_integer(value)
-                error("expecting integer value for field \"$field\" in $dbname")
-            end
+            is_integer(value) || error("expecting integer value for `", field,
+                                       "` field of OI-FITS extension ",
+                                       extname)
             value = to_integer(value)
         elseif spec.dtype == DTYPE_REAL
-            if ! is_float(value)
-                error("expecting real value for field \"$field\" in $dbname")
-            end
+            is_float(value) || error("expecting floating-point value for `",
+                                     field, "` field of OI-FITS extension ",
+                                     extname)
             value = to_float(value)
         elseif spec.dtype == DTYPE_COMPLEX
-            if ! is_complex(value)
-                error("expecting complex value for field \"$field\" in $dbname")
-            end
+            is_complex(value) || error("expecting complex value for `",
+                                       field, "` field of OI-FITS extension ",
+                                       extname)
             value = to_complex(value)
         elseif spec.dtype == DTYPE_STRING
-            if ! is_string(value)
-                error("expecting string value for field \"$field\" in $dbname")
-            end
+            is_string(value) || error("expecting string value for `", field,
+                                      "` field of OI-FITS extension ", extname)
         else
             error("*** CORRUPTED WORKSPACE ***")
         end
@@ -525,45 +569,49 @@ function build_datablock(dbname::AbstractString, revn::Integer, kwds)
         dims = (isa(value, Array) ? size(value) : ())
         rank = length(dims)
         if spec.keyword
-            if rank != 0
-                error("expecting a scalar value for field \"$field\" in $dbname")
-            end
+            rank == 0 || error("expecting a scalar value for `", field,
+                               "` field in OI-FITS extension ", extname)
         else
             # Check array rank.
             mult = spec.multiplier
             maxrank = (spec.dtype == DTYPE_STRING || mult == 1 ? 1 :
-                       mult == -2 ? 3 :
-                       2)
-            if rank > maxrank
-                error("bad number of dimensions for field \"$field\" in $dbname")
-            end
+                       mult == -2 ? 3 : 2)
+            rank > maxrank && error("bad number of dimensions for `", field,
+                                    "` field of OI-FITS extension ", extname)
 
             # Fields may have up to 3 dimensions.  For now, the last dimension
             # is the number of rows.  FIXME: The ordering of dimensions must
-            # be changed: the number of rows should be the frist dimension.
+            # be changed: the number of rows should be the first dimension.
             dim0 = (rank >= 1 ? dims[end] : 1)
             dim1 = (rank >= 2 ? dims[1] : 1)
             dim2 = (rank >= 3 ? dims[2] : 1)
 
             if rows == -1
                 rows = dim0
-            elseif rows != dim0
-                error("incompatible number of rows for field \"$field\" in $dbname")
+            else
+                rows == dim0 || error("incompatible number of rows for `",
+                                      field, "` field of OI-FITS extension ",
+                                      extname)
             end
 
             if mult < 0
                 # Expecting an N-by-W or N-by-W-by-W array (N is the number of
                 # rows and W the number of channels).
-                if mult == -2 && dim1 != dim2
-                    error("bad dimensions for field \"$field\" in $dbname")
-                end
+                (mult == -2 && dim1 != dim2) &&
+                    error("bad dimensions for `", field,
+                          "` field of OI-FITS extension ", extname)
                 if channels == -1
                     channels = dim1
-                elseif channels != dim1
-                    error("incompatible number of spectral channels for field \"$field\" in $dbname")
+                else
+                    channels == dim1 || error("incompatible number of ",
+                                              "spectral channels for `",
+                                              field,
+                                              "` field of OI-FITS extension ",
+                                              extname)
                 end
             elseif spec.dtype != DTYPE_STRING && dim1 != mult
-                error("bad dimensions for field \"$field\" in $dbname")
+                error("bad dimensions for `", field,
+                      "` field of OI-FITS extension ", extname)
             end
         end
 
@@ -576,14 +624,23 @@ function build_datablock(dbname::AbstractString, revn::Integer, kwds)
     for field in def.fields
         spec = def.spec[field]
         if ! haskey(contents, field) && ! spec.optional
-            @warn("missing value for field \"$field\" in $dbname")
+            warn("missing value for `", field, "` field of OI-FITS extension ",
+                 extname)
             nerrs += 1
         end
     end
     if nerrs > 0
-        error("some fields are missing in $dbname")
+        error("some mandatory fields are missing in OI-FITS extension ",
+              extname)
     end
-    return _DATABLOCKS[dbname](contents)
+    return _DATABLOCKS[extname](contents)
+end
+
+warn(args...) = message(stderr, "WARNING", :yellow, args...)
+inform(args...) = message(stderr, "INFO", :blue, args...)
+@noinline function message(io::IO, ident::String, color::Symbol, args...)
+    printstyled(io, color; bold=true, color=color)
+    printstyled(io, " ", args...; bold=false, color=color)
 end
 
 
@@ -737,21 +794,21 @@ function attach!(master::OIMaster, db::OIDataBlock)
         master.tgt = db
     elseif isa(db, OIWavelength)
         insname = fixname(db[:insname])
-        if haskey(master.ins, insname)
-            error("master already have an OI_WAVELENGTH data-block with INSNAME=\"$insname\"")
-        end
+        haskey(master.ins, insname) && error("master already have an ",
+                                             "OI_WAVELENGTH data-block with ",
+                                             "INSNAME=\"", insname, "\"")
         master.ins[insname] = db
     elseif isa(db, OIArray)
         arrname = fixname(db[:arrname])
-        if haskey(master.arr, arrname)
-            error("master already have an OI_ARRAY data-block with ARRNAME=\"$arrname\"")
-        end
+        haskey(master.arr, arrname) && error("master already have an ",
+                                             "OI_ARRAY data-block with ",
+                                             "ARRNAME=\"", arrname, "\"")
         master.arr[arrname] = db
     elseif isa(db, OICorrelation)
         corrname = fixname(db[:corrname])
-        if haskey(master.corr, corrname)
-            error("master already have an OI_CORR data-block with CORRNAME=\"$corrname\"")
-        end
+        haskey(master.corr, corrname) && error("master already have an ",
+                                               "OI_CORR data-block with ",
+                                               "CORRNAME=\"", corrname, "\"")
         master.corr[corrname] = db
     end
     push!(master.all, db)
@@ -766,28 +823,28 @@ function update!(master::OIMaster)
             error("missing mandatory OI_TARGET data-block")
         end
         for db in master.all
-            if haskey(db, :insname) && ! isa(db, Union{OIWavelength,OIPolarization})
+            if (haskey(db, :insname)
+                && ! isa(db, Union{OIWavelength,OIPolarization}))
                 insname = fixname(db[:insname])
                 ins = get(master.ins, insname, nothing)
-                if ins === nothing
-                    error("OI_WAVELENGTH data-block with INSNAME=\"$insname\" not found in master")
-                end
+                ins === nothing && error("OI_WAVELENGTH data-block with ",
+                                         "INSNAME=\"", insname,
+                                         "\" not found in master")
                 setfield!(db, :ins, ins)
             end
             if haskey(db, :arrname) && ! isa(db, OIArray)
                 arrname = fixname(db[:arrname])
                 arr = get(master.arr, arrname, nothing)
-                if arr === nothing
-                    @warn("OI_ARRAY data-block with ARRNAME=\"$arrname\" not found in master")
-                end
+                arr === nothing && warn("OI_ARRAY data-block with ARRNAME=\"",
+                                        arrname, "\" not found in master")
                 setfield!(db, :arr, arr)
             end
             if haskey(db, :corrname) && ! isa(db, OICorrelation)
                 corrname = fixname(db[:corrname])
                 corr = get(master.corr, corrname, nothing)
-                if corr === nothing
-                    @warn("OI_CORR data-block with CORRNAME=\"$corrname\" not found in master")
-                end
+                corr === nothing && warn("OI_CORR data-block with ",
+                                         "CORRNAME=\"", corrname,
+                                         "\" not found in master")
                 setfield!(db, :corr, corr)
             end
         end

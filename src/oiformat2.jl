@@ -4,13 +4,6 @@
 # Define 2nd revision of OI-FITS format.
 #
 #------------------------------------------------------------------------------
-#
-# This file is part of OIFITS.jl which is licensed under the MIT "Expat"
-# License:
-#
-# Copyright (C) 2015-2019: Éric Thiébaut, Jonathan Léger.
-#
-#------------------------------------------------------------------------------
 
 # OI_TARGET definition (2nd revision):
 add_def("OI_TARGET", 2,
