@@ -49,9 +49,9 @@ master = OIFITS.load("testdata.oifits")
 To iterate through all data-blocks:
 ```julia
 for db in master
-    dbname = OIFITS.get_dbname(db)
-    revn = OIFITS.get_revn(db)
-    println("Data block is $dbname, revision $revn")
+    extname = db.extname
+    revn = db.revn
+    println("Data-block is $extname, revision $revn")
 end
 ```
 
@@ -59,21 +59,49 @@ To iterate through a sub-set of the data-blocks (here the complex visibility
 data, the powerspectrum data and the bispectrum data):
 ```julia
 for db in OIFITS.select(master, "OI_VIS", "OI_VIS2", "OI_T3")
-    dbname = OIFITS.get_dbname(db)
-    n = length(OIFITS.get_time(db))
-    println("Data block is $dbname, number of exposures is $n")
+    extname = db.extname
+    n = length(db.time)
+    println("Data-block is $extname, number of exposures is $n")
 end
 ```
 
+Any OI-FITS field (keyword/column) of a given data-block can be accessed by the
+`db.key` syntax where `key` is the name of the field in lower case letters and
+with non-alphanumeric letters replaced by an underscore character `_`.  For
+instance `db.int_time` yields the value of `INT_TIME` the integration times of
+the measurements.  The revision number corresponding to the keyword `OI_REVN`
+is however accessed as `db.revn`, this is the only exception.  Other fields are
+also accessible via this syntax:
 
-## Accessor functions
+- `db.extname` yields the OI-FITS name of the extension corresponding to the
+  data-block `db` (for all data-block types);
 
-Any OI-FITS field (keyword/column) of a given data-block can be retrieved
-via an accessor whose name has suffix `OIFITS.get_` followed by the name of
-the field (in lower case letters and with all non-letter and all non-digit
-letters replaced by the underscore character `'_'`).  A notable exception is
-the revision number corresponding to the keyword "OI_REVN" which is
-retrieved with the method `OIFITS.get_revn()`.  For instance:
+- `db.array` yields the `OI_ARRAY` data-block associated with data-block `db`
+  (for `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_SPECTRUM` and `OI_POLARIZATION`
+  data-block);
+
+- `db.instr` yields the `OI_WAVELENGTH` data-block associated with data-block
+  `db` (for `OI_VIS`, `OI_VIS2`, `OI_T3` and `OI_SPECTRUM` data-block);
+
+- `db.correl` yields the `OI_CORREL` data-block associated with data-block `db`
+  (for `OI_VIS`, `OI_VIS2`, `OI_T3` and `OI_SPECTRUM` data-block).
+
+The dot notation can be chained.  For instance:
+```julia
+db.instr.eff_wave
+```
+yields the effective wavelengths of the measurements in `db` via the insturment
+associated to `db`.
+
+
+## Deprecated accessor functions
+
+Although this is considered as deprecated, OI-FITS fields of a given data-block
+can also be retrieved via an accessor whose name has suffix `OIFITS.get_`
+followed by the name of the field in lower case letters and with all
+non-alphanumeric letters replaced by an underscore character `_`).  A notable
+exception is the revision number corresponding to the keyword "OI_REVN" which
+is retrieved with the method `OIFITS.get_revn()`.  For instance:
 
 ```julia
 OIFITS.get_revn(db)      # get the revison number of the format (OI_REVN)
@@ -81,6 +109,7 @@ OIFITS.get_eff_wave(db)  # get effective wavelengths (EFF_WAVE)
 OIFITS.get_eff_band(db)  # get effective bandwidths (EFF_BAND)
 OIFITS.get_ucoord(db)    # get the U coordinates of the data (UCOORD)
 ```
+
 Of course, getting a given field must make sense.  For instance,
 `OIFITS.get_eff_wave()` can be applied on any `OI_WAVELENGTH` data-blocks
 but also on data-blocks which contains interferometric data such as

@@ -136,11 +136,39 @@ yields whether data-block `db` is attached to a master structure.
 """
 is_attached(db::OIDataBlock) = getfield(db, :attached)
 
+# Extend getproperty/setproperty! to implement consistent db.field syntax.  The
+# behavior depends on the type of data-block.
 Base.getproperty(db::OIDataBlock, sym::Symbol) =
-    getindex(contents(db), sym)
-
+    (sym == :extname ? get_extname(db) :
+     getindex(contents(db), sym))
 Base.setproperty!(db::OIDataBlock, sym::Symbol, val) =
-    setindex!(contents(db), val, sym)
+    (sym == :extname ? read_only_field(sym) :
+     setindex!(contents(db), val, sym))
+
+Base.getproperty(db::OIPolarization, sym::Symbol) =
+    (sym == :array   ? getfield(db, :arr) :
+     sym == :extname ? get_extname(db) :
+     getindex(contents(db), sym))
+Base.setproperty!(db::OIPolarization, sym::Symbol, val) =
+    (sym == :array ? setfield!(db, :arr, val) :
+     sym == :extname ? read_only_field(sym) :
+     setindex!(contents(db), sym, val))
+
+Base.getproperty(db::Union{OIVis,OIVis2,OIT3,OISpectrum}, sym::Symbol) =
+    (sym == :array   ? getfield(db, :arr) :
+     sym == :instr   ? getfield(db, :ins) :
+     sym == :correl  ? getfield(db, :corr) :
+     sym == :extname ? get_extname(db) :
+     getindex(contents(db), sym))
+Base.setproperty!(db::Union{OIVis,OIVis2,OIT3,OISpectrum}, sym::Symbol, val) =
+    (sym == :array   ? setfield!(db, :arr, val) :
+     sym == :instr   ? setfield!(db, :ins, val) :
+     sym == :correl  ? setfield!(db, :corr, val) :
+     sym == :extname ? read_only_field(sym) :
+     setindex!(contents(db), sym, val))
+
+@noinline read_only_field(name::Union{AbstractString,Symbol}) =
+    error("field `", name, "` is read-only")
 
 # Correspondance between OI-FITS data-block names and Julia types.
 const _DATABLOCKS = Dict("OI_TARGET"     => OITarget,
