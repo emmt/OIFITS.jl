@@ -11,7 +11,7 @@ using ..OIFITS
 using ..OIFITS: to_string, to_integer, to_fieldname
 
 # OIFieldDef is used to store the definition of a keyword/column field.
-mutable struct OIFieldDef
+struct OIFieldDef
     name::String     # Keyword/column name as a string.
     symb::Symbol     # Keyword/column symbolic name.
     iskeyword::Bool  # Is keyword? (otherwise column)
@@ -26,7 +26,7 @@ end
 
 
 # OIDataBlockDef is used to store the definition of data-block.
-mutable struct OIDataBlockDef
+struct OIDataBlockDef
     extname::String
     fields::Vector{Symbol}        # ordered field symbolic names
     spec::Dict{Symbol,OIFieldDef} # dictionary of field specifications
