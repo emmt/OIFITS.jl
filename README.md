@@ -341,7 +341,7 @@ The returned symbol should match the result of the low level method
 For a FITS table, the function:
 
 ```julia
-OIFITS.get_dbtype(hdr)
+OIFITS.get_datablock_type(hdr)
 ```
 
 returns the OI-FITS data-block type as a Symbol like `:OI_TARGET`,
