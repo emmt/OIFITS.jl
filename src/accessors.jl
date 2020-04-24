@@ -93,7 +93,7 @@ get_instrument(obj::OIMaster, insname::AbstractString) =
 get_instrument(obj::OIDataBlock) = nothing
 get_instrument(obj::OIWavelength) = obj
 get_instrument(obj::Union{OIMaster,OIVis,OIVis2,OIT3,OISpectrum,OIPolarization}) =
-    onj.instr
+    obj.instr
 
 """
     OIFITS.get_targets(obj)

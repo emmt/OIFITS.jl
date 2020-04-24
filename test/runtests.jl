@@ -28,15 +28,30 @@ function tryload(dir, file)
     end
 end
 
-@testset "Load OI-FITS" begin
-    for file in files
-        @test tryload(dir, file) == true
-    end
-end
-
 @testset "Low-level Interface" begin
     fits =  FITS(joinpath(dir, first(files)), "r")
     hdr = read_header(fits[1])
+
+    hdr["STRVAL"] = "a string"
+    hdr["INTVAL"] = 3
+    hdr["FLTVAL"] = 1.6
+
+    @test_throws KeyError OIFITS.get_key_index(hdr, "DUMMY")
+    @test OIFITS.get_key_index(hdr, "DUMMY", π) === π
+    @test OIFITS.get_key_index(hdr, "SIMPLE", π) === 1
+
+    @test_throws ErrorException OIFITS.get_integer(hdr, "STRVAL")
+    @test isa(OIFITS.get_integer(hdr, "SIMPLE", :none), Int)
+    @test isa(OIFITS.get_integer(hdr, "NAXIS"), Int)
+    @test isa(OIFITS.get_integer(hdr, "NAXIS", :none), Int)
+
+    @test_throws ErrorException OIFITS.get_logical(hdr, "NAXIS", true)
+    @test OIFITS.get_logical(hdr, "SIMPLE") === true
+    @test isa(OIFITS.get_logical(hdr, "SIMPLE", :none), Bool)
+
+    @test_throws ErrorException OIFITS.get_float(hdr, "STRVAL", 1.0)
+    @test isa(OIFITS.get_float(hdr, "NAXIS"), Float64)
+    @test isa(OIFITS.get_float(hdr, "NAXIS", :none), Float64)
 
     @test_throws ErrorException OIFITS.get_logical(hdr, "DUMMY")
     @test OIFITS.get_logical(hdr, "DUMMY", nothing) === nothing
@@ -72,6 +87,126 @@ end
     @test typeof(OIFITS.get_string(hdr, "XTENSION")) === String
     @test typeof(OIFITS.get_string(hdr, "XTENSION", nothing)) === String
 
+    # Test OIFITS.to_logical
+    @test OIFITS.to_logical(true) === true
+    @test OIFITS.to_logical(0) === false
+    for tmp in ([true], (true,false))
+        @test OIFITS.to_logical(tmp) === tmp
+    end
+    @test OIFITS.to_logical([0]) == [false]
+    @test OIFITS.to_logical((1,0)) == (true,false)
+
+    # Test OIFITS.to_integer
+    @test OIFITS.to_integer(1) === 1
+    @test OIFITS.to_integer(0x01) === 1
+    for tmp in ([7], (11,))
+        @test OIFITS.to_integer(tmp) === tmp
+    end
+    @test OIFITS.to_integer([0x05,0x0003]) == [5,3]
+    @test OIFITS.to_integer((0x05,0x0003)) === (5,3)
+
+    # Test OIFITS.to_float
+    @test OIFITS.to_float(1.5) === 1.5
+    @test OIFITS.to_float(1) === 1.0
+    for tmp in ([7.1], (11.3,4.7))
+        @test OIFITS.to_float(tmp) === tmp
+    end
+    @test OIFITS.to_float([0x05,0x0003]) == [5.0,3.0]
+    @test OIFITS.to_float((0x05,0x0003)) === (5.0,3.0)
+
+    # Test OIFITS.to_complex
+    @test OIFITS.to_complex(1.5 + 3.1im) === 1.5 + 3.1im
+    @test OIFITS.to_complex(1 - 2im) === 1.0 - 2.0im
+    for tmp in ([1.3 - 7.1im], (11.3 + 0.0im, 4.7im))
+        @test OIFITS.to_complex(tmp) === tmp
+    end
+    @test OIFITS.to_complex([0x05,0x0003]) == [5.0+0.0im,3.0+0.0im]
+    @test OIFITS.to_complex((0x05,0x0003)) === (5.0+0.0im,3.0+0.0im)
+
+    # Test OIFITS.to_string
+    for tmp in ("hello", ["so", "wonderful"], ("world", ))
+        @test OIFITS.to_string(tmp) === tmp
+    end
+    mesg = "hello world!"
+    @test OIFITS.to_string(:hello) == "hello"
+    @test OIFITS.to_string(SubString(mesg, 7:11)) == "world"
+    @test OIFITS.to_string([SubString(mesg, 7:11),
+                            SubString(mesg, 1:5)]) == ["world", "hello"]
+    @test OIFITS.to_string([:hello,:world]) == ["hello","world"]
+    @test OIFITS.to_string((:hello,SubString(mesg, 7:11))) == ("hello","world")
+
+    # Test OIFITS.is_logical
+    @test OIFITS.is_logical(false) == true
+    @test OIFITS.is_logical(1) == false
+    @test OIFITS.is_logical([false]) == true
+    @test OIFITS.is_logical((false,)) == true
+
+    # Test OIFITS.is_integer
+    @test OIFITS.is_integer(0x33) == true
+    @test OIFITS.is_integer(nothing) == false
+    @test OIFITS.is_integer([0x12]) == true
+    @test OIFITS.is_integer((1,0xff)) == true
+
+    # Test OIFITS.is_float
+    @test OIFITS.is_float(0x33) == true
+    @test OIFITS.is_float(1im) == false
+    @test OIFITS.is_float([0.1]) == true
+    @test OIFITS.is_float((1,0xff)) == true
+
+    # Test OIFITS.is_complex
+    @test OIFITS.is_complex(1 + 0im) == true
+    @test OIFITS.is_complex(1im) == true
+    @test OIFITS.is_complex(1.2im) == true
+    @test OIFITS.is_complex("hello") == false
+    @test OIFITS.is_complex([0,1im]) == true
+    @test OIFITS.is_complex((1,0+1im)) == false
+    @test OIFITS.is_complex((3.0im,0+1im)) == true
+
+    # Test OIFITS.is_string
+    @test OIFITS.is_string(SubString(mesg, 7:11)) == true
+    @test OIFITS.is_string(:hello) == false
+    @test OIFITS.is_string(["hello"]) == true
+    @test OIFITS.is_string(("a",)) == true
+
+    # Check OIFITS.get_hdu_type
+    @test OIFITS.get_hdu_type("BINTABLE") === :binary_table
+    @test OIFITS.get_hdu_type("IMAGE") === :image_hdu
+    @test OIFITS.get_hdu_type("TABLE") === :ascii_table
+    @test OIFITS.get_hdu_type(TableHDU) === :binary_table
+    @test OIFITS.get_hdu_type(ImageHDU) === :image_hdu
+    @test OIFITS.get_hdu_type(ASCIITableHDU) === :ascii_table
+    @test OIFITS.get_hdu_type(3) === :unknown
+    @test OIFITS.get_hdu_type(fits[1]) === :image_hdu
+
+    @test OIFITS.type_to_bitpix(UInt8)   ==   8
+    @test OIFITS.type_to_bitpix(Int16)   ==  16
+    @test OIFITS.type_to_bitpix(Int32)   ==  32
+    @test OIFITS.type_to_bitpix(Int64)   ==  64
+    @test OIFITS.type_to_bitpix(Float32) == -32
+    @test OIFITS.type_to_bitpix(Float64) == -64
+
+    @test OIFITS.bitpix_to_type(  8) === UInt8
+    @test OIFITS.bitpix_to_type( 16) === Int16
+    @test OIFITS.bitpix_to_type( 32) === Int32
+    @test OIFITS.bitpix_to_type( 64) === Int64
+    @test OIFITS.bitpix_to_type(-32) === Float32
+    @test OIFITS.bitpix_to_type(-64) === Float64
+
+    types = Vector{DataType}(undef, 200)
+    for id in eachindex(types)
+        types[id] = OIFITS.eqcoltype_to_type(id)
+    end
+    for T in (UInt8, Int8, Bool, String, Cushort, Cshort, Cuint, Cint,
+              Culong, Clong, Cfloat, Int64, Cdouble,
+              Complex{Cfloat}, Complex{Cdouble})
+        @test types[OIFITS.type_to_eqcoltype(T)] === T
+    end
+end
+
+@testset "Load OI-FITS" begin
+    for file in files
+        @test tryload(dir, file) == true
+    end
 end
 
 @testset "High-level Interface" begin
@@ -123,7 +258,39 @@ end
         extname = db.extname
         @test isa(extname, String)
         @test_throws ErrorException db.extname = ""
-        @test db.extname == extname
+        @test db.extname === extname
+    end
+
+    # Accessors (we check that the same object is returned).
+    @test OIFITS.get_target(master) === master.target
+    @test isa(OIFITS.get_targets(master), Vector{<:AbstractString})
+    @test isa(OIFITS.get_arrays(master), Vector{<:AbstractString})
+    @test isa(OIFITS.get_instruments(master), Vector{<:AbstractString})
+    @test OIFITS.get_target(master) === master.target
+    @test OIFITS.get_array(master) === master.array
+    @test OIFITS.get_instrument(master) === master.instr
+    for db in master
+        @test OIFITS.get_extname(db) == db.extname
+        if isa(db, Union{OIVis,OIVis2,OIT3,OISpectrum,OIPolarization})
+            @test OIFITS.get_eff_wave(db) === db.instr.eff_wave
+            @test OIFITS.get_eff_band(db) === db.instr.eff_band
+            @test OIFITS.get_instrument(db) === db.instr
+            @test OIFITS.get_array(db) === db.array
+        end
+        if isa(db, OITarget)
+            @test OIFITS.get_target(db) === db.target
+        elseif isa(db, Union{OIVis,OIVis2,OIT3,OISpectrum,OIPolarization})
+            @test_broken OIFITS.get_target(db) === db.target
+        else
+            @test OIFITS.get_target(db) === nothing
+        end
+        if isa(db, OIArray)
+            @test OIFITS.get_array(db) === db
+        elseif isa(db, Union{OIVis,OIVis2,OIT3,OISpectrum,OIPolarization})
+            @test OIFITS.get_array(db) === db.array
+        else
+            @test OIFITS.get_array(db) === nothing
+        end
     end
 
 end

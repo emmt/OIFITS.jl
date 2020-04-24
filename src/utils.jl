@@ -22,10 +22,10 @@ get_hdu_type(xtension::AbstractString) =
     (xtension == "BINTABLE"   ? :binary_table :
      xtension == "IMAGE"      ? :image_hdu    :
      xtension == "TABLE"      ? :ascii_table  : :unknown)
-get_hdu_type(::TableHDU)      = :binary_table
-get_hdu_type(::ImageHDU)      = :image_hdu
-get_hdu_type(::ASCIITableHDU) = :ascii_table
-get_hdu_type(::HDU)           = :unknown
+get_hdu_type(::Union{T,Type{T}}) where {T<:TableHDU} = :binary_table
+get_hdu_type(::Union{T,Type{T}}) where {T<:ImageHDU} = :image_hdu
+get_hdu_type(::Union{T,Type{T}}) where {T<:ASCIITableHDU} = :ascii_table
+get_hdu_type(::Any) = :unknown
 function get_hdu_type(hdr::FITSHeader)
     val = get(hdr, "XTENSION", nothing)
     if isa(val, AbstractString)
@@ -45,7 +45,7 @@ found in `hdr`, the default value `def` is returned if it is specified,
 otherwise a `KeyError` exception is thrown.
 
 """
-get_key_index(hdr::FITSHeader, key::String) = get(hdr.map, key)
+get_key_index(hdr::FITSHeader, key::String) = getindex(hdr.map, key)
 get_key_index(hdr::FITSHeader, key::String, def) = get(hdr.map, key, def)
 # FIXME: This method is a hack, it should be part of FITSIO.
 
@@ -282,8 +282,8 @@ to_string(x::String) = x
 to_string(x::AbstractString) = String(x)
 to_string(x::Symbol) = String(x)
 to_string(x::Array{String}) = x
-to_string(x::AbstractArray{<:Union{<:AbstractString,Symbol},N}) where {N} =
-    convert(Array{String,N}, x)
+to_string(x::AbstractArray{T}) where {T<:Union{AbstractString,Symbol}} =
+    map(to_string, x)
 to_string(x::Tuple{Vararg{String}}) = x
 to_string(x::Tuple{Vararg{Union{AbstractString,Symbol}}}) = map(to_string, x)
 
