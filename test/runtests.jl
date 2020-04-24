@@ -119,6 +119,11 @@ end
     sel = ("OI_VIS", "OI_VIS2", "OI_T3")
     for db in OIFITS.select(master, sel...)
         @test db.extname in sel
+        # Check that `extname` is read-only.
+        extname = db.extname
+        @test isa(extname, String)
+        @test_throws ErrorException db.extname = ""
+        @test db.extname == extname
     end
 
 end
