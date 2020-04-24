@@ -1,8 +1,8 @@
 #
 # post.jl --
 #
-# Post-processing of OI-FITS data-block definitions.  Must be the last
-# file included by the main OIFITS.jl source file.
+# Post-processing of OI-FITS data-block definitions.  Must be the last file
+# included by the main OIFITS.jl source file.
 #
 #------------------------------------------------------------------------------
 
@@ -16,8 +16,8 @@ for extname in EXTNAMES
 end
 
 # Define getters which rely on indirections.
-get_eff_wave(db::Union{OIVis,OIVis2,OIT3}) = db.eff_wave
-get_eff_band(db::Union{OIVis,OIVis2,OIT3}) = db.eff_band
+get_eff_wave(db::Union{OIVis,OIVis2,OIT3}) = db.instr.eff_wave
+get_eff_band(db::Union{OIVis,OIVis2,OIT3}) = db.instr.eff_band
 
 """
 
