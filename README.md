@@ -11,16 +11,28 @@ The `OIFITS.jl` package provides support for OI-FITS data in Julia language.
 ## OI-FITS Summary
 
 OI-FITS is a standard to store optical interferometry data as a collection of
-data-blocks.  In the first version of the standard (see [Ref. 1](#references)),
-the available data-blocks are:
+data-blocks.  In the second revision of the standard (see [Ref. 1](#references)
+and [Ref. 2](#references)), the available data-blocks are:
 
-* `OI_TARGET` provides a list of observed targets;
-* `OI_ARRAY` describes a given array of stations;
-* `OI_WAVELENGTH` describes a given instrument (notably the effective
-  wavelengths and bandwidths of its spectral channels);
-* `OI_VIS` contains complex visibility data;
-* `OI_VIS2` contains squared visibility (powerspectrum) data;
-* `OI_T3` contains triple product (bispectrum) data.
+* `OITarget` provides a list of observed targets (`OI_TARGET` extension in
+  OI-FITS files);
+* `OIArray` describes a given array of stations (`OI_ARRAY` extension in
+  OI-FITS files);
+* `OIWavelength` describes a given instrument notably the effective
+  wavelengths and bandwidths of its spectral channels (`OI_WAVELENGTH`
+  extension in OI-FITS files);
+* `OIVis` contains complex visibility data (`OI_VIS` extension in OI-FITS
+  files);
+* `OIVis2` contains squared visibility (powerspectrum) data (`OI_VIS2`
+  extension in OI-FITS files);
+* `OIT3` contains triple product (bispectrum) data (`OI_T3` extension in
+  OI-FITS files);
+* `OISpectrum` contains spectrum data (`OI_SPECTRUM` extension in OI-FITS
+  files);
+* `OIPolarization` contains instrumental polarization (`OI_INSPOL`
+  extension in OI-FITS files);
+* `OICorrelation` contains correlation data (`OI_CORR` extension in OI-FITS
+  files).
 
 These data-blocks, are stored as binary tables in a FITS data file.  The
 support for the actual FITS files is provided by the
