@@ -19,7 +19,7 @@ struct OIFieldDef
     multiplier::Int  # Multiplier: 1 for keywords, number of cells for columns
                      # (a negative number -N means an array of N dimensions
                      # each equal to the number of spectral channels.
-    type::Symbol    # Data type.
+    type::Symbol     # Data type.
     units::String    # Units.
     descr::String    # Description.
 end
@@ -98,11 +98,7 @@ yields the FITS extension name, revision number and format definitions of the
 OI-FITS data-block `db`.
 
 """
-function get_description(db::OIDataBlock)
-    name = db.extname
-    revn = db.revn
-    return (name, revn, get_definition(name, revn))
-end
+get_description(db::OIDataBlock) = (db.extname, db.revn, get_definition(db))
 
 """
     OIFITS.Parser.get_definition(db)
@@ -130,8 +126,7 @@ end
 get_definition(extname::AbstractString, revn::Integer, def) =
     get(FORMATS, format_key(extname, revn), def)
 
-get_definition(db::OIDataBlock) =
-    get_definition(get_extname(db), get_revn(db))
+get_definition(db::OIDataBlock) = get_definition(db.extname, db.revn)
 
 """
     OIFITS.define(extname, revn, defs)
