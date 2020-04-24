@@ -1,7 +1,7 @@
 #
 # objects.jl --
 #
-# Implement most part of the OI-FITS objects behavior.
+# Implement most part of OI-FITS objects behavior.
 #
 #------------------------------------------------------------------------------
 
@@ -39,7 +39,7 @@ Base.getproperty(obj::OIPolarization, sym::Symbol) =
      sym == :extname ? get_extname(obj) :
      getindex(obj, sym))
 Base.setproperty!(obj::OIPolarization, sym::Symbol, val) =
-    (sym == :array ? setfield!(obj, :arr, val) :
+    (sym == :array   ? setfield!(obj, :arr, val) :
      sym == :extname ? read_only_field(sym) :
      setindex!(obj, sym, val))
 
@@ -742,25 +742,24 @@ function _check_correl(db::OIDataBlock)
 end
 
 """
+    OIFITS.clone(db)
 
-### Clone a data-block
-
-This method clones an existing data-block.  The array data are shared between
-the clones but not the links (owner, target, instrument, etc.).  Only the
-fields defined by OI-FITS standard are cloned.  This method is intended when
-a data-block from a given `OIMaster` instance is to be attached to another
+clones OI-FITS data-block `db`.  Most objects referenced by `db` will be shared
+by the clone but neither the links (`db.array`, `db.instr`, etc.) nor the
+fields not defined by OI-FITS standard.  This method is intended when a
+data-block from a given `OIMaster` instance is to be pushed to another
 `OIMaster` instance.
 
 """
 function clone(db::OIDataBlock)
     (name, revn, defn) = get_descr(db)
-    data = Dict{Symbol,Any}()
+    dict = Dict{Symbol,Any}()
     for (key, val) in contents(db)
         if haskey(defn.spec, key)
-            data[key] = val
+            dict[key] = val
         end
     end
-    return build_datablock(name, revn, data)
+    return build_datablock(name, revn, dict)
 end
 
 
