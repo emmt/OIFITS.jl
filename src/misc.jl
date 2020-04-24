@@ -11,11 +11,7 @@ using FITSIO.Libcfitsio
 import FITSIO: TableHDU, ASCIITableHDU
 import Base: read
 
-# FIXME: Extend `get(hdr,key,def)` for FITSHeader if not yet done.
-if length(methods(get, (FITSHeader, String, Any))) < 1
-    Base.get(hdr::FITSHeader, key::String, def) =
-        ((i = get(hdr.map, key, -1)) > 0 ? hdr.values[i] : def)
-end
+
 
 """
    OIFITS.get_hdu_type(arg)

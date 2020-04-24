@@ -6,6 +6,14 @@
 #------------------------------------------------------------------------------
 
 
+# Conversion to boolean(s) of type `Bool`.
+to_logical(x::Bool) = x
+to_logical(x::Integer) = Bool(x)
+to_logical(x::Array{Bool}) = x
+to_logical(x::AbstractArray{<:Integer,N}) where {N} = convert(Array{Bool,N}, x)
+to_logical(x::Tuple{Vararg{Bool}}) = x
+to_logical(x::Tuple{Vararg{Integer}}) = map(to_logical, x)
+
 # Conversion to integer(s) of type `Int`.
 to_integer(x::Int) = x
 to_integer(x::Integer) = Int(x)
@@ -14,21 +22,21 @@ to_integer(x::AbstractArray{<:Integer,N}) where {N} = convert(Array{Int,N}, x)
 to_integer(x::Tuple{Vararg{Int}}) = x
 to_integer(x::Tuple{Vararg{Integer}}) = map(to_integer, x)
 
-# Conversion to floating-point(s) of type `Cdouble`.
-to_float(x::Cdouble) = x
-to_float(x::Real) = Cdouble(x)
-to_float(x::Array{Cdouble}) = x
-to_float(x::AbstractArray{<:Real,N}) where {N} = convert(Array{Cdouble,N}, x)
-to_float(x::Tuple{Vararg{Cdouble}}) = x
+# Conversion to floating-point(s) of type `Float64`.
+to_float(x::Float64) = x
+to_float(x::Real) = Float64(x)
+to_float(x::Array{Float64}) = x
+to_float(x::AbstractArray{<:Real,N}) where {N} = convert(Array{Float64,N}, x)
+to_float(x::Tuple{Vararg{Float64}}) = x
 to_float(x::Tuple{Vararg{Real}}) = map(to_float, x)
 
-# Conversion to complex(es) of type `Complex{Cdouble}`.
-to_complex(x::Complex{Cdouble}) = x
-to_complex(x::Union{Real,Complex{<:Real}}) = convert(Complex{Cdouble}, x)
-to_complex(x::Array{Complex{Cdouble}}) = x
+# Conversion to complex(es) of type `Complex{Float64}`.
+to_complex(x::Complex{Float64}) = x
+to_complex(x::Union{Real,Complex{<:Real}}) = convert(Complex{Float64}, x)
+to_complex(x::Array{Complex{Float64}}) = x
 to_complex(x::AbstractArray{<:Union{Real,Complex{<:Real}},N}) where {N} =
-    convert(Array{Complex{Cdouble},N}, x)
-to_complex(x::Tuple{Vararg{Complex{Cdouble}}}) = x
+    convert(Array{Complex{Float64},N}, x)
+to_complex(x::Tuple{Vararg{Complex{Float64}}}) = x
 to_complex(x::Tuple{Vararg{Union{Real,Complex{<:Real}}}}) = map(to_complex, x)
 
 # Conversion to a string(s) of type `String`.
@@ -772,7 +780,7 @@ end
 
 converts string `str` to uppercase letters and removes trailing spaces.  This
 is useful to compare names according to FITS conventions that letter case and
-trailing spaces are insignificant
+trailing spaces are insignificant.
 
 """
 fixname(name::AbstractString) = to_string(uppercase(rstrip(name)))
@@ -1172,8 +1180,8 @@ wavelengths.
 """
 function select_wavelength(inp::Union{OIMaster,OIDataBlock},
                            wavemin::Real, wavemax::Real)
-    wmin = convert(Cdouble, wavemin)
-    wmax = convert(Cdouble, wavemax)
+    wmin = convert(Float64, wavemin)
+    wmax = convert(Float64, wavemax)
     select_wavelength(inp, w -> wmin ≤ w ≤ wmax)
 end
 

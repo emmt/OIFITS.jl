@@ -53,6 +53,18 @@ function read_column(ff::FITSFile, colnum::Integer, multiplier::Integer)
 end
 
 """
+   OIFITS.get_key_index(hdr, key[, def])
+
+yields the index of the keyword `key` in FITS header `hdr`.  If `key` is not
+found in `hdr`, the default value `def` is returned if it is specified,
+otherwise a `KeyError` exception is thrown.
+
+"""
+get_key_index(hdr::FITSHeader, key::String) = get(hdr.map, key)
+get_key_index(hdr::FITSHeader, key::String, def) = get(hdr.map, key, def)
+# FIXME: This method is a hack, it should be part of FITSIO.
+
+"""
     OIFITS.get_value(hdr, key[, def])
 
 yields the value of keyword `key` in FITS header `hdr`.  If `key` is not found
@@ -60,14 +72,13 @@ in `hdr`, the default value `def` is returned if it is specified, otherwise an
 error is thrown.
 
 """
-function get_value(hdr::FITSHeader, key::AbstractString)
-    haskey(hdr, key) || error("missing FITS keyword \"", key, "\"")
-    hdr[key]
-end
+get_value(hdr::FITSHeader, key::String) =
+    ((i = get_key_index(hdr, key, 0)) > 0 ? hdr[i] : missing_fits_keyword(key))
+get_value(hdr::FITSHeader, key::String, def) =
+    ((i = get_key_index(hdr, key, 0)) > 0 ? hdr[i] : def)
 
-function get_value(hdr::FITSHeader, key::AbstractString, def)
-    haskey(hdr, key) ? hdr[key] : def
-end
+@noinline missing_fits_keyword(key) =
+    error("missing FITS keyword \"", key, "\"")
 
 """
     OIFITS.get_comment(hdr, key[, def])
@@ -77,14 +88,11 @@ found in `hdr`, the default value `def` is returned if it is specified,
 otherwise an error is thrown.
 
 """
-function get_comment(hdr::FITSHeader, key::AbstractString)
-    haskey(hdr, key) || error("missing FITS keyword \"", key, "\"")
-    FITSIO.get_comment(hdr, key)
-end
-
-function get_comment(hdr::FITSHeader, key::AbstractString, def::AbstractString)
-    haskey(hdr, key) ? get_comment(hdr, key) : def
-end
+get_comment(hdr::FITSHeader, key::String) =
+    ((i = get_key_index(hdr, key, 0)) > 0 ? FITSIO.get_comment(hdr, i) :
+     missing_fits_keyword(key))
+get_comment(hdr::FITSHeader, key::String, def) =
+    ((i = get_key_index(hdr, key, 0)) > 0 ? FITSIO.get_comment(hdr, i) : def)
 
 """
     OIFITS.get_integer(hdr, key[, def])
@@ -96,7 +104,25 @@ converted into an `Int` which is returned.  The possible types of the result
 are thus `Int` (if `key` is found) or `typeof(def)` (if `key` not found and
 `def` specified).
 
-""" get_integer
+"""
+function get_integer(hdr::FITSHeader, key::String, def)
+    i = get_key_index(hdr, key, 0)
+    i == 0 && return def
+    val = hdr[i]
+    isa(val, Integer) || noninteger_fits_keyword(key)
+    to_integer(val)
+end
+
+function get_integer(hdr::FITSHeader, key::String)
+    i = get_key_index(hdr, key, 0)
+    i == 0 && missing_fits_keyword(key)
+    val = hdr[i]
+    isa(val, Integer) || noninteger_fits_keyword(key)
+    to_integer(val)
+end
+
+@noinline noninteger_fits_keyword(key) =
+    error("non-integer value for FITS keyword \"", key, "\"")
 
 """
     OIFITS.get_float(hdr, key[, def])
@@ -108,7 +134,25 @@ it can be converted into a `Float64` which is returned.  The possible types of
 the result are thus `Float64` (if `key` is found) or `typeof(def)` (if `key`
 not found and `def` specified).
 
-""" get_float
+"""
+function get_float(hdr::FITSHeader, key::String, def)
+    i = get_key_index(hdr, key, 0)
+    i == 0 && return def
+    val = hdr[i]
+    isa(val, Real) || nonfloat_fits_keyword(key)
+    to_float(val)
+end
+
+function get_float(hdr::FITSHeader, key::String)
+    i = get_key_index(hdr, key, 0)
+    i == 0 && missing_fits_keyword(key)
+    val = hdr[i]
+    isa(val, Real) || nonfloat_fits_keyword(key)
+    to_float(val)
+end
+
+@noinline nonfloat_fits_keyword(key) =
+    error("non-floating point value for FITS keyword \"", key, "\"")
 
 """
     OIFITS.get_logical(hdr, key[, def])
@@ -122,8 +166,27 @@ are thus `Bool` (if `key` is found) or `typeof(def)` (if `key` not found and
 
 """ get_logical
 
+function get_logical(hdr::FITSHeader, key::String, def)
+    i = get_key_index(hdr, key, 0)
+    i == 0 && return def
+    val = hdr[i]
+    isa(val, Bool) || nonlogical_fits_keyword(key)
+    to_logical(val)
+end
+
+function get_logical(hdr::FITSHeader, key::String)
+    i = get_key_index(hdr, key, 0)
+    i == 0 && missing_fits_keyword(key)
+    val = hdr[i]
+    isa(val, Bool) || nonlogical_fits_keyword(key)
+    to_logical(val)
+end
+
+@noinline nonlogical_fits_keyword(key) =
+    error("non-logical value for FITS keyword \"", key, "\"")
+
 """
-    OIFITS.get_string(hdr, key[, def])
+    OIFITS.get_string(hdr, key[, def]; fix=false)
 
 yields the value of keyword `key` in FITS header `hdr` as a string.  If `key`
 is not found in `hdr`, the default value `def` is returned if it is specified,
@@ -132,42 +195,31 @@ converted into a `String` which is returned.  The possible types of the result
 are thus `String` (if `key` is found) or `typeof(def)` (if `key` not found and
 `def` specified).
 
-""" get_string
+If keyword `fix` is true, trailing spaces are removed and characters converted
+to upper case letters in the returned value.  This is to follow FITS
+conventions that letter case and trailing spaces are insignificant when
+comparing names.
 
-for (fn, T, S) in ((:get_integer, Integer,        Int),
-                   (:get_float,   Real,           Float64),
-                   (:get_logical, Bool,           Bool),
-                   (:get_string,  AbstractString, AbstractString))
-    if S == T
-        @eval begin
-            function $fn(hdr::FITSHeader, key::AbstractString, def::$T)
-                val = haskey(hdr, key) ? hdr[key] : def
-                isa(val, $T) || error("bad type for FITS keyword \"",key,"\"")
-                return val
-            end
-            function $fn(hdr::FITSHeader, key::AbstractString)
-                haskey(hdr, key) || error("missing FITS keyword \"",key,"\"")
-                val = hdr[key]
-                isa(val, $T) || error("bad type for FITS keyword \"",key,"\"")
-                return val
-            end
-        end
-    else
-        @eval begin
-            function $fn(hdr::FITSHeader, key::AbstractString, def::$T)
-                val = haskey(hdr, key) ? hdr[key] : def
-                isa(val, $T) || error("bad type for FITS keyword \"",key,"\"")
-                return convert($S, val)
-            end
-            function $fn(hdr::FITSHeader, key::AbstractString)
-                haskey(hdr, key) || error("missing FITS keyword \"",key,"\"")
-                val = hdr[key]
-                isa(val, $T) || error("bad type for FITS keyword \"",key,"\"")
-                return convert($S, val)
-            end
-        end
-    end
+"""
+function get_string(hdr::FITSHeader, key::String, def; fix::Bool = false)
+    i = get_key_index(hdr, key, 0)
+    i == 0 && return def
+    val = hdr[i]
+    isa(val, AbstractString) || nonstring_fits_keyword(key)
+    fix ? fixname(val) : to_string(val)
 end
+
+function get_string(hdr::FITSHeader, key::String; fix::Bool = false)
+    i = get_key_index(hdr, key, 0)
+    i == 0 && missing_fits_keyword(key)
+    val = hdr[i]
+    isa(val, AbstractString) || nonstring_fits_keyword(key)
+    fix ? fixname(val) : to_string(val)
+end
+
+@noinline nonstring_fits_keyword(key) =
+    error("non-string value for FITS keyword \"", key, "\"")
+
 
 function get_file_handle(hdu::HDU)
     fits_assert_open(hdu.fitsfile)

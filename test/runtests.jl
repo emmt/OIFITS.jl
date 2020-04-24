@@ -1,6 +1,7 @@
 module TestOIFITS
 
-using OIFITS, Test, Printf
+using Test, Printf
+using OIFITS, FITSIO
 
 dir = @__DIR__
 
@@ -33,7 +34,47 @@ end
     end
 end
 
-@testset "Interface" begin
+@testset "Low-level Interface" begin
+    fits =  FITS(joinpath(dir, first(files)), "r")
+    hdr = read_header(fits[1])
+
+    @test_throws ErrorException OIFITS.get_logical(hdr, "DUMMY")
+    @test OIFITS.get_logical(hdr, "DUMMY", nothing) === nothing
+    @test typeof(OIFITS.get_logical(hdr, "SIMPLE")) === Bool
+    @test typeof(OIFITS.get_logical(hdr, "SIMPLE", nothing)) === Bool
+
+    @test_throws ErrorException OIFITS.get_comment(hdr, "DUMMY")
+    @test OIFITS.get_comment(hdr, "DUMMY", nothing) === nothing
+    @test typeof(OIFITS.get_comment(hdr, "SIMPLE")) === String
+    @test typeof(OIFITS.get_comment(hdr, "SIMPLE", nothing)) === String
+
+    hdr = read_header(fits[2])
+
+    @test_throws ErrorException OIFITS.get_value(hdr, "DUMMY")
+    @test OIFITS.get_value(hdr, "DUMMY", nothing) === nothing
+    @test typeof(OIFITS.get_value(hdr, "XTENSION")) === String
+    @test typeof(OIFITS.get_value(hdr, "XTENSION", nothing)) === String
+    @test typeof(OIFITS.get_value(hdr, "BITPIX")) === Int
+    @test typeof(OIFITS.get_value(hdr, "BITPIX", nothing)) === Int
+
+    @test_throws ErrorException OIFITS.get_integer(hdr, "DUMMY")
+    @test OIFITS.get_integer(hdr, "DUMMY", nothing) === nothing
+    @test typeof(OIFITS.get_integer(hdr, "NAXIS")) === Int
+    @test typeof(OIFITS.get_integer(hdr, "NAXIS", nothing)) === Int
+
+    @test_throws ErrorException OIFITS.get_float(hdr, "DUMMY")
+    @test OIFITS.get_float(hdr, "DUMMY", nothing) === nothing
+    #@test typeof(OIFITS.get_float(hdr, "BSCALE")) === Float64
+    @test typeof(OIFITS.get_float(hdr, "BSCALE", 1.0)) === Float64
+
+    @test_throws ErrorException OIFITS.get_string(hdr, "DUMMY")
+    @test OIFITS.get_string(hdr, "DUMMY", nothing) === nothing
+    @test typeof(OIFITS.get_string(hdr, "XTENSION")) === String
+    @test typeof(OIFITS.get_string(hdr, "XTENSION", nothing)) === String
+
+end
+
+@testset "High-level Interface" begin
     master = OIFITS.load(joinpath(dir, first(files)))
     @test eltype(master) <: OIDataBlock
     @test size(master) == (length(master),)
