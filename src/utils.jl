@@ -27,10 +27,16 @@ get_hdu_type(::Union{T,Type{T}}) where {T<:ImageHDU} = :image_hdu
 get_hdu_type(::Union{T,Type{T}}) where {T<:ASCIITableHDU} = :ascii_table
 get_hdu_type(::Any) = :unknown
 function get_hdu_type(hdr::FITSHeader)
-    val = get(hdr, "XTENSION", nothing)
-    if isa(val, AbstractString)
-        return get_hdu_type(fix_name(val))
-    elseif get(hdr, "SIMPLE", false) == true
+    i = get_key_index(hdr, "XTENSION", 0)
+    if i > 0
+        let val = hdr[i]
+            if isa(val, AbstractString)
+                return get_hdu_type(fix_name(val))
+            end
+        end
+    end
+    i = get_key_index(hdr, "SIMPLE", 0)
+    if i > 0 && hdr[i] == true
         return :image_hdu
     else
         return :unknown
@@ -362,31 +368,38 @@ function to_fieldname(name::AbstractString)
 end
 
 """
-    OIFITS.warn(args...)
+    OIFITS.warn([io=stderr,] args...)
 
-prints a warning message to the standard error output.
-
-"""
-warn(args...) = message(stderr, args...; head="WARNING", color=:yellow)
+prints a warning message made of `args...` to the stream `io`, the standard
+error output by default.
 
 """
-    OIFITS.inform(args...)
-
-prints an informational message to the standard output.
-
-"""
-inform(args...) = message(stdout, args...; head="INFO", color=:blue)
+warn(args...) = warn(stderr, args...)
+warn(io::IO, args...) = message(io, args...; head="WARNING", color=:yellow)
 
 """
-    OIFITS.message(io, args...; head=nothing, color=:normal)
+    OIFITS.inform([io=stdout,] args...)
 
-prints a message to `io` made of `args...` and using specified `color`.  If
-`head` is not `nothing`, it is printed first in bold and followed by a space.
+prints an informational message made of `args...` to the stream `io`, the
+standard output by default.
 
 """
+inform(args...) = inform(stdout, args...)
+inform(io::IO, args...) = message(io, args...; head="INFO", color=:blue)
+
+"""
+    OIFITS.message([io=stdout,] args...; head=nothing, color=:normal)
+
+prints a message made of `args...` to the stream `io` and using specified
+`color`.  If `head` is not `nothing`, it is printed first in bold and followed
+by a space.
+
+"""
+message(args...; kwds...) = message(stdout, args...; kwds...)
 @noinline function message(io::IO, args...; head = nothing, color::Symbol = :normal)
     head === nothing || printstyled(io, head, " "; bold=true, color=color)
-    printstyled(io, args...; bold=false, color=color)
+    printstyled(io, args..., "\n"; bold=false, color=color)
+    nothing
 end
 
 #

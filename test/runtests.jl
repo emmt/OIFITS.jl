@@ -30,7 +30,9 @@ end
 
 @testset "Low-level Interface" begin
     fits =  FITS(joinpath(dir, first(files)), "r")
+
     hdr = read_header(fits[1])
+    @test OIFITS.get_hdu_type(hdr) === :image_hdu
 
     hdr["STRVAL"] = "a string"
     hdr["INTVAL"] = 3
@@ -64,6 +66,7 @@ end
     @test typeof(OIFITS.get_comment(hdr, "SIMPLE", nothing)) === String
 
     hdr = read_header(fits[2])
+    @test OIFITS.get_hdu_type(hdr) in (:image_hdu, :binary_table, :ascii_table)
 
     @test_throws ErrorException OIFITS.get_value(hdr, "DUMMY")
     @test OIFITS.get_value(hdr, "DUMMY", nothing) === nothing
@@ -83,6 +86,7 @@ end
     @test typeof(OIFITS.get_float(hdr, "BSCALE", 1.0)) === Float64
 
     @test_throws ErrorException OIFITS.get_string(hdr, "DUMMY")
+    @test_throws ErrorException OIFITS.get_string(hdr, "NAXIS")
     @test OIFITS.get_string(hdr, "DUMMY", nothing) === nothing
     @test typeof(OIFITS.get_string(hdr, "XTENSION")) === String
     @test typeof(OIFITS.get_string(hdr, "XTENSION", nothing)) === String
@@ -178,6 +182,16 @@ end
     @test OIFITS.get_hdu_type(3) === :unknown
     @test OIFITS.get_hdu_type(fits[1]) === :image_hdu
 
+    # Check OIFITS.to_fieldname
+    @test OIFITS.to_fieldname("TIME_INT") === :time_int
+    @test OIFITS.to_fieldname(:eff_wave) === :eff_wave
+
+    # Check OIFITS.message
+    @test OIFITS.warn("This is a test.") === nothing
+    @test OIFITS.inform("This is another test.") === nothing
+    @test OIFITS.message("This is yet another test.") === nothing
+
+    # Check OIFITS.type_to_bitpix
     @test OIFITS.type_to_bitpix(UInt8)   ==   8
     @test OIFITS.type_to_bitpix(Int16)   ==  16
     @test OIFITS.type_to_bitpix(Int32)   ==  32
@@ -185,13 +199,16 @@ end
     @test OIFITS.type_to_bitpix(Float32) == -32
     @test OIFITS.type_to_bitpix(Float64) == -64
 
+    # Check OIFITS.bitpix_to_type
     @test OIFITS.bitpix_to_type(  8) === UInt8
     @test OIFITS.bitpix_to_type( 16) === Int16
     @test OIFITS.bitpix_to_type( 32) === Int32
     @test OIFITS.bitpix_to_type( 64) === Int64
     @test OIFITS.bitpix_to_type(-32) === Float32
     @test OIFITS.bitpix_to_type(-64) === Float64
+    @test_throws ErrorException OIFITS.bitpix_to_type(0)
 
+    # Check OIFITS.eqcoltype_to_type and OIFITS.type_to_eqcoltype
     types = Vector{DataType}(undef, 200)
     for id in eachindex(types)
         types[id] = OIFITS.eqcoltype_to_type(id)
