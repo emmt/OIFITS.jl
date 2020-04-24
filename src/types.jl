@@ -98,16 +98,14 @@ to upper case letters, with leading and trailing spaces stripped, multiple
 spaces replaced by a single ordinary space).
 
 """
-mutable struct OIMaster
-    update_pending::Bool                # Update is needed?
+mutable struct OIMaster <: AbstractVector{OIDataBlock}
     all::Vector{OIDataBlock}            # All data-blocks
     tgt::Union{OITarget,Nothing}
     arr::Dict{String,OIArray}
     ins::Dict{String,OIWavelength}
     corr::Dict{String,OICorrelation}
     function OIMaster()
-        new(false,
-            Array{OIDataBlock}(undef, 0),
+        new(Array{OIDataBlock}(undef, 0),
             nothing,
             Dict{String,OIArray}(),
             Dict{String,OIWavelength}(),

@@ -4,6 +4,10 @@ import Base: @deprecate
 
 # Deprecated in v0.5
 @deprecate symbolicname(name::AbstractString) to_fieldname(name)
+@deprecate get_dbname get_extname
+@deprecate attach!(master::OIMaster, db::OIDataBlock) push!(master, db)
+@deprecate get_real(hdr::FITSHeader, key::AbstractString) get_float(hdr, key)
+@deprecate get_real(hdr::FITSHeader, key::AbstractString, def) get_float(hdr, key, def)
 
 # Deprecated in v0.2
 @deprecate readtable(ff::FITSFile) read_table(ff::FITSFile)

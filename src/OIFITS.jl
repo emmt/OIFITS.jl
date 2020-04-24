@@ -5,11 +5,23 @@
 #
 #------------------------------------------------------------------------------
 
-isdefined(Base, :__precompile__) && __precompile__(true)
-
 module OIFITS
 
+export
+    OIArray,
+    OICorrelation,
+    OIDataBlock,
+    OIMaster,
+    OIPolarization,
+    OISpectrum,
+    OIT3,
+    OITarget,
+    OIVis,
+    OIVis2,
+    OIWavelength
+
 import Base: getindex, setindex!, haskey, keys, show
+using Base: IteratorSize, IteratorEltype
 
 using FITSIO
 using FITSIO.Libcfitsio

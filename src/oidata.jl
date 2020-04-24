@@ -5,9 +5,6 @@
 #
 #------------------------------------------------------------------------------
 
-###############
-# BASIC TYPES #
-###############
 
 # Conversion to integer(s) of type `Int`.
 to_integer(x::Int) = x
@@ -116,17 +113,14 @@ is_complex(::Complex) = true
 is_complex(::Array{T}) where {T<:Complex} = true
 
 
-#################
-# OI-FITS TYPES #
-#################
+"""
+    contents(obj)
+
+yields the contents of data-block or master `obj`.
 
 """
-    contents(db)
-
-yields the contents of data-block `db`.
-
-"""
-contents(db::OIDataBlock) = getfield(db, :contents)
+contents(obj::OIDataBlock) = getfield(obj, :contents)
+contents(obj::OIMaster) = getfield(obj, :all)
 
 """
     is_attached(db)
@@ -136,39 +130,140 @@ yields whether data-block `db` is attached to a master structure.
 """
 is_attached(db::OIDataBlock) = getfield(db, :attached)
 
+#------------------------------------------------------------------------------
+# INDEXING
+
 # Extend getproperty/setproperty! to implement consistent db.field syntax.  The
 # behavior depends on the type of data-block.
-Base.getproperty(db::OIDataBlock, sym::Symbol) =
-    (sym == :extname ? get_extname(db) :
-     getindex(contents(db), sym))
-Base.setproperty!(db::OIDataBlock, sym::Symbol, val) =
+Base.getproperty(obj::OIDataBlock, sym::Symbol) =
+    (sym == :extname ? get_extname(obj) :
+     getindex(obj, sym))
+Base.setproperty!(obj::OIDataBlock, sym::Symbol, val) =
     (sym == :extname ? read_only_field(sym) :
-     setindex!(contents(db), val, sym))
+     setindex!(obj, val, sym))
 
-Base.getproperty(db::OIPolarization, sym::Symbol) =
-    (sym == :array   ? getfield(db, :arr) :
-     sym == :extname ? get_extname(db) :
-     getindex(contents(db), sym))
-Base.setproperty!(db::OIPolarization, sym::Symbol, val) =
-    (sym == :array ? setfield!(db, :arr, val) :
+Base.getproperty(obj::OIPolarization, sym::Symbol) =
+    (sym == :array   ? getfield(obj, :arr) :
+     sym == :extname ? get_extname(obj) :
+     getindex(obj, sym))
+Base.setproperty!(obj::OIPolarization, sym::Symbol, val) =
+    (sym == :array ? setfield!(obj, :arr, val) :
      sym == :extname ? read_only_field(sym) :
-     setindex!(contents(db), sym, val))
+     setindex!(obj, sym, val))
 
-Base.getproperty(db::Union{OIVis,OIVis2,OIT3,OISpectrum}, sym::Symbol) =
-    (sym == :array   ? getfield(db, :arr) :
-     sym == :instr   ? getfield(db, :ins) :
-     sym == :correl  ? getfield(db, :corr) :
-     sym == :extname ? get_extname(db) :
-     getindex(contents(db), sym))
-Base.setproperty!(db::Union{OIVis,OIVis2,OIT3,OISpectrum}, sym::Symbol, val) =
-    (sym == :array   ? setfield!(db, :arr, val) :
-     sym == :instr   ? setfield!(db, :ins, val) :
-     sym == :correl  ? setfield!(db, :corr, val) :
+Base.getproperty(obj::Union{OIVis,OIVis2,OIT3,OISpectrum}, sym::Symbol) =
+    (sym == :array   ? getfield(obj, :arr) :
+     sym == :instr   ? getfield(obj, :ins) :
+     sym == :correl  ? getfield(obj, :corr) :
+     sym == :extname ? get_extname(obj) :
+     getindex(obj, sym))
+Base.setproperty!(obj::Union{OIVis,OIVis2,OIT3,OISpectrum}, sym::Symbol, val) =
+    (sym == :array   ? setfield!(obj, :arr, val) :
+     sym == :instr   ? setfield!(obj, :ins, val) :
+     sym == :correl  ? setfield!(obj, :corr, val) :
      sym == :extname ? read_only_field(sym) :
-     setindex!(contents(db), sym, val))
+     setindex!(obj, sym, val))
+
+Base.getproperty(obj::OIMaster, sym::Symbol) =
+    (sym == :array   ? getfield(obj, :arr) :
+     sym == :instr   ? getfield(obj, :ins) :
+     sym == :correl  ? getfield(obj, :corr) :
+     sym == :target  ? getfield(obj, :tgt) :
+     unknown_field(sym))
+Base.setproperty!(obj::OIMaster, sym::Symbol, val) =
+    read_only_field(sym)
 
 @noinline read_only_field(name::Union{AbstractString,Symbol}) =
     error("field `", name, "` is read-only")
+
+@noinline unknown_field(name::Union{AbstractString,Symbol}) =
+    error("unknown field `", name, "`")
+
+# Make OIMaster usable as an interator and as a vector of data-blocks.
+Base.length(obj::OIMaster) = length(contents(obj))
+Base.size(obj::OIMaster) = (length(obj),)
+Base.IndexStyle(::Type{<:OIMaster}) = IndexLinear()
+Base.getindex(obj::OIMaster, i::Integer) =
+    getindex(contents(obj), i)
+Base.iterate(obj::OIMaster) = iterate(contents(obj))
+Base.iterate(obj::OIMaster, state) = iterate(contents(obj), state)
+# FIXME: Base.IteratorSize(::Type{<:OIMaster}) = IteratorSize(Vector{OIDataBlock})
+# FIXME: Base.IteratorEltype(::Type{<:OIMaster}) = IteratorEltype(Vector{OIDataBlock})
+
+# OIDataBlock can be indexed by the name (either as a string or as a
+# symbol) of the field and can be used as an iterator.
+
+Base.length(obj::OIDataBlock) = length(contents(obj))
+
+Base.iterate(obj::OIDataBlock) = iterate(contents(obj))
+Base.iterate(obj::OIDataBlock, state) = iterate(contents(obj), state)
+
+Base.IteratorSize(::Type{<:OIDataBlock}) = IteratorSize(OIContents)
+Base.IteratorEltype(::Type{<:OIDataBlock}) = IteratorEltype(OIContents)
+
+Base.getindex(obj::OIDataBlock, key::Symbol) = get(obj, key, nothing)
+Base.getindex(obj::OIDataBlock, key::AbstractString) =
+    getindex(obj, Symbol(key))
+
+Base.setindex!(obj::OIDataBlock, val, key::Symbol) =
+    setindex!(contents(obj), val, key)
+Base.setindex!(obj::OIDataBlock, val, key::AbstractString) =
+    setindex!(obj, val, Symbol(key))
+
+Base.haskey(obj::OIDataBlock, key::Symbol) = haskey(contents(obj), key)
+Base.haskey(obj::OIDataBlock, key::AbstractString) = haskey(obj, Symbol(key))
+Base.haskey(obj::OIDataBlock, key) = false
+
+Base.get(obj::OIDataBlock, key::Symbol, def) = get(contents(obj), key, def)
+Base.get(obj::OIDataBlock, key::AbstractString, def) =
+    get(obj, Symbol(key), def)
+
+Base.get(f::Function, obj::OIDataBlock, key::Symbol) = get(f, contents(obj), key)
+Base.get(f::Function, obj::OIDataBlock, key::AbstractString) =
+    get(f, obj, Symbol(key))
+
+Base.get!(obj::OIDataBlock, key::Symbol, def) = get!(contents(obj), key, def)
+Base.get!(obj::OIDataBlock, key::AbstractString, def) =
+    get!(obj, Symbol(key), def)
+
+Base.get!(f::Function, obj::OIDataBlock, key::Symbol) =
+    get!(f, contents(obj), key)
+Base.get!(f::Function, obj::OIDataBlock, key::AbstractString) =
+    get!(f, obj, Symbol(key))
+
+Base.keys(obj::OIDataBlock) = keys(contents(obj))
+Base.values(obj::OIDataBlock) = values(contents(obj))
+
+Base.getkey(obj::OIDataBlock, key::Symbol, def) =
+    getkey(contents(obj), key, def)
+Base.getkey(obj::OIDataBlock, key::AbstractString, def) =
+    getkey(obj, Symbol(key), def)
+
+Base.delete!(obj::OIDataBlock, key::Symbol) = delete!(contents(obj), key)
+Base.delete!(obj::OIDataBlock, key::AbstractString) = delete!(obj, Symbol(key))
+
+Base.pop!(obj::OIDataBlock, key::Symbol) = pop!(obj, key, nothing)
+Base.pop!(obj::OIDataBlock, key::AbstractString) = pop!(obj, Symbol(key))
+
+Base.pop!(obj::OIDataBlock, key::Symbol, def) = pop!(contents(obj), key, def)
+Base.pop!(obj::OIDataBlock, key::AbstractString, def) =
+    pop!(obj, Symbol(key), def)
+
+Base.pairs(obj::OIDataBlock) = pairs(contents(obj))
+Base.pairs(sty::IndexStyle, obj::OIDataBlock) = pairs(sty, contents(obj))
+
+Base.merge(obj::OIDataBlock, others::AbstractDict...) =
+    OIDataBlock(merge(contents(obj), others...), nothing)
+Base.merge!(obj::OIDataBlock, others::AbstractDict...) =
+    (merge!(contents(obj), others...); obj)
+
+Base.sizehint!(obj::OIDataBlock, n) = (sizehint!(contents(obj), n); obj)
+
+Base.keytype(::Type{<:OIDataBlock}) = keytype(OIContents)
+
+Base.valtype(::Type{<:OIDataBlock}) = valtype(OIContents)
+
+#------------------------------------------------------------------------------
 
 # Correspondance between OI-FITS data-block names and Julia types.
 const _DATABLOCKS = Dict("OI_TARGET"     => OITarget,
@@ -182,24 +277,25 @@ const _DATABLOCKS = Dict("OI_TARGET"     => OITarget,
                          "OI_INSPOL"     => OIPolarization)
 
 """
-    get_oitype(extname) -> T
+    OIFITS.get_datablock_type(extname) -> T
 
-yields the data-block type `T` associated to the OI-FITS extension `extname`.
+yields the data-block type `T <: OIDataBlock` associated to the OI-FITS
+extension `extname`.
 
 """
-get_oitype(extname::Symbol) =
-    (extname == :OI_TARGET     ? OITarget       :
-     extname == :OI_WAVELENGTH ? OIWavelength   :
-     extname == :OI_ARRAY      ? OIArray        :
-     extname == :OI_VIS        ? OIVis          :
-     extname == :OI_VIS2       ? OIVis2         :
-     extname == :OI_T3         ? OIT3           :
-     extname == :OI_SPECTRUM   ? OISpectrum     :
-     extname == :OI_CORR       ? OICorrelation  :
-     extname == :OI_INSPOL     ? OIPolarization :
+get_datablock_type(extname::Symbol) =
+    (extname === :OI_TARGET     ? OITarget       :
+     extname === :OI_WAVELENGTH ? OIWavelength   :
+     extname === :OI_ARRAY      ? OIArray        :
+     extname === :OI_VIS        ? OIVis          :
+     extname === :OI_VIS2       ? OIVis2         :
+     extname === :OI_T3         ? OIT3           :
+     extname === :OI_SPECTRUM   ? OISpectrum     :
+     extname === :OI_CORR       ? OICorrelation  :
+     extname === :OI_INSPOL     ? OIPolarization :
      bad_extname(extname))
 
-get_oitype(extname::AbstractString) =
+get_datablock_type(extname::AbstractString) =
     (extname == "OI_TARGET"     ? OITarget       :
      extname == "OI_WAVELENGTH" ? OIWavelength   :
      extname == "OI_ARRAY"      ? OIArray        :
@@ -216,11 +312,12 @@ get_oitype(extname::AbstractString) =
 
 
 """
-    get_extname(db) -> str
+    OIFITS.get_extname(arg) -> str
 
-yields the FITS extension name of an OI-FITS data-block `db`.  Argument can
-also be a sub-type of `OIDataBlock` or an instance of such a sub-type or a FITS
-header instance.
+yields the FITS extension name of an OI-FITS data-block corresponding to `arg`.
+Argument can be an OI-FITS data-block instance, an OI-FITS data-block type, or
+a FITS Header Data Unit.  If `arg` is an OI-FITS data-block instance,
+`arg.extname` yields the same result.
 
 """
 get_extname(::T) where {T<:OIDataBlock} = get_extname(T)
@@ -233,18 +330,9 @@ get_extname(::Type{OIT3})           = "OI_T3"
 get_extname(::Type{OISpectrum})     = "OI_SPECTRUM"
 get_extname(::Type{OICorrelation})  = "OI_CORR"
 get_extname(::Type{OIPolarization}) = "OI_INSPOL"
-
 get_extname(hdr::FITSHeader) =
-    (get_hdutype(hdr) == :binary_table ?
-     fixname(get_string(hdr, "EXTNAME", "")) : "")
-
-# OIDataBlock can be indexed by the name (either as a string or as a
-# symbol) of the field.
-getindex(db::OIDataBlock, key::Symbol) = get(contents(db), key, nothing)
-getindex(db::OIDataBlock, key::AbstractString) = getindex(db, Symbol(key))
-haskey(db::OIDataBlock, key::Symbol) = haskey(contents(db), key)
-haskey(db::OIDataBlock, key::AbstractString) = haskey(contents(db), Symbol(key))
-keys(db::OIDataBlock) = keys(contents(db))
+    (get_hdu_type(hdr) !== :binary_table ? "" :
+     fixname(get_string(hdr, "EXTNAME", "")))
 
 function show(io::IO, db::OITarget)
     print(io, "OI_TARGET: ")
@@ -349,8 +437,8 @@ function show(io::IO, db::OIT3)
 end
 
 function show(io::IO, master::OIMaster)
-    print(io, "OI_MASTER: (", length(master.all), " data-block(s))")
-    for db in master.all
+    print(io, "OI_MASTER: (", length(master), " data-block(s))")
+    for db in master
         print(io, "\n    ")
         show(io, db)
     end
@@ -547,7 +635,7 @@ for (func, name) in ((:new_target,     "OI_TARGET"),
                        revn::Integer = default_revision(), kwds...)
             db = build_datablock($name, revn, kwds)
             if master != nothing
-                attach!(master, db)
+                push!(master, db)
             end
             return db
         end
@@ -679,16 +767,15 @@ end
 # MANAGING THE DATABLOCK CONTAINER (THE "MASTER") #
 ###################################################
 
-# Letter case and trailing spaces are insignificant according to FITS
-# conventions.
+"""
+   fixname(str)
+
+converts string `str` to uppercase letters and removes trailing spaces.  This
+is useful to compare names according to FITS conventions that letter case and
+trailing spaces are insignificant
+
+"""
 fixname(name::AbstractString) = to_string(uppercase(rstrip(name)))
-
-# OIDataBlock and OIMaster can be used as iterators.
-Base.iterate(db::OIDataBlock) = iterate(contents(db))
-Base.iterate(db::OIDataBlock, state) = iterate(contents(db), state)
-
-Base.iterate(mst::OIMaster) = iterate(mst.all)
-Base.iterate(mst::OIMaster, state) = iterate(mst.all, state)
 
 function select(master::OIMaster, args::AbstractString...)
     datablocks = Array{OIDataBlock}(undef, 0)
@@ -715,7 +802,7 @@ Assuming `tgt` is an instance of `OITarget`, then:
 yields the "TARGET" column of `tgt` which is an array of target names.
 
 """
-get_target(master::OIMaster) = getfield(update!(master), :tgt)
+get_target(master::OIMaster) = getfield(master, :tgt)
 
 
 """
@@ -735,7 +822,7 @@ yields corresponding instance of `OIArray` if any, `nothing` otherwise.
 
 """
 function get_array(master::OIMaster, arrname::AbstractString)
-    get(get_array(update!(master)), fixname(arrname), nothing)
+    get(get_array(master), fixname(arrname), nothing)
 end
 get_array(db::OIDataBlock) = nothing
 get_array(db::OIArray) = db
@@ -758,7 +845,7 @@ yields corresponding instance of `OIWavelength` if any, `nothing` otherwise.
 
 """
 function get_instrument(master::OIMaster, insname::AbstractString)
-    get(get_instrument(update!(master)), fixname(insname), nothing)
+    get(get_instrument(master), fixname(insname), nothing)
 end
 get_instrument(db::OIDataBlock) = nothing
 get_instrument(db::OIWavelength) = db
@@ -787,7 +874,7 @@ Assuming `mst` is an instance of `OIMaster`, then:
 yields the names of the interferometric arrays defined in `mst`.
 
 """
-get_arrays(master::OIMaster) = collect(keys(update!(master).arr))
+get_arrays(master::OIMaster) = collect(keys(master.array))
 
 """
 
@@ -798,90 +885,147 @@ Assuming `mst` is an instance of `OIMaster`, then:
 yields the names of the instruments defined in `mst`.
 
 """
-get_instruments(master::OIMaster) = collect(keys(update!(master).ins))
+get_instruments(master::OIMaster) = collect(keys(master.instr))
 
-function new_master(datablocks::OIDataBlock...)
-    master = OIMaster()
-    for db in datablocks
-        attach!(master, db)
-    end
-    return update!(master)
+new_master(datablocks::OIDataBlock...) = new_master(datablocks)
+function new_master(datablocks::Union{AbstractVector{<:OIDataBlock},
+                                      Tuple{Vararg{OIDataBlock}}})
+    push!(OIMaster(), datablocks)
 end
 
-function new_master(datablocks::Array{OIDataBlock})
-    master = OIMaster()
-    for db in datablocks
-        attach!(master, db)
+Base.push!(master::OIMaster) = master
+
+Base.push!(master::OIMaster, datablocks::OIDataBlock...) =
+    push!(master, datablocks)
+
+function Base.push!(master::OIMaster,
+                    data::Union{AbstractVector{<:OIDataBlock},
+                                Tuple{Vararg{OIDataBlock}}})
+    # First push each new data-block.  Second, update links of all stored
+    # data-blocks.
+    for i in eachindex(data)
+        _push!(master, data[i])
     end
-    return update!(master)
+    _update_links!(master)
 end
 
-function attach!(master::OIMaster, db::OIDataBlock)
+# Just push one data-block.
+function _push!(master::OIMaster, db::OIDataBlock)
     is_attached(db) && error("data-block already attached")
     if isa(db, OITarget)
-        if master.tgt != nothing
+        getfield(master, :tgt) == nothing ||
             error("only one OI_TARGET data-block can be attached")
-        end
-        master.tgt = db
+        setfield!(master, :tgt, db)
     elseif isa(db, OIWavelength)
-        insname = fixname(db[:insname])
-        haskey(master.ins, insname) && error("master already have an ",
-                                             "OI_WAVELENGTH data-block with ",
-                                             "INSNAME=\"", insname, "\"")
-        master.ins[insname] = db
+        insname = fixname(db.insname)
+        ins = getfield(master, :ins)
+        haskey(ins, insname) && error("master already have an ",
+                                      "OI_WAVELENGTH data-block with ",
+                                      "INSNAME=\"", insname, "\"")
+        ins[insname] = db
     elseif isa(db, OIArray)
-        arrname = fixname(db[:arrname])
-        haskey(master.arr, arrname) && error("master already have an ",
+        arrname = fixname(db.arrname)
+        arr = getfield(master, :arr)
+        haskey(arr, arrname) && error("master already have an ",
                                              "OI_ARRAY data-block with ",
                                              "ARRNAME=\"", arrname, "\"")
-        master.arr[arrname] = db
+        arr[arrname] = db
     elseif isa(db, OICorrelation)
-        corrname = fixname(db[:corrname])
-        haskey(master.corr, corrname) && error("master already have an ",
-                                               "OI_CORR data-block with ",
-                                               "CORRNAME=\"", corrname, "\"")
-        master.corr[corrname] = db
+        corrname = fixname(db.corrname)
+        corr = getfield(master, :corr)
+        haskey(corr, corrname) && error("master already have an ",
+                                        "OI_CORR data-block with ",
+                                        "CORRNAME=\"", corrname, "\"")
+        corr[corrname] = db
     end
-    push!(master.all, db)
-    master.update_pending = true
+    push!(contents(master), db)
     setfield!(db, :attached, true)
+end
+
+function _update_links!(master::OIMaster)
+    for i in eachindex(master)
+        _update_links!(master, master[i])
+    end
+    master
+end
+
+_update_links!(master::OIMaster, db::OITarget) = nothing
+_update_links!(master::OIMaster, db::OIArray) = nothing
+_update_links!(master::OIMaster, db::OICorrelation) = nothing
+_update_links!(master::OIMaster, db::OIWavelength) = nothing
+_update_links!(master::OIMaster, db::OIPolarization) = _link_array!(master, db)
+function _update_links!(master::OIMaster,
+                        db::Union{OIVis,OIVis2,OIT3,OISpectrum})
+    _link_array!(master, db)
+    _link_instr!(master, db)
+    _link_correl!(master, db)
+end
+
+function _link_array!(master::OIMaster, db::OIDataBlock)
+    if db.arrname !== nothing
+        setfield!(db, :arr, get(master.array, db.arrname, nothing))
+    end
+end
+
+function _link_instr!(master::OIMaster, db::OIDataBlock)
+    if db.insname !== nothing
+        setfield!(db, :ins, get(master.instr, db.insname, nothing))
+    end
+end
+
+function _link_correl!(master::OIMaster, db::OIDataBlock)
+    if db.corrname !== nothing
+        setfield!(db, :corr, get(master.correl, db.corrname, nothing))
+    end
+end
+
+"""
+    check_structure(obj)
+
+check the consistency to the structure of the OI-FITS master or OI-FITS
+data-block `obj`.
+
+"""
+function check_structure(master::OIMaster)
+    master.target === nothing && error("missing mandatory OI_TARGET extension")
+    for i in eachindex(master)
+        check_structure(master[i])
+    end
+end
+
+check_structure(db::OITarget) = nothing
+check_structure(db::OIArray) = nothing
+check_structure(db::OICorrelation) = nothing
+check_structure(db::OIWavelength) = nothing
+
+function check_structure(db::OIPolarization)
+    _check_array(db)
     nothing
 end
 
-function update!(master::OIMaster)
-    if master.update_pending
-        if master.tgt === nothing
-            error("missing mandatory OI_TARGET data-block")
-        end
-        for db in master.all
-            if (haskey(db, :insname)
-                && ! isa(db, Union{OIWavelength,OIPolarization}))
-                insname = fixname(db[:insname])
-                ins = get(master.ins, insname, nothing)
-                ins === nothing && error("OI_WAVELENGTH data-block with ",
-                                         "INSNAME=\"", insname,
-                                         "\" not found in master")
-                setfield!(db, :ins, ins)
-            end
-            if haskey(db, :arrname) && ! isa(db, OIArray)
-                arrname = fixname(db[:arrname])
-                arr = get(master.arr, arrname, nothing)
-                arr === nothing && warn("OI_ARRAY data-block with ARRNAME=\"",
-                                        arrname, "\" not found in master")
-                setfield!(db, :arr, arr)
-            end
-            if haskey(db, :corrname) && ! isa(db, OICorrelation)
-                corrname = fixname(db[:corrname])
-                corr = get(master.corr, corrname, nothing)
-                corr === nothing && warn("OI_CORR data-block with ",
-                                         "CORRNAME=\"", corrname,
-                                         "\" not found in master")
-                setfield!(db, :corr, corr)
-            end
-        end
-        master.update_pending = false
-    end
-    return master
+function check_structure(db::Union{OIVis,OIVis2,OIT3,OISpectrum})
+    _check_array(db)
+    _check_instr(db)
+    _check_correl(db)
+    nothing
+end
+
+function _check_array(db::OIDataBlock)
+    db.arrname !== nothing && db.array === nothing &&
+        warn("OI_ARRAY data-block with ARRNAME=\"",
+             db.arrname, "\" not found in master")
+end
+
+function _check_instr(db::OIDataBlock)
+    db.instr === nothing &&
+        error("OI_WAVELENGTH data-block with INSNAME=\"",
+              db.insname, "\" not found in master")
+end
+
+function _check_correl(db::OIDataBlock)
+    db.corrname !== nothing && db.correl === nothing &&
+        warn("OI_CORR data-block with CORRNAME=\"",
+             db.corrname, "\" not found in master")
 end
 
 """
@@ -933,7 +1077,7 @@ function select_target(db::OITarget, target::Integer)
     data = Dict{Symbol,Any}()
     for (key, val) in contents(db)
         spec = get(defn.spec, key, nothing)
-        spec != nothing || continue
+        spec === nothing && continue
         if spec.iskeyword
             data[key] = db[key]
         else
@@ -980,13 +1124,14 @@ function select_target(db::OIData, target::Integer)
     return build_datablock(name, revn, data)
 end
 
-function select_target(master::OIMaster, target::Integer)
-    result = OIMaster()
-    for db in master
+function select_target(src::OIMaster, target::Integer)
+    dst = OIMaster()
+    for db in src
         sel = select_target(db, target)
-        sel != nothing && attach!(result, sel)
+        sel === nothing || _push!(dst, sel)
     end
-    return update!(result)
+    length(dst) > 0 && _update_links!(dst)
+    return dst
 end
 
 function select_target(master::OIMaster, target::AbstractString)
@@ -1045,7 +1190,7 @@ function select_wavelength(db::Union{OIWavelength,OIVis,OIVis2,OIT3,OISpectrum},
     iswave = (typeof(db) == OIWavelength)
     for (key, val) in contents(db)
         spec = get(defn.spec, key, nothing)
-        spec != nothing || continue
+        spec === nothing && continue
         if cpy || spec.iskeyword || (spec.multiplier >= 0 && ! iswave)
             data[key] = db[key]
         else
@@ -1077,7 +1222,7 @@ function select_wavelength(master::OIMaster, selector::Function)
     result = OIMaster()
     for db in master
         sel = select_wavelength(db, selector)
-        sel != nothing && attach!(result, sel)
+        sel === nothing || _push!(result, sel)
     end
-    return update!(result)
+    return _update_links!(result)
 end

@@ -8,9 +8,11 @@
 using FITSIO
 using FITSIO.Libcfitsio
 
-# Read a column from a table (this is low-level API, it is expected that the
-# FITS file is open, this must be done by the caller with fits_assert_open).
+# Read a column from an OI-FITS table.
 function read_column(ff::FITSFile, colnum::Integer, multiplier::Integer)
+    # Minimal check.
+    fits_assert_open(ff)
+
     # Get the type and the dimensions of the data stored in the column.
     (typecode, repcnt, width) = fits_get_eqcoltype(ff, colnum)
     dims = fits_read_tdim(ff, colnum)
@@ -50,8 +52,14 @@ function read_column(ff::FITSFile, colnum::Integer, multiplier::Integer)
     end
 end
 
-const _COMMENT = Set(["HISTORY", "COMMENT"])
+"""
+    OIFITS.get_value(hdr, key[, def])
 
+yields the value of keyword `key` in FITS header `hdr`.  If `key` is not found
+in `hdr`, the default value `def` is returned if it is specified, otherwise an
+error is thrown.
+
+"""
 function get_value(hdr::FITSHeader, key::AbstractString)
     haskey(hdr, key) || error("missing FITS keyword \"", key, "\"")
     hdr[key]
@@ -61,6 +69,14 @@ function get_value(hdr::FITSHeader, key::AbstractString, def)
     haskey(hdr, key) ? hdr[key] : def
 end
 
+"""
+    OIFITS.get_comment(hdr, key[, def])
+
+yields the comment of keyword `key` in FITS header `hdr`.  If `key` is not
+found in `hdr`, the default value `def` is returned if it is specified,
+otherwise an error is thrown.
+
+"""
 function get_comment(hdr::FITSHeader, key::AbstractString)
     haskey(hdr, key) || error("missing FITS keyword \"", key, "\"")
     FITSIO.get_comment(hdr, key)
@@ -70,8 +86,56 @@ function get_comment(hdr::FITSHeader, key::AbstractString, def::AbstractString)
     haskey(hdr, key) ? get_comment(hdr, key) : def
 end
 
+"""
+    OIFITS.get_integer(hdr, key[, def])
+
+yields the value of keyword `key` in FITS header `hdr` as an integer.  If `key`
+is not found in `hdr`, the default value `def` is returned if it is specified,
+otherwise an error is thrown.  If `key` is found, it is checked that it can be
+converted into an `Int` which is returned.  The possible types of the result
+are thus `Int` (if `key` is found) or `typeof(def)` (if `key` not found and
+`def` specified).
+
+""" get_integer
+
+"""
+    OIFITS.get_float(hdr, key[, def])
+
+yields the value of keyword `key` in FITS header `hdr` as a floating-point.  If
+`key` is not found in `hdr`, the default value `def` is returned if it is
+specified, otherwise an error is thrown.  If `key` is found, it is checked that
+it can be converted into a `Float64` which is returned.  The possible types of
+the result are thus `Float64` (if `key` is found) or `typeof(def)` (if `key`
+not found and `def` specified).
+
+""" get_float
+
+"""
+    OIFITS.get_logical(hdr, key[, def])
+
+yields the value of keyword `key` in FITS header `hdr` as a boolean.  If `key`
+is not found in `hdr`, the default value `def` is returned if it is specified,
+otherwise an error is thrown.  If `key` is found, it is checked that it can be
+converted into a `Bool` which is returned.  The possible types of the result
+are thus `Bool` (if `key` is found) or `typeof(def)` (if `key` not found and
+`def` specified).
+
+""" get_logical
+
+"""
+    OIFITS.get_string(hdr, key[, def])
+
+yields the value of keyword `key` in FITS header `hdr` as a string.  If `key`
+is not found in `hdr`, the default value `def` is returned if it is specified,
+otherwise an error is thrown.  If `key` is found, it is checked that it can be
+converted into a `String` which is returned.  The possible types of the result
+are thus `String` (if `key` is found) or `typeof(def)` (if `key` not found and
+`def` specified).
+
+""" get_string
+
 for (fn, T, S) in ((:get_integer, Integer,        Int),
-                   (:get_real,    Real,           Float64),
+                   (:get_float,   Real,           Float64),
                    (:get_logical, Bool,           Bool),
                    (:get_string,  AbstractString, AbstractString))
     if S == T
@@ -105,15 +169,33 @@ for (fn, T, S) in ((:get_integer, Integer,        Int),
     end
 end
 
-# Returns invalid result if not a valid OI-FITS data-block.
-# Unless quiet is true, print warn message.
-# Returns nothing in case of failure.
-function check_datablock(hdr::FITSHeader; quiet::Bool=false)
-    # Must be a binary table.
-    get_hdutype(hdr) == :binary_table || return nothing
+function get_file_handle(hdu::HDU)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    return hdu.fitsfile
+end
 
-    # Get extension name.
+"""
+    OIFITS.read_datablock(hdu; quiet=false)
+
+reads the OI-FITS data in FITS Header Data Units `hdu` and returns a 3-tuple
+`(extname, revn, dict)` or `nothing` if `hdu` does not contain OI-FITS data.
+The entries of the 3-tuple are the name of the FITS extension, the OI-FITS
+revision number and a dictionary of the OI-FITS keywords and columns.  This
+3-tuple can be directly provided to [`OIFITS.build_datablock`](@ref).
+
+If keyword `quiet` is `true`, no warning messages are printed.
+
+""" read_datablock
+
+# OI-FITS data-blocks are stored as FITS binary tables, hence returns nothing
+# for any other HDU type.
+read_datablock(hdu::HDU; kwds...) = nothing
+
+function read_datablock(hdu::TableHDU; quiet::Bool=false)
+    # Read the header of the binary table and check extension name.
     local extname::String
+    hdr = read_header(hdu)
     let val = get_value(hdr, "EXTNAME", nothing)
         if ! isa(val, AbstractString)
             quiet || warn(val === nothing
@@ -156,40 +238,17 @@ function check_datablock(hdr::FITSHeader; quiet::Bool=false)
         defn = val
     end
 
-    # Everything fine.
-    return (extname, revn, defn)
-end
-
-function hash_column_names(hdr::FITSHeader)
+    # So far so good, make a dictionary of the columns of the table.
     columns = Dict{String,Int}()
-    hdutype = get_hdutype(hdr)
-    if hdutype == :binary_table || hdutype == :ascii_table
-        ncols = get_integer(hdr, "TFIELDS", 0)
-        for k in 1:ncols
-            ttype = get_string(hdr, "TTYPE$k")
-            columns[fixname(ttype)] = k
-        end
+    for k in 1:get_integer(hdr, "TFIELDS", 0)
+        ttype = get_string(hdr, "TTYPE$k")
+        columns[fixname(ttype)] = k
     end
-    columns
-end
 
-function get_file_handle(hdu::HDU)
-    fits_assert_open(hdu.fitsfile)
-    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    return hdu.fitsfile
-end
-
-read_datablock(hdu::HDU; kwds...) =
-    read_datablock(hdu, read_header(hdu); kwds...)
-
-function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
+    # Read columns contents as a dictionary.
     ff = get_file_handle(hdu)
-    temp = check_datablock(hdr, quiet=quiet)
-    temp === nothing && return nothing
-    (extname, revn, defn) = temp
-    columns = hash_column_names(hdr)
     nerrs = 0
-    data = Dict{Symbol,Any}(:revn => revn)
+    dict = Dict{Symbol,Any}(:revn => revn)
     for field in defn.fields
         spec = defn.spec[field]
         name = spec.name
@@ -202,7 +261,7 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
                         nerrs += 1
                     end
                 else
-                    data[field] = val
+                    dict[field] = val
                 end
             end
         else
@@ -214,30 +273,39 @@ function read_datablock(hdu::HDU, hdr::FITSHeader; quiet::Bool=false)
                     nerrs += 1
                 end
             else
-                data[field] = read_column(ff, colnum, spec.multiplier)
+                dict[field] = read_column(ff, colnum, spec.multiplier)
             end
         end
     end
     nerrs > 0 && error("bad OI-FITS extension ", extname)
-    return build_datablock(extname, revn, data)
+    return (extname, revn, dict)
 end
+
+"""
+    OIFITS.load(f)
+
+reads all OI-FITS data-blocks from FITS file `f` and return an instance of
+`OIMaster`.  Argument `f` can be a file name of a FITS handle.  If keyword
+`quiet` is `true`, no warning messages are printed.
+
+""" load
 
 load(filename::AbstractString; kwds...) =
     load(FITS(filename, "r"); kwds...)
 
 function load(f::FITS; quiet::Bool=true)
-    master = new_master()
-
     # Read all contents, skipping first HDU.
+    master = new_master()
     for hdu in 2:length(f)
-        db = read_datablock(f[hdu], quiet=quiet)
-        if db === nothing
-            quiet || println("skipping HDU ", hdu, " (no OI-FITS data)")
-            continue
+        let dat = read_datablock(f[hdu], quiet=quiet)
+            if dat === nothing
+                quiet || println("skipping HDU ", hdu, " (no OI-FITS data)")
+            else
+                (extname, revn, dict) = dat
+                quiet || println("reading OI-FITS ", extname, " in HDU ", hdu)
+                _push!(master, build_datablock(extname, revn, dict))
+            end
         end
-        quiet || println("reading OI-FITS ", get_extname(db), " in HDU ", hdu)
-        attach!(master, db)
     end
-    update!(master)
-    return master
+    _update_links!(master)
 end

@@ -136,8 +136,8 @@ end
 
 However, beware that the *master* object storing OI-FITS data-blocks is not a
 simple vector, it does many things *under the hood* to maintain the consistency
-of the structure (for instance links betwwen different data-blocks).
-In order to append a data-block to ones already stored, call:
+of the structure (for instance links between different data-blocks).  In order
+to append data-blocks to the ones already stored, call:
 
 ```julia
 push!(master, db)
@@ -234,30 +234,26 @@ master = OIFITS.new_master()
 Then, call:
 
 ```julia
-OIFITS.attach(master, db)
+push!(master, db)
 ```
 
 to attach all data-block `db` to the OI-FITS container (in any order).
-Finally, you must call:
+
+To read OI-FITS data from a Header Data Units (HDU) of a FITS file, call:
 
 ```julia
-OIFITS.update(master)
+dat = OIFITS.read_datablock(hdu)
 ```
 
-to update internal information such as links between data-blocks with
-interferometric data and the related instrument (`OI_WAVELENGTH`
-data-block) and array of stations (`OI_ARRAY` data-block).  If you do not
-do that, then applying some accessors may not work, *e.g.*
-`OIFITS.get_eff_wave()` on a data-blocks with interferometric data.
-
-To read an OI-FITS data-block from the HDU of a FITS file:
+where `hdu` is a FITS HDU.  The result may be `nothing` if the current HDU does
+not contain an OI-FITS data-block; otherwise the result is a 3-tuple `(extname,
+revn, dict)` with the name of the FITS extension, the OI-FITS revision number
+and a dictionary of the OI-FITS keywords and columns. These can be directly
+provided to `OIFITS.build_datablock` to build an instance of `OIDataBlock`:
 
 ```julia
-db = OIFITS.read_datablock(hdu)
+db = OIFITS.build_datablock(extname, revn, dict)
 ```
-
-where `hdu` is a FITS `HDU` handle.  The result may be `nothing` if the
-current HDU does not contain an OI-FITS data-block.
 
 
 ## Miscellaneous functions
@@ -316,7 +312,7 @@ methods are available:
 ```julia
 OIFITS.get_logical(hdr, "SIMPLE")
 OIFITS.get_integer(hdr, "BITPIX")
-OIFITS.get_real(hdr, "BSCALE")
+OIFITS.get_float(hdr, "BSCALE")
 OIFITS.get_string(hdr, "XTENSION")
 ```
 
@@ -325,20 +321,22 @@ checking and conversion if allowed.  It is also possible to supply a
 default value to return if the keyword is not present:
 
 ```julia
-bscale = OIFITS.get_real(hdr, "BSCALE", 1.0)
-bzero = OIFITS.get_real(hdr, "BZERO", 0.0)
+bscale = OIFITS.get_float(hdr, "BSCALE", 1.0)
+bzero = OIFITS.get_float(hdr, "BZERO", 0.0)
 xtension = OIFITS.get_string(hdr, "XTENSION", "IMAGE")
 ```
 
 The function:
 
 ```julia
-OIFITS.get_hdutype(hdr)
+OIFITS.get_hdu_type(hdr)
 ```
 
-returns the HDU type as a Symbol, `:image_hdu` for an image, `:ascii_table`
-for an ASCII table, `:binary_table` for a binary table, and `:unknown`
-otherwise.
+returns the HDU type as a Symbol, `:image_hdu` for an image, `:ascii_table` for
+an ASCII table, `:binary_table` for a binary table, and `:unknown` otherwise.
+The returned symbol should match the result of the low level method
+`FITSIO.Libcfitsio.fits_get_hdu_type`.
+
 
 For a FITS table, the function:
 

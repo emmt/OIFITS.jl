@@ -27,12 +27,32 @@ function tryload(dir, file)
     end
 end
 
-@testset "OIFITS.load" begin
+@testset "Load OI-FITS" begin
     for file in files
         @test tryload(dir, file) == true
     end
 end
 
+@testset "Interface" begin
+    master = OIFITS.load(joinpath(dir, first(files)))
+    @test eltype(master) <: OIDataBlock
+    @test size(master) == (length(master),)
+    @test axes(master) === (Base.OneTo(length(master)),)
+    @test eachindex(master) === Base.OneTo(length(master))
+    for (key,val) in master.array
+        @test val.extname == "OI_ARRAY"
+    end
+    for (key,val) in master.instr
+        @test val.extname == "OI_WAVELENGTH"
+        @test typeof(val.eff_wave) <: Vector
+    end
+    for (key,val) in master.correl
+        @test val.extname == "OI_CORREL"
+    end
+    #@test master.instr[first(master.instr)].extname == "OI_WAVELENGTH"
+    @test master.target.extname == "OI_TARGET"
 end
+
+end # module
 
 nothing
