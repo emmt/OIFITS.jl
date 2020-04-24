@@ -26,12 +26,12 @@ using Base: IteratorSize, IteratorEltype
 using FITSIO
 using FITSIO.Libcfitsio
 
-import FITSIO: libcfitsio, fits_assert_ok, fits_assert_open
-import FITSIO.Libcfitsio: fits_get_errstatus
+using FITSIO: libcfitsio, fits_assert_ok, fits_assert_open
+using FITSIO.Libcfitsio: fits_get_errstatus
 
 include("types.jl")
+include("utils.jl")
 include("oidata.jl")
-include("bitpix.jl")
 include("misc.jl")
 include("oifile.jl")
 include("oiformat1.jl")

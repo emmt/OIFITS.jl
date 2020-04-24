@@ -5,44 +5,7 @@
 #
 #------------------------------------------------------------------------------
 
-using FITSIO
-using FITSIO.Libcfitsio
-
-import FITSIO: TableHDU, ASCIITableHDU
-import Base: read
-
-
-
-"""
-   OIFITS.get_hdu_type(arg)
-
-yields the FITS Header Data Unit (HDU) type of `arg` as one of the folloing
-symbols: `:binary_table` for a binary table, `:image_hdu` for an image,
-`:ascii_table` for an ASCII table, or `:unknown` otherwise.  Argument `arg` can
-be a FITS header, a FITS HDU or the value of the XTENSION keyword.
-
-The returned symbol should match the result of the low level method
-`FITSIO.Libcfitsio.fits_get_hdu_type`.
-
-"""
-get_hdu_type(xtension::AbstractString) =
-    (xtension == "BINTABLE"   ? :binary_table :
-     xtension == "IMAGE"      ? :image_hdu    :
-     xtension == "TABLE"      ? :ascii_table  : :unknown)
-get_hdu_type(::TableHDU)      = :binary_table
-get_hdu_type(::ImageHDU)      = :image_hdu
-get_hdu_type(::ASCIITableHDU) = :ascii_table
-get_hdu_type(::HDU)           = :unknown
-function get_hdu_type(hdr::FITSHeader)
-    val = get(hdr, "XTENSION", nothing)
-    if isa(val, AbstractString)
-        return get_hdu_type(fixname(val))
-    elseif get(hdr, "SIMPLE", false) == true
-        return :image_hdu
-    else
-        return :unknown
-    end
-end
+import Base: read # FIXME:
 
 # Convert low-level handle into high level HDU type.
 function make_hdu(ff::FITSFile)
@@ -79,4 +42,5 @@ function read_table(hdu::Union{TableHDU,ASCIITableHDU})
 end
 
 # Read the entire table from disk. (High level version.)
+# FIXME: type-piracy!
 read(hdu::Union{TableHDU,ASCIITableHDU}) = read_table(hdu)

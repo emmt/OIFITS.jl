@@ -8,6 +8,7 @@ import Base: @deprecate
 @deprecate attach!(master::OIMaster, db::OIDataBlock) push!(master, db)
 @deprecate get_real(hdr::FITSHeader, key::AbstractString) get_float(hdr, key)
 @deprecate get_real(hdr::FITSHeader, key::AbstractString, def) get_float(hdr, key, def)
+@deprecate fixname fix_name
 
 # Deprecated in v0.2
 @deprecate readtable(ff::FITSFile) read_table(ff::FITSFile)

@@ -6,66 +6,6 @@
 #------------------------------------------------------------------------------
 
 
-# Conversion to boolean(s) of type `Bool`.
-to_logical(x::Bool) = x
-to_logical(x::Integer) = Bool(x)
-to_logical(x::Array{Bool}) = x
-to_logical(x::AbstractArray{<:Integer,N}) where {N} = convert(Array{Bool,N}, x)
-to_logical(x::Tuple{Vararg{Bool}}) = x
-to_logical(x::Tuple{Vararg{Integer}}) = map(to_logical, x)
-
-# Conversion to integer(s) of type `Int`.
-to_integer(x::Int) = x
-to_integer(x::Integer) = Int(x)
-to_integer(x::Array{Int}) = x
-to_integer(x::AbstractArray{<:Integer,N}) where {N} = convert(Array{Int,N}, x)
-to_integer(x::Tuple{Vararg{Int}}) = x
-to_integer(x::Tuple{Vararg{Integer}}) = map(to_integer, x)
-
-# Conversion to floating-point(s) of type `Float64`.
-to_float(x::Float64) = x
-to_float(x::Real) = Float64(x)
-to_float(x::Array{Float64}) = x
-to_float(x::AbstractArray{<:Real,N}) where {N} = convert(Array{Float64,N}, x)
-to_float(x::Tuple{Vararg{Float64}}) = x
-to_float(x::Tuple{Vararg{Real}}) = map(to_float, x)
-
-# Conversion to complex(es) of type `Complex{Float64}`.
-to_complex(x::Complex{Float64}) = x
-to_complex(x::Union{Real,Complex{<:Real}}) = convert(Complex{Float64}, x)
-to_complex(x::Array{Complex{Float64}}) = x
-to_complex(x::AbstractArray{<:Union{Real,Complex{<:Real}},N}) where {N} =
-    convert(Array{Complex{Float64},N}, x)
-to_complex(x::Tuple{Vararg{Complex{Float64}}}) = x
-to_complex(x::Tuple{Vararg{Union{Real,Complex{<:Real}}}}) = map(to_complex, x)
-
-# Conversion to a string(s) of type `String`.
-#
-# `string(x::SubString)` calls `String(x)` so the two are as
-# fast. `string(x::Symbol)` is 2-3 tiles slower than `String(x::Symbol)`.
-# Hence we call `String`, not `string` in all other cases.
-to_string(x::String) = x
-to_string(x::AbstractString) = String(x)
-to_string(x::Symbol) = String(x)
-to_string(x::Array{String}) = x
-to_string(x::AbstractArray{<:Union{<:AbstractString,Symbol},N}) where {N} =
-    convert(Array{String,N}, x)
-to_string(x::Tuple{Vararg{String}}) = x
-to_string(x::Tuple{Vararg{Union{AbstractString,Symbol}}}) = map(to_string, x)
-
-"""
-    to_fieldname(s)
-
-converts OI-FITS column name `s` into a `Symbol` that can be used as a field
-name in OI-FITS structures.
-
-"""
-to_fieldname(sym::Symbol) = sym
-function to_fieldname(name::AbstractString)
-    key = lowercase(name)
-    key == "oi_revn" ? :revn : Symbol(replace(key, r"[^a-z0-9_]" => '_'))
-end
-
 # OI-FITS files stores the following 4 different data types:
 const DTYPE_LOGICAL =  1 # for format letter 'L'
 const DTYPE_INTEGER =  2 # for format letters 'I' or 'J'
@@ -99,26 +39,6 @@ get_dtype(c::Char) =
      c == 'i' ? DTYPE_INTEGER :
      c == 'j' ? DTYPE_INTEGER :
      c == 'l' ? DTYPE_LOGICAL : DTYPE_UNKNOWN)
-
-is_logical(::Any) = false
-is_logical(::Bool) = true
-is_logical(::Array{Bool}) = true
-
-is_string(::Any) = false
-is_string(::AbstractString) = true
-is_string(::Array{T}) where {T<:AbstractString} = true
-
-is_integer(::Any) = false
-is_integer(::Integer) = true
-is_integer(::Array{T}) where {T<:Integer} = true
-
-is_float(::Any) = false
-is_float(::Real) = true
-is_float(::Array{T}) where {T<:Real} = true
-
-is_complex(::Any) = false
-is_complex(::Complex) = true
-is_complex(::Array{T}) where {T<:Complex} = true
 
 
 """
@@ -340,7 +260,7 @@ get_extname(::Type{OICorrelation})  = "OI_CORR"
 get_extname(::Type{OIPolarization}) = "OI_INSPOL"
 get_extname(hdr::FITSHeader) =
     (get_hdu_type(hdr) !== :binary_table ? "" :
-     fixname(get_string(hdr, "EXTNAME", "")))
+     fix_name(get_string(hdr, "EXTNAME", "")))
 
 function show(io::IO, db::OITarget)
     print(io, "OI_TARGET: ")
@@ -763,27 +683,10 @@ function build_datablock(extname::String, revn::Int, kwds)
     return _DATABLOCKS[extname](contents)
 end
 
-warn(args...) = message(stderr, "WARNING", :yellow, args...)
-inform(args...) = message(stderr, "INFO", :blue, args...)
-@noinline function message(io::IO, ident::String, color::Symbol, args...)
-    printstyled(io, color; bold=true, color=color)
-    printstyled(io, " ", args...; bold=false, color=color)
-end
-
 
 ###################################################
 # MANAGING THE DATABLOCK CONTAINER (THE "MASTER") #
 ###################################################
-
-"""
-   fixname(str)
-
-converts string `str` to uppercase letters and removes trailing spaces.  This
-is useful to compare names according to FITS conventions that letter case and
-trailing spaces are insignificant.
-
-"""
-fixname(name::AbstractString) = to_string(uppercase(rstrip(name)))
 
 function select(master::OIMaster, args::AbstractString...)
     datablocks = Array{OIDataBlock}(undef, 0)
@@ -830,7 +733,7 @@ yields corresponding instance of `OIArray` if any, `nothing` otherwise.
 
 """
 function get_array(master::OIMaster, arrname::AbstractString)
-    get(get_array(master), fixname(arrname), nothing)
+    get(get_array(master), fix_name(arrname), nothing)
 end
 get_array(db::OIDataBlock) = nothing
 get_array(db::OIArray) = db
@@ -853,7 +756,7 @@ yields corresponding instance of `OIWavelength` if any, `nothing` otherwise.
 
 """
 function get_instrument(master::OIMaster, insname::AbstractString)
-    get(get_instrument(master), fixname(insname), nothing)
+    get(get_instrument(master), fix_name(insname), nothing)
 end
 get_instrument(db::OIDataBlock) = nothing
 get_instrument(db::OIWavelength) = db
@@ -925,21 +828,21 @@ function _push!(master::OIMaster, db::OIDataBlock)
             error("only one OI_TARGET data-block can be attached")
         setfield!(master, :tgt, db)
     elseif isa(db, OIWavelength)
-        insname = fixname(db.insname)
+        insname = fix_name(db.insname)
         ins = getfield(master, :ins)
         haskey(ins, insname) && error("master already have an ",
                                       "OI_WAVELENGTH data-block with ",
                                       "INSNAME=\"", insname, "\"")
         ins[insname] = db
     elseif isa(db, OIArray)
-        arrname = fixname(db.arrname)
+        arrname = fix_name(db.arrname)
         arr = getfield(master, :arr)
         haskey(arr, arrname) && error("master already have an ",
                                              "OI_ARRAY data-block with ",
                                              "ARRNAME=\"", arrname, "\"")
         arr[arrname] = db
     elseif isa(db, OICorrelation)
-        corrname = fixname(db.corrname)
+        corrname = fix_name(db.corrname)
         corr = getfield(master, :corr)
         haskey(corr, corrname) && error("master already have an ",
                                         "OI_CORR data-block with ",
