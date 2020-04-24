@@ -34,8 +34,7 @@ include("utils.jl")
 include("oidata.jl")
 include("misc.jl")
 include("oifile.jl")
-include("oiformat1.jl")
-include("oiformat2.jl")
+include("formats.jl")
 include("oipost.jl") # must be *after* oifile.jl and all oiformat*.jl
 include("deprecations.jl")
 

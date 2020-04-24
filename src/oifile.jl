@@ -109,7 +109,7 @@ function read_datablock(hdu::TableHDU; quiet::Bool=false)
 
     # Get format definition.
     local defn::OIDataBlockDef
-    let val = get_def(extname, revn, nothing)
+    let val = get_definition(extname, revn, nothing)
         if val === nothing
             quiet || warn("unknown OI-FITS extension \"", extname,
                           "\" revision ", revn)

@@ -395,42 +395,42 @@ default_revision() = 2
 const _FIELDS = Dict{String,Set{Symbol}}()
 
 """
-    get_def(db)
+    OIFITS.get_definition(db)
 
 or
 
-    get_def(extname, revn = default_revision())
+    OIFITS.get_definition(extname, revn = default_revision())
 
 yield the format definition for datablock `db` of for the OI-FITS extension
 `extname` (e.g., "OI_TARGET") in revision `revn` of OI-FITS standard, throwing
 an error if not found.  The returned value is an instance of `OIDataBlockDef`.
 
-    get_def(extname, revn, def)
+    OIFITS.get_definition(extname, revn, def)
 
 is similar but returns `def` if the format is not found.
 
 """
-function get_def(extname::AbstractString, revn::Integer = default_revision())
-    val = get_def(extname, revn, nothing)
+function get_definition(extname::AbstractString, revn::Integer = default_revision())
+    val = get_definition(extname, revn, nothing)
     val === nothing && error("unknown OI-FITS extension \"", extname,
                              "\" (revision ", revn, ")")
     return val
 end
 
-get_def(extname::AbstractString, revn::Integer, def) =
+get_definition(extname::AbstractString, revn::Integer, def) =
     get(_FORMATS, _FORMATS_key(extname, revn), def)
 
-get_def(db::OIDataBlock) =
-    get_def(get_extname(db), get_revn(db))
+get_definition(db::OIDataBlock) =
+    get_definition(get_extname(db), get_revn(db))
 
 function get_descr(db::OIDataBlock)
     name = get_extname(db)
     revn = get_revn(db)
-    return (name, revn, get_def(name, revn))
+    return (name, revn, get_definition(name, revn))
 end
 
 """
-    add_def(extname, revn, defs)
+    OIFITS.define(extname, revn, defs)
 
 defines revision `revn` of the OI-FITS extension `extname`.  The format of the
 OI-FITS extension is described `defs`, a vector of strings like:
@@ -465,12 +465,12 @@ definitions, the two parts are separated by a dash line like
 
     "--------------".
 
-See also [`get_def`](@ref).
+See also [`get_definition`](@ref).
 
 """
-function add_def(extname::AbstractString,
-                 revn::Integer,
-                 tbl::Vector{<:AbstractString})
+function define(extname::AbstractString,
+                revn::Integer,
+                tbl::Vector{<:AbstractString})
     # Check OI-FITS extension name and revision number.
     (startswith(extname, "OI_") && extname == uppercase(extname) &&
      ! occursin(" ", extname)) || error("invalid OI-FITS extension name: \"",
@@ -482,8 +482,9 @@ function add_def(extname::AbstractString,
                                       " already defined")
 
     # Parse table of definitions.
-    function bad_def(reason::AbstractString, extname::AbstractString,
-                     revn::Integer, linenum::Integer, code::AbstractString)
+    function bad_definition(reason::AbstractString, extname::AbstractString,
+                            revn::Integer, linenum::Integer,
+                            code::AbstractString)
         error(reason, " in definition of OI-FITS extension ", extname,
               " (revision ", revn, ", line ", linenum, "): \"", code, "\"")
     end
@@ -495,7 +496,7 @@ function add_def(extname::AbstractString,
         m = match(r"^([^ ]+) +([^ ]+) +(.*)$", row)
         if m === nothing
             match(r"^-+$", row) === nothing &&
-                bad_def("syntax error", extname, revn, rownum, row)
+                bad_definition("syntax error", extname, revn, rownum, row)
             iskeyword = false
             continue
         end
@@ -506,16 +507,19 @@ function add_def(extname::AbstractString,
         isoptional = (format[1] == '?')
         i = (isoptional ? 2 : 1)
         dtype = get_dtype(format[i])
-        dtype > 0 || bad_def("invalid type letter", extname, revn, rownum, row)
+        dtype > 0 || bad_definition("invalid type letter",
+                                    extname, revn, rownum, row)
         if iskeyword
             length(format) == i ||
-                bad_def("invalid keyword format", extname, revn, rownum, row)
+                bad_definition("invalid keyword format",
+                               extname, revn, rownum, row)
             multiplier = 1
         else
             # Very naive code to parse the dimension list of the column format.
             (length(format) > i + 2 && format[i+1] == '('
-             && format[end] == ')') || bad_def("missing column dimension(s)",
-                                               extname, revn, rownum, row)
+             && format[end] == ')') ||
+                 bad_definition("missing column dimension(s)",
+                                extname, revn, rownum, row)
             format = uppercase(format[i+2:end-1])
             if format == "W"
                 multiplier = -1
@@ -524,7 +528,8 @@ function add_def(extname::AbstractString,
             else
                 multiplier = tryparse(Int, format)
                 (multiplier === nothing || multiplier < 1) &&
-                    bad_def("invalid multiplier", extname, revn, rownum, row)
+                    bad_definition("invalid multiplier",
+                                   extname, revn, rownum, row)
             end
         end
         mp = match(r"^(.*[^ ]) +\[([^\]])\]$", descr)
@@ -574,7 +579,7 @@ build_datablock(extname::AbstractString, revn::Integer, kwds) =
     build_datablock(to_string(extname), to_integer(revn), kwds)
 
 function build_datablock(extname::String, revn::Int, kwds)
-    def = get_def(extname, revn)
+    def = get_definition(extname, revn)
     contents = OIContents()
     contents[:revn] = revn
     rows = -1         # number of rows in the OI-FITS table
