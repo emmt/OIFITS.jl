@@ -82,21 +82,15 @@ define("OI_ARRAY", 2,
         "FOV        D(1)   photometric field of view [arcsec]",
         "FOVTYPE    A(6)   model for FOV: 'FWHM' or 'RADIUS'"])
 
-# OI_WAVELENGTH definition (1st revision):
-define("OI_WAVELENGTH", 1,
-       ["OI_REVN     I     revision number of the table definition",
-        "INSNAME     A     name of detector for cross-referencing",
-        "------------------------------------------------------------",
-        "EFF_WAVE   E(1)   effective wavelength of channel [m]",
-        "EFF_BAND   E(1)   effective bandpass of channel [m]"])
-
-# OI_WAVELENGTH definition (2nd revision):
-define("OI_WAVELENGTH", 2,
-       ["OI_REVN     I     revision number of the table definition",
-        "INSNAME     A     name of detector for cross-referencing",
-        "------------------------------------------------------------",
-        "EFF_WAVE   E(1)   effective wavelength of channel [m]",
-        "EFF_BAND   E(1)   effective bandpass of channel [m]"])
+# OI_WAVELENGTH definition (1st and 2nd revisions):
+for revn in (1, 2)
+    define("OI_WAVELENGTH", revn,
+           ["OI_REVN     I     revision number of the table definition",
+            "INSNAME     A     name of detector for cross-referencing",
+            "------------------------------------------------------------",
+            "EFF_WAVE   E(1)   effective wavelength of channel [m]",
+            "EFF_BAND   E(1)   effective bandpass of channel [m]"])
+end
 
 # OI_VIS definition (1st revision):
 define("OI_VIS", 1,
@@ -113,24 +107,6 @@ define("OI_VIS", 1,
         "VISAMPERR  D(W)  error in visibility amplitude",
         "VISPHI     D(W)  visibility phase [deg]",
         "VISPHIERR  D(W)  error in visibility phase [deg]",
-        "UCOORD     D(1)  U coordinate of the data [m]",
-        "VCOORD     D(1)  V coordinate of the data [m]",
-        "STA_INDEX  I(2)  station numbers contributing to the data",
-        "FLAG       L(W)  flag"])
-
-# OI_VIS2 definition (1st revision):
-define("OI_VIS2", 1,
-       ["OI_REVN     I    revision number of the table definition",
-        "DATE-OBS    A    UTC start date of observations",
-        "ARRNAME    ?A    name of corresponding array",
-        "INSNAME     A    name of corresponding detector",
-        "------------------------------------------------------------",
-        "TARGET_ID  I(1)  target number as index into OI_TARGET table",
-        "TIME       D(1)  UTC time of observation [s]",
-        "MJD        D(1)  modified Julian Day [day]",
-        "INT_TIME   D(1)  integration time [s]",
-        "VIS2DATA   D(W)  squared visibility",
-        "VIS2ERR    D(W)  error in squared visibility",
         "UCOORD     D(1)  U coordinate of the data [m]",
         "VCOORD     D(1)  V coordinate of the data [m]",
         "STA_INDEX  I(2)  station numbers contributing to the data",
@@ -173,6 +149,24 @@ define("OI_VIS", 2,
         "VCOORD           D(1)    V coordinate of the data [m]",
         "STA_INDEX        I(2)    station numbers contributing to the data",
         "FLAG             L(W)    flag"])
+
+# OI_VIS2 definition (1st revision):
+define("OI_VIS2", 1,
+       ["OI_REVN     I    revision number of the table definition",
+        "DATE-OBS    A    UTC start date of observations",
+        "ARRNAME    ?A    name of corresponding array",
+        "INSNAME     A    name of corresponding detector",
+        "------------------------------------------------------------",
+        "TARGET_ID  I(1)  target number as index into OI_TARGET table",
+        "TIME       D(1)  UTC time of observation [s]",
+        "MJD        D(1)  modified Julian Day [day]",
+        "INT_TIME   D(1)  integration time [s]",
+        "VIS2DATA   D(W)  squared visibility",
+        "VIS2ERR    D(W)  error in squared visibility",
+        "UCOORD     D(1)  U coordinate of the data [m]",
+        "VCOORD     D(1)  V coordinate of the data [m]",
+        "STA_INDEX  I(2)  station numbers contributing to the data",
+        "FLAG       L(W)  flag"])
 
 # OI_VIS2 definition (2nd revision):
 define("OI_VIS2", 2,
