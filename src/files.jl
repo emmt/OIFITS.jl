@@ -1,5 +1,5 @@
 #
-# oifile.jl --
+# files.jl --
 #
 # Implement reading/writing of OI-FITS data from/to FITS files.
 #

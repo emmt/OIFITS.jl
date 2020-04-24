@@ -1,5 +1,5 @@
 #
-# oipost.jl --
+# post.jl --
 #
 # Post-processing of OI-FITS data-block definitions.  Must be the last
 # file included by the main OIFITS.jl source file.

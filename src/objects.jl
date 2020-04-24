@@ -1,12 +1,12 @@
 #
-# oidata.jl --
+# objects.jl --
 #
-# Implement OI-FITS data types.
+# Implement most part of the OI-FITS objects behavior.
 #
 #------------------------------------------------------------------------------
 
 """
-    contents(obj)
+    OIFITS.contents(obj)
 
 yields the contents of data-block or master `obj`.
 
@@ -15,7 +15,7 @@ contents(obj::OIDataBlock) = getfield(obj, :contents)
 contents(obj::OIMaster) = getfield(obj, :all)
 
 """
-    is_attached(db)
+    OIFITS.is_attached(db)
 
 yields whether data-block `db` is attached to a master structure.
 
@@ -389,26 +389,26 @@ function build_datablock(extname::String, revn::Int, kwds)
                                   " has no field `", field, "`")
 
         # Check value type.
-        if spec.type == :LOGICAL
+        if spec.type === :LOGICAL
             is_logical(value) || error("expecting boolean value for `", field,
                                        "` field of OI-FITS extension ",
                                        extname)
-        elseif spec.type == :INTEGER
+        elseif spec.type === :INTEGER
             is_integer(value) || error("expecting integer value for `", field,
                                        "` field of OI-FITS extension ",
                                        extname)
             value = to_integer(value)
-        elseif spec.type == :FLOAT
+        elseif spec.type === :FLOAT
             is_float(value) || error("expecting floating-point value for `",
                                      field, "` field of OI-FITS extension ",
                                      extname)
             value = to_float(value)
-        elseif spec.type == :COMPLEX
+        elseif spec.type === :COMPLEX
             is_complex(value) || error("expecting complex value for `",
                                        field, "` field of OI-FITS extension ",
                                        extname)
             value = to_complex(value)
-        elseif spec.type == :STRING
+        elseif spec.type === :STRING
             is_string(value) || error("expecting string value for `", field,
                                       "` field of OI-FITS extension ", extname)
         else
@@ -424,7 +424,7 @@ function build_datablock(extname::String, revn::Int, kwds)
         else
             # Check array rank.
             mult = spec.multiplier
-            maxrank = (spec.type == :STRING || mult == 1 ? 1 :
+            maxrank = (spec.type === :STRING || mult == 1 ? 1 :
                        mult == -2 ? 3 : 2)
             rank > maxrank && error("bad number of dimensions for `", field,
                                     "` field of OI-FITS extension ", extname)
