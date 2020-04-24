@@ -92,6 +92,35 @@ end
     end
     #@test master.instr[first(master.instr)].extname == "OI_WAVELENGTH"
     @test master.target.extname == "OI_TARGET"
+
+    # Select first target by name and by id.
+    @test isa(OIFITS.select_target(master, first(master.target.target)),
+              OIMaster)
+    @test isa(OIFITS.select_target(master, first(master.target.target_id)),
+              OIMaster)
+    @test OIFITS.select_target(master, "") === nothing
+
+    # Select first target by wavelength range.
+    @test isa(OIFITS.select_wavelength(master, 0, Inf), OIMaster)
+    subset = OIFITS.select_wavelength(master, w -> false)
+    @test isa(subset, OIMaster)
+    for db in subset
+        @test isa(subset, Union{OIWavelength,OIVis,OIVis2,OIT3,
+                                OISpectrum,OIPolarization}) == false
+    end
+    for db in master
+        if isa(db, Union{OIWavelength,OIVis,OIVis2,OIT3,
+                         OISpectrum,OIPolarization})
+            @test OIFITS.select_wavelength(db, w -> false) === nothing
+        end
+    end
+
+    # Test selection by extension names.
+    sel = ("OI_VIS", "OI_VIS2", "OI_T3")
+    for db in OIFITS.select(master, sel...)
+        @test db.extname in sel
+    end
+
 end
 
 end # module

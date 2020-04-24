@@ -92,6 +92,19 @@ get_datatype(c::Char) =
      c == 'l' ? :LOGICAL : :UNKNOWN)
 
 """
+    OIFITS.Parser.get_description(db) -> (extname, revn, defn)
+
+yields the FITS extension name, revision number and format definitions of the
+OI-FITS data-block `db`.
+
+"""
+function get_description(db::OIDataBlock)
+    name = db.extname
+    revn = db.revn
+    return (name, revn, get_definition(name, revn))
+end
+
+"""
     OIFITS.Parser.get_definition(db)
 
 or

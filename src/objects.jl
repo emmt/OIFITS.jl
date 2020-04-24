@@ -330,23 +330,6 @@ function show(io::IO, master::OIMaster)
 end
 
 
-####################################
-# PARSING OF DATABLOCK DEFINITIONS #
-####################################
-
-"""
-    OIFITS.get_descr(db) -> (extname, revn, defn)
-
-yields the FITS extension name, revision number and format definitions of the
-OI-FITS data-block `db`.
-
-"""
-function get_descr(db::OIDataBlock)
-    name = db.extname
-    revn = db.revn
-    return (name, revn, Parser.get_definition(name, revn))
-end
-
 ##########################
 # BUILDING OF DATABLOCKS #
 ##########################
@@ -489,16 +472,6 @@ end
 ###################################################
 # MANAGING THE DATABLOCK CONTAINER (THE "MASTER") #
 ###################################################
-
-function select(master::OIMaster, args::AbstractString...)
-    datablocks = Array{OIDataBlock}(undef, 0)
-    for db in master
-        if get_extname(db) ∈ args
-            push!(datablocks, db)
-        end
-    end
-    return datablocks
-end
 
 """
 
@@ -741,6 +714,10 @@ function _check_correl(db::OIDataBlock)
              db.corrname, "\" not found in master")
 end
 
+##############################
+# METHODS FOR DATA SELECTION #
+##############################
+
 """
     OIFITS.clone(db)
 
@@ -752,8 +729,8 @@ data-block from a given `OIMaster` instance is to be pushed to another
 
 """
 function clone(db::OIDataBlock)
-    (name, revn, defn) = get_descr(db)
-    dict = Dict{Symbol,Any}()
+    (name, revn, defn) = Parser.get_description(db)
+    dict = OIContents()
     for (key, val) in contents(db)
         if haskey(defn.spec, key)
             dict[key] = val
@@ -762,179 +739,196 @@ function clone(db::OIDataBlock)
     return build_datablock(name, revn, dict)
 end
 
+"""
+     OIFITS.select(obj, args)
+
+yields an iterable over the data-blocks of an OI-FITS master object `obj` whose
+extension names are specifed in `args`.
 
 """
-
-### Select data for a given target
-
-The method `select_target` selects a subset of data corresponding to a given
-target.   The general syntax is:
-
-    out = select_target(inp, tgt)
-
-where `inp` is the input data (can be an instance of `OIMaster` or of any
-`OIDataBlock` sub-types), `tgt` is the target number or name.
-
-The result `out` may share part of its contents with the input data `inp`.
-
-The result may be `nothing` if the input contains no data for the given target.
-
-"""
-select_target(db::OIDataBlock, target::Integer) = clone(db)
-
-function select_target(db::OITarget, target::Integer)
-    (name, revn, defn) = get_descr(db)
-    k = findfirst(id -> id == target, get_target_id(db))
-    k == 0 && return
-    data = Dict{Symbol,Any}()
-    for (key, val) in contents(db)
-        spec = get(defn.spec, key, nothing)
-        spec === nothing && continue
-        if spec.iskeyword
-            data[key] = db[key]
-        else
-            data[key] = db[key][k:k]
+function select(obj::OIMaster, args::AbstractString...)
+    datablocks = Array{OIDataBlock}(undef, 0)
+    for db in obj
+        if db.extname ∈ args
+            push!(datablocks, db)
         end
     end
-    return build_datablock(name, revn, data)
+    return datablocks
 end
 
-function select_target(db::OIData, target::Integer)
-    (name, revn, defn) = get_descr(db)
-    target_id = get_target_id(db)
-    sel = find(id -> id == target, target_id)
-    length(sel) > 0 || return
-    data = Dict{Symbol,Any}()
-    cpy = (length(sel) == length(target_id)) # just copy?
+"""
+    OIFITS.select_target(src, id)
+
+selects a subset of data from source `src` corresponding to the target
+identified by `id` (an integer or a name).  The source can be an instance of
+`OIMaster` or of any `OIDataBlock` sub-types.  The result is of the same type
+as the source or `nothing` if the source contains no data for the given target.
+
+The result may share part of its contents with the source `src`.
+
+"""
+select_target(obj::Union{OIMaster,OIDataBlock}, id::AbstractString) =
+    _select_target(obj, fix_name(id))
+select_target(obj::Union{OIMaster,OIDataBlock}, id::Integer) =
+    _select_target(obj, to_integer(id))
+
+function _select_target(obj::Union{OIMaster,OIDataBlock}, str::String)
+    tgt = obj.target
+    tgt === nothing && return nothing
+    idx = findfirst(x -> fix_name(x) == str, tgt.target)
+    idx === nothing && return nothing
+    select_target(obj, tgt.target_id[idx])
+end
+
+function _select_target(src::OIMaster, id::Int)
+    dst = OIMaster()
+    for db in src
+        let sel = select_target(db, id)
+            sel === nothing || _push!(dst, sel)
+        end
+    end
+    _update_links!(dst)
+end
+
+_select_target(db::OIDataBlock, id::Int) = clone(db)
+
+function _select_target(db::OITarget, id::Int)
+    (name, revn, defn) = Parser.get_description(db)
+    idx = findfirst(x -> x == id, db.target_id)
+    idx == nothing && return nothing
+    dict = OIContents()
     for (key, val) in contents(db)
-        spec = get(defn.spec, key, nothing)
-        spec != nothing || continue
-        if cpy || spec.iskeyword
-            data[key] = db[key]
-        else
-            # Copy a sub-array corresponding to the selection.  (The target is
-            # specified for each last index.)
-            src = db[key]
-            @assert(size(src)[end] == length(target_id))
-            rank = ndims(src)
-            dims = ntuple(i -> i == rank ? length(sel) : size(src, i), rank)
-            dst = Array{eltype(src)}(undef, dims)
-            data[key] = dst
-            if rank == 1
-                for j in 1:length(sel)
-                    dst[j] = src[sel[j]]
-                end
-            elseif rank == 2
-                for j in 1:length(sel)
-                    dst[:,j] = src[:,sel[j]]
-                end
+        let spec = get(defn.spec, key, nothing)
+            spec === nothing && continue
+            if spec.iskeyword
+                dict[key] = db[key]
             else
-                error("unexpected rank ", rank)
+                dict[key] = db[key][idx:idx]
             end
         end
     end
-    return build_datablock(name, revn, data)
+    return build_datablock(name, revn, dict)
 end
 
-function select_target(src::OIMaster, target::Integer)
-    dst = OIMaster()
-    for db in src
-        sel = select_target(db, target)
-        sel === nothing || _push!(dst, sel)
+function _select_target(db::Union{OIVis,OIVis2,OIT3,
+                                  OISpectrum,OIPolarization}, id::Int)
+    (name, revn, defn) = Parser.get_description(db)
+    target_id = db.target_id
+    sel = findall(x -> x == id, target_id)
+    length(sel) > 0 || return nothing
+    dict = OIContents()
+    cpy = (length(sel) == length(target_id)) # just copy?
+    for (key, val) in contents(db)
+        let spec = get(defn.spec, key, nothing)
+            spec != nothing || continue
+            if cpy || spec.iskeyword
+                dict[key] = db[key]
+            else
+                # Copy a sub-array corresponding to the selection.  (The target
+                # is specified for each last index.)
+                src = db[key]
+                @assert last(size(src)) == length(target_id)
+                rank = ndims(src)
+                dims = ntuple(i -> i == rank ? length(sel) : size(src, i), rank)
+                dst = Array{eltype(src)}(undef, dims)
+                dict[key] = dst
+                if rank == 1
+                    for j in 1:length(sel)
+                        dst[j] = src[sel[j]]
+                    end
+                elseif rank == 2
+                    for j in 1:length(sel)
+                        dst[:,j] = src[:,sel[j]]
+                    end
+                else
+                    error("unexpected rank ", rank)
+                end
+            end
+        end
     end
-    length(dst) > 0 && _update_links!(dst)
-    return dst
-end
-
-function select_target(master::OIMaster, target::AbstractString)
-    db = get_target(master)
-    if db != nothing
-        k = findfirst(name -> name == target, get_target(db))
-        k != 0 && return select_target(master, get_target_id(db)[k])
-    end
-    error("target name not found")
+    return build_datablock(name, revn, dict)
 end
 
 """
+    OIFITS.select_wavelength(src, wmin, wmax)
 
-### Select data at given wavelengths
+selects a subset of data from source `src` corresponding to the measurements at
+wavelengths `w` such that `wmin ≤ w ≤ wmax`.  The wavelength bounds are in the
+same units as assumed by OI-FITS convention, that is in meters.  The source can
+be an instance of `OIMaster` or of any `OIDataBlock` sub-types.
 
-The method `select_wavelength` selects a subset of data on the basis of their
-wavelength.   The general syntax is:
+An alternative is to use a selector function:
 
-    out = select_wavelength(inp, sel)
+    OIFITS.select_wavelength(src, sel)
 
-where `inp` is the input data (can be an instance of `OIMaster` or of any
-`OIDataBlock` sub-types), `sel` is a predicate function which takes a
-wavelength (in meters) as argument and returns true if this wavelength is to be
-selected and false otherwise.
+where `sel` is callable and such that `sel(w)` returns whether wavelength `w`
+is to be selected.
 
-An alternative is:
+In any cases, the result is of the same type as the source or `nothing` if the
+source contains no data in the given wavelength range.
 
-    out = select_wavelength(inp, wmin, wmax)
-
-to select wavelengths `w` such that `wmin ≤ w ≤ wmax`.  The wavelength
-bounds are in meters.
-
-The result `out` may share part of its contents with the input data `inp`.
-
-The result may be `nothing` if the input contains no data at selected
-wavelengths.
+The result may share part of its contents with the source `src`.
 
 """
-function select_wavelength(inp::Union{OIMaster,OIDataBlock},
+function select_wavelength(src::Union{OIMaster,OIDataBlock},
                            wavemin::Real, wavemax::Real)
     wmin = convert(Float64, wavemin)
     wmax = convert(Float64, wavemax)
-    select_wavelength(inp, w -> wmin ≤ w ≤ wmax)
+    select_wavelength(src, w -> wmin ≤ w ≤ wmax)
+end
+
+function select_wavelength(src::OIMaster, selector::Function)
+    dst = OIMaster()
+    for db in src
+        sel = select_wavelength(db, selector)
+        sel === nothing || _push!(dst, sel)
+    end
+    return _update_links!(dst)
 end
 
 select_wavelength(db::OIDataBlock, selector::Function) = clone(db)
 
-function select_wavelength(db::Union{OIWavelength,OIVis,OIVis2,OIT3,OISpectrum},
+function select_wavelength(db::Union{OIWavelength,OIVis,OIVis2,OIT3,
+                                     OISpectrum,OIPolarization},
                            selector::Function)
-    (name, revn, defn) = get_descr(db)
-    wave = get_eff_wave(db)
-    sel = find(selector, wave)
-    length(sel) > 0 || return
-    data = Dict{Symbol,Any}()
-    cpy = (length(sel) == length(wave)) # just copy?
-    iswave = (typeof(db) == OIWavelength)
+    # Pre-select wavelengths.
+    isintr = isa(db, OIWavelength) # source is instrument?
+    wave = (isintr ? db.eff_wave : db.instr.eff_wave)
+    wave === nothing && return nothing
+    sel = findall(selector, wave)
+    length(sel) > 0 || return nothing
+
+    # Build a data-block with selected data.
+    (name, revn, defn) = Parser.get_description(db)
+    dict = OIContents()
+    iscopy = (length(sel) == length(wave)) # just copy?
     for (key, val) in contents(db)
         spec = get(defn.spec, key, nothing)
         spec === nothing && continue
-        if cpy || spec.iskeyword || (spec.multiplier >= 0 && ! iswave)
-            data[key] = db[key]
+        if iscopy || spec.iskeyword || (spec.multiplier ≥ 0 && isintr == false)
+            dict[key] = db[key]
         else
             # Copy a sub-array corresponding to the selection.  (The wavelength
             # corresponds to the first index.)
-            src = db[key]
-            @assert(size(src, 1) == length(wave))
-            rank = ndims(src)
-            dims = ntuple(i -> i == 1 ? length(sel) : size(src, i), rank)
-            dst = Array{eltype(src)}(undef, dims)
-            data[key] = dst
-            if rank == 1
-                for j in 1:length(sel)
-                    dst[j] = src[sel[j]]
+            let src = db[key]
+                @assert first(size(src)) == length(wave)
+                rank = ndims(src)
+                dims = ntuple(i -> i == 1 ? length(sel) : size(src, i), rank)
+                dst = Array{eltype(src)}(undef, dims)
+                dict[key] = dst
+                if rank == 1
+                    for j in 1:length(sel)
+                        dst[j] = src[sel[j]]
+                    end
+                elseif rank == 2
+                    for j in 1:length(sel)
+                        dst[j,:] = src[sel[j],:]
+                    end
+                else
+                    error("unexpected rank ", rank)
                 end
-            elseif rank == 2
-                for j in 1:length(sel)
-                    dst[j,:] = src[sel[j],:]
-                end
-            else
-                error("unexpected rank ", rank)
             end
         end
     end
-    return build_datablock(name, revn, data)
-end
-
-function select_wavelength(master::OIMaster, selector::Function)
-    result = OIMaster()
-    for db in master
-        sel = select_wavelength(db, selector)
-        sel === nothing || _push!(result, sel)
-    end
-    return _update_links!(result)
+    return build_datablock(name, revn, dict)
 end
