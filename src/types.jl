@@ -112,34 +112,3 @@ mutable struct OIMaster <: AbstractVector{OIDataBlock}
             Dict{String,OICorrelation}())
     end
 end
-
-# OIFieldDef is used to store the definition of a keyword/column field.
-mutable struct OIFieldDef
-    name::String     # Keyword/column name as a string.
-    symb::Symbol     # Keyword/column symbolic name.
-    iskeyword::Bool  # Is keyword? (otherwise column)
-    isoptional::Bool # Optional field?
-    multiplier::Int  # Multiplier: 1 for keywords, number of cells for columns
-                     # (a negative number -N means an array of N dimensions
-                     # each equal to the number of spectral channels.
-    dtype::Int       # Data type.
-    units::String    # Units.
-    descr::String    # Description.
-end
-
-# OIDataBlockDef is used to store the definition of data-block.
-mutable struct OIDataBlockDef
-    extname::String
-    fields::Vector{Symbol}        # ordered field symbolic names
-    spec::Dict{Symbol,OIFieldDef} # dictionary of field specifications
-    function OIDataBlockDef(extname::AbstractString, vect::Vector{OIFieldDef})
-        spec = Dict{Symbol,OIFieldDef}()
-        fields = Array{Symbol}(undef, length(vect))
-        for j in 1:length(vect)
-            entry = vect[j]
-            fields[j] = entry.symb
-            spec[entry.symb] = entry
-        end
-        new(extname, fields, spec)
-    end
-end

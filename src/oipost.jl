@@ -7,9 +7,11 @@
 #------------------------------------------------------------------------------
 
 # Automatically define getters from all fields of a data-block.
-for (extname, T) in _DATABLOCKS
-    for symb in _FIELDS[extname]
-        eval(Meta.parse("get_$symb(db::$T) = db.$symb"))
+for extname in EXTNAMES
+    let T = get_datablock_type(extname)
+        for symb in Parser.FIELDS[extname]
+            eval(Meta.parse("get_$symb(db::$T) = db.$symb"))
+        end
     end
 end
 

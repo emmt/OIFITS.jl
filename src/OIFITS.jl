@@ -31,10 +31,10 @@ using FITSIO.Libcfitsio: fits_get_errstatus
 
 include("types.jl")
 include("utils.jl")
+include("parser.jl")
 include("oidata.jl")
 include("misc.jl")
 include("oifile.jl")
-include("formats.jl")
 include("oipost.jl") # must be *after* oifile.jl and all oiformat*.jl
 include("deprecations.jl")
 

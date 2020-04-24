@@ -86,7 +86,7 @@ function read_datablock(hdu::TableHDU; quiet::Bool=false)
         extname = fix_name(val)
     end
     startswith(extname, "OI_") || return nothing
-    if ! haskey(_DATABLOCKS, extname)
+    if ! (extname in EXTNAMES)
         quiet || warn("unknown OI-FITS extension \"", extname, "\"")
         return nothing
     end
@@ -108,8 +108,8 @@ function read_datablock(hdu::TableHDU; quiet::Bool=false)
     end
 
     # Get format definition.
-    local defn::OIDataBlockDef
-    let val = get_definition(extname, revn, nothing)
+    local defn::Parser.OIDataBlockDef
+    let val = Parser.get_definition(extname, revn, nothing)
         if val === nothing
             quiet || warn("unknown OI-FITS extension \"", extname,
                           "\" revision ", revn)
