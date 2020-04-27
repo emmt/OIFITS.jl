@@ -676,7 +676,7 @@ select_target(obj::Union{OIMaster,OIDataBlock}, id::Integer) =
 function _select_target(obj::Union{OIMaster,OIDataBlock}, str::String)
     tgt = obj.target
     tgt === nothing && return nothing
-    idx = findfirst(x -> fix_name(x) == str, tgt.target)
+    idx = findfirst(x -> same_name(x, str), tgt.target)
     idx === nothing && return nothing
     select_target(obj, tgt.target_id[idx])
 end

@@ -12,7 +12,7 @@ The `OIFITS.jl` package provides support for OI-FITS data in Julia language.
 
 OI-FITS is a standard to store optical interferometry data as a collection of
 data-blocks.  In the second revision of the standard (see [Ref. 1](#references)
-and [Ref. 2](#references)), the available data-blocks are:
+and [Ref. 2](#references)), the following data-blocks are available:
 
 * `OITarget` provides a list of observed targets (`OI_TARGET` extension in
   OI-FITS files);
@@ -376,21 +376,23 @@ current HDU in FITS file handle `ff`.  The current HDU must be a FITS table
 to the rows of the table.  It is also possible to read all the table:
 
 ```julia
-OIFITS.read_table(ff::FITSFile)
 OIFITS.read_table(hdu::Union(TableHDU,ASCIITableHDU))
-```
-
-or at high-level:
-
-```julia
-read(hdu::Union(TableHDU,ASCIITableHDU))
 ```
 
 The result is a dictionary whose keys are the names of the columns (in
 uppercase letters and with trailing spaces removed).  If a column has given
-units, the units are stored in the dictionary with suffix `".units"`
-appended to the column name.  For instance, the units for column `"TIME"`
-are accessible with key `"TIME.units"`.
+units, the units are stored in the dictionary with suffix `".units"` appended
+to the column name.  For instance, the units for column `"TIME"` are accessible
+with key `"TIME.units"`.  By default, `OIFITS.read_table` returns all columns
+of the table but a selector `sel` may be specified to select a subset of
+columns, it must be a callable object such that `sel(key)` yields `true` if
+column named `key` is to be returned.  For instance:
+
+```julia
+OIFITS.read_table(hdu, key -> key in ("FILTER", "BANDWIDTH"))
+```
+
+to only read columns `"FILTER"` and `"BANDWIDTH"` in table `hdu`.
 
 
 ### FITS and Julia types conversion

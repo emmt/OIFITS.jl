@@ -33,7 +33,6 @@ include("types.jl")
 include("utils.jl")
 include("parser.jl")
 include("objects.jl")
-include("misc.jl")
 include("files.jl")
 include("accessors.jl") # must be *after* oifile.jl and all oiformat*.jl
 include("deprecations.jl")

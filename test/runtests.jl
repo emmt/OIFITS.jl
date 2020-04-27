@@ -29,6 +29,20 @@ function tryload(dir, file)
 end
 
 @testset "Low-level Interface" begin
+    # Test string comparisons/conversion "à la FITS".
+    @test OIFITS.to_upper('a') == 'A'
+    @test OIFITS.to_upper('b') == 'B'
+    @test OIFITS.to_upper('z') == 'Z'
+    @test OIFITS.to_upper('A') == 'A'
+    @test OIFITS.to_upper('B') == 'B'
+    @test OIFITS.to_upper('Z') == 'Z'
+    @test OIFITS.to_upper('é') == 'é'
+    @test OIFITS.same_name("Beta  ", "BETA") == true
+    @test OIFITS.same_name(" Beta  ", "BETA") == false
+    @test OIFITS.same_name("beta", " Beta  ") == false
+    @test OIFITS.same_name("beta  ", "BeTa  ") == true
+    @test OIFITS.fix_name("beTa  ") == "BETA"
+
     fits =  FITS(joinpath(dir, first(files)), "r")
 
     hdr = read_header(fits[1])
@@ -217,6 +231,27 @@ end
               Culong, Clong, Cfloat, Int64, Cdouble,
               Complex{Cfloat}, Complex{Cdouble})
         @test types[OIFITS.type_to_eqcoltype(T)] === T
+    end
+
+    for i in 2:length(fits)
+        if OIFITS.get_hdu_type(fits[i]) == :binary_table
+            try
+                extname, comment = read_key(fits[i], "EXTNAME")
+                if extname == "OI_TARGET"
+                    dict1 = OIFITS.read_table(fits[i])
+                    dict2 = OIFITS.read_table(fits[i],
+                                              key -> key ∈ ("RAEP0", "DECEP0"))
+                    @test haskey(dict1, "TARGET") == true
+                    @test haskey(dict2, "TARGET") == false
+                    @test haskey(dict2, "RAEP0") == true
+                    @test haskey(dict2, "RAEP0.units") == true
+                    @test dict2["RAEP0.units"] == "deg"
+                    break
+                end
+            catch ex
+                nothing
+            end
+        end
     end
 end
 

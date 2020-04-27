@@ -56,6 +56,43 @@ function get_file_handle(hdu::HDU)
 end
 
 """
+    OIFITS.read_table(hdu, sel=everything)
+
+reads the FITS table in FITS Header Data Units `hdu` and returns a dictionary
+whose keys are the column names and whose values are the column data.  By
+default all columns are returned but a selector `sel` may be specified to
+select a subset of columns, it must be a callable object such that `sel(key)`
+yields `true` if column named `key` (in uppercase letters and trailing spaces
+removed) is to be returned.  Units of returned columns, if any, are available
+under the name `"\$(key).units"`.
+
+"""
+function read_table(hdu::Union{TableHDU,ASCIITableHDU},
+                    sel = everything)
+    ff = get_file_handle(hdu)
+    hdr = read_header(hdu)
+    data = Dict{String,Any}()
+    ncols = get_integer(hdr, "TFIELDS", 0)
+    for k in 1:ncols
+        key = fix_name(get_string(hdr, "TTYPE$k", ""))
+        if selector(key)
+            if haskey(data, key)
+                warn("Duplicate column name: \"", key, "\"")
+                continue
+            end
+            data[key] = read_column(ff, k)
+            units = strip(get_string(hdr, "TUNIT$k", ""))
+            if length(units) > 0
+                data[key*".units"] = units
+            end
+        end
+    end
+    return data
+end
+
+everything(args...) = true
+
+"""
     OIFITS.read_datablock(hdu; quiet=false)
 
 reads the OI-FITS data in FITS Header Data Units `hdu` and returns a 3-tuple

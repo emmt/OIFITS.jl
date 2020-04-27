@@ -1,3 +1,8 @@
+# V1.0.0
+
+- `OIFITS.get_hdutype` renamed `OIFITS.get_hdu_type`.
+
+
 # v0.2.0 (unreleased)
 
 ## User interface

@@ -216,10 +216,50 @@ end
 
 converts string `str` to uppercase letters and removes trailing spaces.  This
 is useful to compare names according to FITS conventions that letter case and
-trailing spaces are insignificant.
+trailing spaces are insignificant.  Only ASCII characters are converted (see
+[`OIFITS.to_upper`](@ref)).
 
 """
-fix_name(name::AbstractString) = to_string(uppercase(rstrip(name)))
+fix_name(name::AbstractString) = map(to_upper, rstrip(c -> c == ' ', name))
+
+"""
+    OIFITS.to_upper(c)
+
+yields character `c` converted to uppercase.  Conversion is only performed for
+ASCII characters, that is for `c ∈ 'a':'z'`, other characters are returned
+unchanged.
+
+"""
+to_upper(c::Char) = ((c < 'a')|(c > 'z')) ? c : Char(c - 32)
+
+"""
+    OIFITS.same_name(A, B)
+
+yields whether strings `A` and `B` are the same name according to FITS
+conventions, that is ignoring trailing spaces and the case of ASCII letters.
+
+"""
+function same_name(A::AbstractString, B::AbstractString)
+    na = length(A)
+    nb = length(B)
+    for i in 1:min(na, nb)
+        ca = A[i]
+        cb = B[i]
+        if ca != cb
+            to_upper(ca) == to_upper(cb) || return false
+        end
+    end
+    if na > nb
+        for i in nb+1:na
+            A[i] == ' ' || return false
+        end
+    elseif na < nb
+        for i in na+1:nb
+            B[i] == ' ' || return false
+        end
+    end
+    return true
+end
 
 """
     OIFITS.to_logical(arg)
