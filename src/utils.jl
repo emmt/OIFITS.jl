@@ -402,9 +402,27 @@ non-alphanumeric characters replaced by underscores.
 
 """
 to_fieldname(sym::Symbol) = sym
+
 function to_fieldname(name::AbstractString)
     key = lowercase(name)
     key == "oi_revn" ? :revn : Symbol(replace(key, r"[^a-z0-9_]" => '_'))
+end
+
+"""
+    OIFITS.convert_key_type(K, dict)
+
+yields a dictionary with the same values as `dict` but whose keys have type
+`K`.  If `keytype(dict) == K`, `dict` itself is returned.
+
+"""
+convert_key_type(::Type{K}, dict::AbstractDict{K}) where {K} = dict
+
+function convert_key_type(::Type{K}, dict::AbstractDict{<:Any,V}) where {K,V}
+    newdict = Dict{K,V}()
+    for (key, val) in dict
+        newdict[K(key)] = val
+    end
+    return newdict
 end
 
 """

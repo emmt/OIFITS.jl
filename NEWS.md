@@ -1,7 +1,13 @@
 # V1.0.0
 
+The version 1.0 has many changes.  Most of the information is available by the
+`obj.key` syntax and methods should be more type-stable.  Data-blocks are now
+structured objects and no longer dictionaries.  Most accessors functions are
+deprecated.
+
 - `OIFITS.get_hdutype` renamed `OIFITS.get_hdu_type`.
 
+- `Base.copy` has been extended and replaces `OIFITS.clone`.
 
 # v0.2.0 (unreleased)
 

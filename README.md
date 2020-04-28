@@ -159,6 +159,9 @@ Argument `db` above can be a variable number of data-blocks, a tuple or an
 array of data-blocks.  If there many data-blocks, it is more efficient to push
 them all at the same time.
 
+Iterating over a data-block yields `(key,val)` pairs with `key` each symbolic
+name of defined fields and `val` is their respective value.
+
 
 ## Deprecated accessor functions
 

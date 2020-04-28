@@ -11,7 +11,7 @@
 # Automatically define getters from all fields of a data-block.
 for extname in EXTNAMES
     let T = get_datablock_type(extname)
-        for symb in Parser.FIELDS[extname]
+        for symb in Builder.FIELDS[extname]
             eval(Meta.parse("get_$symb(db::$T) = db.$symb"))
         end
     end
@@ -43,7 +43,8 @@ yields the `OITarget` data-block associated with OI-FITS data-block object
     instead.
 
 """
-get_target(obj::OIMaster) = obj.target
+get_target(obj::OIMaster{T}) where {T} =
+    obj.target :: Union{Nothing,OITarget{T}}
 #get_target(obj::OITarget) = obj
 get_target(obj::OIDataBlock) = nothing
 get_target(obj::Union{OIVis,OIVis2,OIT3,OISpectrum,OIPolarization}) =
@@ -65,8 +66,9 @@ object `obj` or `nothing` if not found.
     instead.
 
 """
-get_array(obj::OIMaster, arrname::AbstractString) =
-    get(get_array(obj), fix_name(arrname), nothing)
+get_array(obj::OIMaster{T}, arrname::AbstractString) where {T} =
+    get(get_array(obj), fix_name(arrname),
+        nothing) :: Union{Nothing,OIArray{T}}
 get_array(obj::OIDataBlock) = nothing
 get_array(obj::OIArray) = obj
 get_array(obj::Union{OIMaster,OIVis,OIVis2,OIT3,OISpectrum,OIPolarization}) =
@@ -88,8 +90,9 @@ object `obj` or `nothing` if not found.
     instead.
 
 """
-get_instrument(obj::OIMaster, insname::AbstractString) =
-    get(get_instrument(obj), fix_name(insname), nothing)
+get_instrument(obj::OIMaster{T}, insname::AbstractString) where {T} =
+    get(get_instrument(obj), fix_name(insname),
+        nothing) :: Union{Nothing,OIWavelength{T}}
 get_instrument(obj::OIDataBlock) = nothing
 get_instrument(obj::OIWavelength) = obj
 get_instrument(obj::Union{OIMaster,OIVis,OIVis2,OIT3,OISpectrum,OIPolarization}) =

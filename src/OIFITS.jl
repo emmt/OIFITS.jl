@@ -31,8 +31,8 @@ using FITSIO.Libcfitsio: fits_get_errstatus
 
 include("types.jl")
 include("utils.jl")
-include("parser.jl")
 include("objects.jl")
+include("builder.jl")
 include("files.jl")
 include("accessors.jl") # must be *after* oifile.jl and all oiformat*.jl
 include("deprecations.jl")

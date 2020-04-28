@@ -267,18 +267,23 @@ end
     @test size(master) == (length(master),)
     @test axes(master) === (Base.OneTo(length(master)),)
     @test eachindex(master) === Base.OneTo(length(master))
-    for (key,val) in master.array
-        @test val.extname == "OI_ARRAY"
+    for (key,db) in master.array
+        @test isa(db, OIArray)
+        @test db.extname == "OI_ARRAY"
     end
-    for (key,val) in master.instr
-        @test val.extname == "OI_WAVELENGTH"
-        @test typeof(val.eff_wave) <: Vector
+    for (key,db) in master.instr
+        @test isa(db, OIWavelength)
+        @test db.extname == "OI_WAVELENGTH"
+        @test typeof(db.eff_wave) <: Vector
     end
-    for (key,val) in master.correl
-        @test val.extname == "OI_CORREL"
+    for (key,db) in master.correl
+        @test isa(db, OICorrelation)
+        @test db.extname == "OI_CORREL"
     end
-    #@test master.instr[first(master.instr)].extname == "OI_WAVELENGTH"
-    @test master.target.extname == "OI_TARGET"
+    let db = master.target
+        @test isa(db, OITarget)
+        @test db.extname == "OI_TARGET"
+    end
 
     # Select first target by name and by id.
     @test isa(OIFITS.select_target(master, first(master.target.target)),

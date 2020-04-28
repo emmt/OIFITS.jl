@@ -17,11 +17,11 @@ function read_column(ff::FITSFile, colnum::Integer, multiplier::Integer)
 
     # Allocate the array and read the column contents.
     T = eqcoltype_to_type(eqcoltype) # FIXME: improve type stability
-    if T <: AbstractString
+    if T <: String
         # Column contains an array of strings.  Strip the leading dimension
         # which is the maximum length of each strings.  On return trailing
         # spaces are removed (they are insignificant according to the FITS
-        # norm).
+        # norm) and the result converted to a regular string.
         if length(dims) == 1
             dims = nrows
         else
@@ -30,7 +30,7 @@ function read_column(ff::FITSFile, colnum::Integer, multiplier::Integer)
         end
         data = Array{T}(undef, dims...)
         fits_read_col(ff, colnum, 1, 1, data)
-        return map(rstrip, data)
+        return map(str -> String(rstrip(c -> c == ' ', str)), data)
     elseif T === Nothing
         error("unsupported column data")
     else
@@ -50,9 +50,10 @@ function read_column(ff::FITSFile, colnum::Integer, multiplier::Integer)
 end
 
 function get_file_handle(hdu::HDU)
-    fits_assert_open(hdu.fitsfile)
-    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    return hdu.fitsfile
+    fh = hdu.fitsfile
+    fits_assert_open(fh)
+    fits_movabs_hdu(fh, hdu.ext)
+    return fh
 end
 
 """
@@ -69,18 +70,18 @@ under the name `"\$(key).units"`.
 """
 function read_table(hdu::Union{TableHDU,ASCIITableHDU},
                     sel = everything)
-    ff = get_file_handle(hdu)
+    fh = get_file_handle(hdu)
     hdr = read_header(hdu)
     data = Dict{String,Any}()
     ncols = get_integer(hdr, "TFIELDS", 0)
     for k in 1:ncols
         key = fix_name(get_string(hdr, "TTYPE$k", ""))
-        if selector(key)
+        if sel(key)
             if haskey(data, key)
                 warn("Duplicate column name: \"", key, "\"")
                 continue
             end
-            data[key] = read_column(ff, k)
+            data[key] = read_column(fh, k)
             units = strip(get_string(hdr, "TUNIT$k", ""))
             if length(units) > 0
                 data[key*".units"] = units
@@ -93,23 +94,26 @@ end
 everything(args...) = true
 
 """
-    OIFITS.read_datablock(hdu; quiet=false)
+    OIFITS.read_datablock([T = Float64,] hdu; quiet=false)
 
-reads the OI-FITS data in FITS Header Data Units `hdu` and returns a 3-tuple
-`(extname, revn, dict)` or `nothing` if `hdu` does not contain OI-FITS data.
-The entries of the 3-tuple are the name of the FITS extension, the OI-FITS
-revision number and a dictionary of the OI-FITS keywords and columns.  This
-3-tuple can be directly provided to [`OIFITS.build_datablock`](@ref).
+reads the OI-FITS data in FITS Header Data Units `hdu` and returns an instance
+of one of the `OIDataBlock` sub-types or `nothing` if `hdu` does not contain
+OI-FITS data.  Optional argument `T` is the floating-point type to use for the
+returned object.  If keyword `quiet` is `true`, no warning messages are
+printed.
 
 If keyword `quiet` is `true`, no warning messages are printed.
 
-""" read_datablock
+"""
+read_datablock(hdu::HDU; kwds...) = read_datablock(Float64, hdu; kwds...),
 
 # OI-FITS data-blocks are stored as FITS binary tables, hence returns nothing
 # for any other HDU type.
-read_datablock(hdu::HDU; kwds...) = nothing
+read_datablock(::Type{<:AbstractFloat}, hdu::HDU; kwds...) = nothing
 
-function read_datablock(hdu::TableHDU; quiet::Bool=false)
+function read_datablock(::Type{T},
+                        hdu::TableHDU;
+                        quiet::Bool=false) where {T<:AbstractFloat}
     # Read the header of the binary table and check extension name.
     local extname::String
     hdr = read_header(hdu)
@@ -145,8 +149,8 @@ function read_datablock(hdu::TableHDU; quiet::Bool=false)
     end
 
     # Get format definition.
-    local defn::Parser.OIDataBlockDef
-    let val = Parser.get_definition(extname, revn, nothing)
+    local defn::Builder.DataBlockDefinition
+    let val = Builder.get_definition(extname, revn, nothing)
         if val === nothing
             quiet || warn("unknown OI-FITS extension \"", extname,
                           "\" revision ", revn)
@@ -155,17 +159,27 @@ function read_datablock(hdu::TableHDU; quiet::Bool=false)
         defn = val
     end
 
-    # So far so good, make a dictionary of the columns of the table.
-    columns = Dict{String,Int}()
+    # So far so good, make a dictionary of the column numbers of the table
+    # indexed by the column names.
+    cols = Dict{String,Int}()
     for k in 1:get_integer(hdr, "TFIELDS", 0)
         ttype = get_string(hdr, "TTYPE$k")
-        columns[fix_name(ttype)] = k
+        cols[fix_name(ttype)] = k
     end
 
-    # Read columns contents as a dictionary.
-    ff = get_file_handle(hdu)
+    # Read the columns into a new data-block instance.
+    _read_datablock(get_datablock_type(T, extname), defn, hdu, hdr, cols)
+end
+
+function _read_datablock(::Type{T},
+                         defn::Builder.DataBlockDefinition,
+                         hdu::TableHDU,
+                         hdr::FITSHeader,
+                         cols::Dict{String,Int}) where {T<:OIDataBlock}
+    obj = T()
+    obj.revn = defn.revn
     nerrs = 0
-    dict = Dict{Symbol,Any}(:revn => revn)
+    fh = get_file_handle(hdu)
     for field in defn.fields
         spec = defn.spec[field]
         name = spec.name
@@ -174,55 +188,71 @@ function read_datablock(hdu::TableHDU; quiet::Bool=false)
                 if val === nothing
                     if spec.isoptional == false
                         warn("missing keyword \"", name,
-                             "\" in OI-FITS extension ", extname)
+                             "\" in OI-FITS extension ", defn.extname)
                         nerrs += 1
                     end
                 else
-                    dict[field] = val
+                    _setproperty!(obj, spec.symb, val)
                 end
             end
         else
-            colnum = get(columns, name, 0)
-            if colnum < 1
+            col = get(cols, name, 0)
+            if col < 1
                 if spec.isoptional == false
                     warn("missing column \"", name,
-                         "\" in OI-FITS extension ", extname)
+                         "\" in OI-FITS extension ", defn.extname)
                     nerrs += 1
                 end
             else
-                dict[field] = read_column(ff, colnum, spec.multiplier)
+                let val = read_column(fh, col, spec.multiplier)
+                    _setproperty!(obj, spec.symb, val)
+                end
             end
         end
     end
-    nerrs > 0 && error("bad OI-FITS extension ", extname)
-    return (extname, revn, dict)
+    nerrs > 0 && error("bad OI-FITS extension ", defn.extname)
+    Builder.check_contents(obj)
+    return obj
 end
 
 """
-    OIFITS.load(f)
+    OIFITS.load([T = Float64,] src) -> master
 
-reads all OI-FITS data-blocks from FITS file `f` and return an instance of
-`OIMaster`.  Argument `f` can be a file name of a FITS handle.  If keyword
-`quiet` is `true`, no warning messages are printed.
+reads all OI-FITS data-blocks from FITS file `src` and return an instance of
+`OIMaster`.  Argument `src` can be a file name of a FITS handle.  Optional
+argument `T` is the floating-point type to use for the returned object.  If
+keyword `quiet` is `true`, no warning messages are printed.
 
-""" load
+"""
+load(src::Union{AbstractString,FITS}; kwds...) = load(Float64, src; kwds...)
 
-load(filename::AbstractString; kwds...) =
-    load(FITS(filename, "r"); kwds...)
+function load(::Type{T}, src::Union{AbstractString,FITS};
+              kwds...) where {T<:AbstractFloat}
+    load!(OIMaster{T}(), src; kwds...)
+end
 
-function load(f::FITS; quiet::Bool=true)
+"""
+    OIFITS.load!(dst, src) -> dst
+
+stores all OI-FITS data-blocks from FITS file `src` in `OIMaster` instance
+`dst` and return `dst`.  Argument `src` can be a file name of a FITS handle.
+If keyword `quiet` is `true`, no warning messages are printed.
+
+"""
+load!(dst::OIMaster, src::AbstractString; kwds...) =
+    load!(dst, FITS(src, "r"); kwds...)
+
+function load!(dst::OIMaster{T}, src::FITS; quiet::Bool=true) where {T}
     # Read all contents, skipping first HDU.
-    master = new_master()
-    for hdu in 2:length(f)
-        let dat = read_datablock(f[hdu], quiet=quiet)
-            if dat === nothing
+    for hdu in 2:length(src)
+        let db = read_datablock(T, src[hdu], quiet=quiet)
+            if db === nothing
                 quiet || println("skipping HDU ", hdu, " (no OI-FITS data)")
             else
-                (extname, revn, dict) = dat
-                quiet || println("reading OI-FITS ", extname, " in HDU ", hdu)
-                _push!(master, build_datablock(extname, revn, dict))
+                quiet || println("reading OI-FITS ", db.extname, " in HDU ", hdu)
+                Builder._push!(dst, db)
             end
         end
     end
-    _update_links!(master)
+    Builder._update_links!(dst)
 end
