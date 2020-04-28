@@ -20,8 +20,8 @@ export
     OIVis2,
     OIWavelength
 
+using Compat
 import Base: getindex, setindex!, haskey, keys, show
-using Base: IteratorSize, IteratorEltype
 
 using FITSIO
 using FITSIO.Libcfitsio

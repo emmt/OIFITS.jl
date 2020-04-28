@@ -8,6 +8,8 @@
 
 module Builder
 
+using Compat
+
 using ..OIFITS
 using ..OIFITS:
     OIData,
