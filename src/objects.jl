@@ -36,7 +36,6 @@ yields whether OI-FITS data-block `db` is attached to the OI-FITS master object
 is_attached(db::OIDataBlock) = isdefined(db, :owner)
 is_attached(db::OIDataBlock{T}, owner::OIMaster{T}) where {T} =
     (is_attached(db) && db.owner === owner)
-is_attached(db::OIDataBlock, owner::OIMaster) = false
 
 # By default, create data in double precision.
 OIMaster(args...) = OIMaster{Float64}(args...)

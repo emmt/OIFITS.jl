@@ -374,15 +374,27 @@ end
                           insname="Instr1")
     @test isa(instr1, OIWavelength)
     @test isa(instr1, OIWavelength{Float64})
+    @test OIFITS.float_type(instr1) === Float64
     @test instr1.revn == OIFITS.Builder.last_revision(instr1)
+    @test OIFITS.is_attached(instr1) == false
+    @test iswritable(instr1, :extname) == false
+    @test iswritable(instr1, :insname) == true
+    @test instr1.extname == "OI_WAVELENGTH"
     instr2 = OIWavelength{Float32}(eff_wave=rand(nwaves), eff_band=rand(nwaves),
                                    insname="Instr2")
     @test isa(instr2, OIWavelength)
     @test isa(instr2, OIWavelength{Float32})
+    @test OIFITS.float_type(instr2) === Float32
     @test instr2.revn == OIFITS.Builder.last_revision(instr2)
+    @test OIFITS.is_attached(instr2) == false
+
     owner = OIMaster(instr1, instr2)
+    @test OIFITS.float_type(owner) === Float64
     @test "INSTR1" in keys(owner.instr)
     @test "INSTR2" in keys(owner.instr)
+    @test OIFITS.is_attached(instr1) == true
+    @test OIFITS.is_attached(instr1, owner) == true
+    @test OIFITS.is_attached(instr2) == false
 
 end
 
