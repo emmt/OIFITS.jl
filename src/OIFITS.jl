@@ -35,6 +35,5 @@ include("objects.jl")
 include("builder.jl")
 include("files.jl")
 include("accessors.jl") # must be *after* oifile.jl and all oiformat*.jl
-include("deprecations.jl")
 
 end # module
