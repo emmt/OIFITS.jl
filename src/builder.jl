@@ -237,7 +237,10 @@ _update_links!(db::OITarget) = nothing
 _update_links!(db::OIArray) = nothing
 _update_links!(db::OICorrelation) = nothing
 _update_links!(db::OIWavelength) = nothing
-_update_links!(db::OIPolarization) = _link_array!(db)
+_update_links!(db::OIPolarization) = begin
+    _link_array!(db)
+    _link_instr!(db)
+end
 _update_links!(db::OIData) = begin
     _link_array!(db)
     _link_instr!(db)

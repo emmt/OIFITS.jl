@@ -38,9 +38,10 @@ for db in master
     # Loop over all data in master.
     ...
 end
-master.instr[insname]   # yields index of OI_WAVELENGTH # FIXME: make a special dictionary
-master.array[arrname]   # yields index of OI_ARRAY
-master.correl[corrname] # yields index of OI_CORREL
+master.target           # yields an OITarget instance
+master.instr[insname]   # yields an OIWavelength instance
+master.array[arrname]   # yields an OIArray instance
+master.correl[corrname] # yields an OICorrel instance
 ```
 
 """
@@ -296,6 +297,7 @@ mutable struct OIPolarization{T} <: OIDataBlock{T}
     # Custom Part
     owner::OIMaster{T}      # master structure owning this datablock
     array::OIArray{T}       # related telescope array
+    instr::OIWavelength{T}  # related instrument wavelengths
     # Header Part
     revn::Int               # revision number of the table definition
     date_obs::String        # UTC start date of observations
