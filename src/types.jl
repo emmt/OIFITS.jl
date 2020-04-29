@@ -52,8 +52,10 @@ mutable struct OIMaster{T<:AbstractFloat} <: AbstractVector{OIDataBlock{T}}
     array::Dict{String,OIDataBlock{T}}  # ARRNAME to OI_ARRAY
     instr::Dict{String,OIDataBlock{T}}  # INSNAME to OI_WAVELENGTH
     correl::Dict{String,OIDataBlock{T}} # CORRNAME to OI_CORREL
-    target::OIDataBlock{T}              # OI_TARGET data-block (must be last
-                                        # to be left undefined)
+    target::OIDataBlock{T}              # OI_TARGET data-block (last)
+
+    # The inner constructor creates an empty structure.  Outer constructors are
+    # provided to populate this structure with datablaocks.
     OIMaster{T}() where {T<:AbstractFloat} = new{T}(OIDataBlock{T}[],
                                                     Dict{String,OIDataBlock{T}}(),
                                                     Dict{String,OIDataBlock{T}}(),

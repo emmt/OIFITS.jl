@@ -39,7 +39,7 @@ is_attached(db::OIDataBlock{T}, owner::OIMaster{T}) where {T} =
 is_attached(db::OIDataBlock, owner::OIMaster) = false
 
 # By default, create data in double precision.
-OIMaster() = OIMaster{Float64}()
+OIMaster(args...) = OIMaster{Float64}(args...)
 OITarget(; kwds...) = OITarget{Float64}(; kwds...)
 OIArray(; kwds...) = OIArray{Float64}(; kwds...)
 OIWavelength(; kwds...) = OIWavelength{Float64}(; kwds...)
@@ -49,6 +49,12 @@ OIVis2(; kwds...) = OIVis2{Float64}()
 OIT3(; kwds...) = OIT3{Float64}(; kwds...)
 OISpectrum(; kwds...) = OISpectrum{Float64}(; kwds...)
 OIPolarization(; kwds...) = OIPolarization{Float64}(; kwds...)
+
+OIMaster{T}(args::OIDataBlock...) where {T} = OIMaster{T}(args)
+function OIMaster{T}(args::Union{AbstractVector{<:OIDataBlock},
+                                 Tuple{Vararg{OIDataBlock}}}) where {T}
+    push!(OIMaster{T}(), args)
+end
 
 """
     OIFITS.convert_float_type(T, obj)

@@ -321,13 +321,24 @@ end
     # Accessors (we check that the same object is returned).
     @test OIFITS.get_target(master) === master.target
     @test isa(OIFITS.get_targets(master), Vector{<:AbstractString})
-    @test isa(OIFITS.get_arrays(master), Vector{<:AbstractString})
-    @test isa(OIFITS.get_instruments(master), Vector{<:AbstractString})
-    @test OIFITS.get_target(master) === master.target
-    @test OIFITS.get_array(master) === master.array
+
     @test OIFITS.get_instrument(master) === master.instr
+    @test isa(OIFITS.get_instruments(master), Vector{<:AbstractString})
+    let db = OIFITS.get_instrument(master, first(OIFITS.get_instruments(master)))
+        @test isa(db, OIWavelength)
+        @test OIFITS.get_instrument(db) === db
+    end
+
+    @test OIFITS.get_array(master) === master.array
+    @test isa(OIFITS.get_arrays(master), Vector{<:AbstractString})
+    let db = OIFITS.get_array(master, first(OIFITS.get_arrays(master)))
+        @test isa(db, OIArray)
+        @test OIFITS.get_array(db) === db
+    end
+
     for db in master
         @test OIFITS.get_extname(db) == db.extname
+        @test OIFITS.Builder.last_revision(db) ≥ db.revn
         if isa(db, Union{OIVis,OIVis2,OIT3,OISpectrum,OIPolarization})
             @test OIFITS.get_eff_wave(db) === db.instr.eff_wave
             @test OIFITS.get_eff_band(db) === db.instr.eff_band
@@ -337,9 +348,17 @@ end
         if isa(db, OITarget)
             @test OIFITS.get_target(db) === db.target
         elseif isa(db, Union{OIVis,OIVis2,OIT3,OISpectrum,OIPolarization})
-            @test_broken OIFITS.get_target(db) === db.target
+            @test OIFITS.get_target(db) === db.owner.target
         else
             @test OIFITS.get_target(db) === nothing
+        end
+        if isa(db, OIWavelength)
+            @test OIFITS.get_instrument(db) === db
+        elseif isa(db, Union{OIVis,OIVis2,OIT3,OISpectrum,OIPolarization})
+            @test OIFITS.get_instrument(db) === db.instr
+            @test isa(OIFITS.get_instrument(db), OIWavelength)
+        else
+            @test OIFITS.get_instrument(db) === nothing
         end
         if isa(db, OIArray)
             @test OIFITS.get_array(db) === db
@@ -349,6 +368,21 @@ end
             @test OIFITS.get_array(db) === nothing
         end
     end
+
+    nwaves = 5
+    instr1 = OIWavelength(eff_wave=rand(nwaves), eff_band=rand(nwaves),
+                          insname="Instr1")
+    @test isa(instr1, OIWavelength)
+    @test isa(instr1, OIWavelength{Float64})
+    @test instr1.revn == OIFITS.Builder.last_revision(instr1)
+    instr2 = OIWavelength{Float32}(eff_wave=rand(nwaves), eff_band=rand(nwaves),
+                                   insname="Instr2")
+    @test isa(instr2, OIWavelength)
+    @test isa(instr2, OIWavelength{Float32})
+    @test instr2.revn == OIFITS.Builder.last_revision(instr2)
+    owner = OIMaster(instr1, instr2)
+    @test "INSTR1" in keys(owner.instr)
+    @test "INSTR2" in keys(owner.instr)
 
 end
 

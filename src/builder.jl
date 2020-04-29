@@ -14,6 +14,7 @@ using ..OIFITS
 using ..OIFITS:
     OIData,
     contents,
+    convert_float_type,
     convert_key_type,
     fix_name,
     get_extname,
