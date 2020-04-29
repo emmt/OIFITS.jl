@@ -249,7 +249,7 @@ get_extname(hdr::FITSHeader) =
      fix_name(get_string(hdr, "EXTNAME", "")))
 
 function show(io::IO, db::OITarget)
-    print(io, "OI_TARGET: ")
+    print(io, db.extname, ": ")
     if (tgt = db.target) !== nothing
         n = length(tgt)
         if n > 0
@@ -266,7 +266,7 @@ function show(io::IO, db::OITarget)
 end
 
 function show(io::IO, db::OIArray)
-    print(io, "OI_ARRAY: ")
+    print(io, db.extname, ": ")
     ntels =  (db.sta_index === nothing ? 0 : length(db.sta_index))
     if db.arrname !== nothing
         print(io, "arrname=\"", db.arrname, "\", ", ntels, " telescope(s)")
@@ -276,7 +276,7 @@ function show(io::IO, db::OIArray)
 end
 
 function show(io::IO, db::OIWavelength)
-    print(io, "OI_WAVELENGTH: ")
+    print(io, db.extname, ": ")
     if db.insname === nothing
         print(io, "<empty>")
     else
@@ -299,12 +299,11 @@ function show(io::IO, db::OIWavelength)
 end
 
 function show(io::IO, db::OIFlux)
-    print(io, "OI_FLUX")
+    print(io, db.extname)
 end
 
-function _show(io::IO, db::OIDataBlock,
-               name::AbstractString, nwaves::Integer, ntimes::Integer)
-    print(io, name, ": ")
+function _show(io::IO, db::OIDataBlock, nwaves::Integer, ntimes::Integer)
+    print(io, db.extname, ": ")
     if nwaves > 0 && ntimes > 0
         print(io, nwaves*ntimes, " measurements in ", nwaves,
               " spectral channel(s) and ", ntimes, " exposure(s)")
@@ -326,7 +325,7 @@ function show(io::IO, db::OIVis)
         nwaves = 0
         ntimes = 0
     end
-    _show(io, db, "OI_VIS", nwaves, ntimes)
+    _show(io, db, nwaves, ntimes)
 end
 
 function show(io::IO, db::OIVis2)
@@ -338,7 +337,7 @@ function show(io::IO, db::OIVis2)
         nwaves = 0
         ntimes = 0
     end
-    _show(io, db, "OI_VIS2", nwaves, ntimes)
+    _show(io, db, nwaves, ntimes)
 end
 
 function show(io::IO, db::OIT3)
@@ -354,7 +353,7 @@ function show(io::IO, db::OIT3)
         nwaves = 0
         ntimes = 0
     end
-    _show(io, db, "OI_T3", nwaves, ntimes)
+    _show(io, db, nwaves, ntimes)
 end
 
 function show(io::IO, master::OIMaster)
