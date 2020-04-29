@@ -27,8 +27,7 @@ and [Ref. 2](#references)), the following data-blocks are available:
   extension in OI-FITS files);
 * `OIT3` contains triple product (bispectrum) data (`OI_T3` extension in
   OI-FITS files);
-* `OISpectrum` contains spectrum data (`OI_SPECTRUM` extension in OI-FITS
-  files);
+* `OIFlux` contains spectral flux data (`OI_FLUX` extension in OI-FITS files);
 * `OIPolarization` contains instrumental polarization (`OI_INSPOL`
   extension in OI-FITS files);
 * `OICorrelation` contains correlation data (`OI_CORR` extension in OI-FITS
@@ -95,14 +94,14 @@ also accessible via this syntax:
   data-block `db` (for all data-block types);
 
 - `db.array` yields the `OI_ARRAY` data-block associated with data-block `db`
-  (for `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_SPECTRUM` and `OI_POLARIZATION`
+  (for `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX` and `OI_POLARIZATION`
   data-block);
 
 - `db.instr` yields the `OI_WAVELENGTH` data-block associated with data-block
-  `db` (for `OI_VIS`, `OI_VIS2`, `OI_T3` and `OI_SPECTRUM` data-block);
+  `db` (for `OI_VIS`, `OI_VIS2`, `OI_T3` and `OI_FLUX` data-block);
 
 - `db.correl` yields the `OI_CORREL` data-block associated with data-block `db`
-  (for `OI_VIS`, `OI_VIS2`, `OI_T3` and `OI_SPECTRUM` data-block).
+  (for `OI_VIS`, `OI_VIS2`, `OI_T3` and `OI_FLUX` data-block).
 
 Of course, getting a given field must make sense.  For instance, `db.eff_wave`
 is only possible for `OI_WAVELENGTH` data-blocks but not for an `OI_TARGET`

@@ -18,8 +18,8 @@ const OIContents{T} = Dict{Symbol,OIDataBlock{T}}
 """
 
 `OIData{T}` is the abstract super-type of any OI data-block containing measured
-data: `OIVis{T}`, `OIVis2{T}`, `OIT3{T}` and `OISpectrum{T}`.  Parameter `T` is
-the floating-point type of the stored data.
+data: `OIVis{T}`, `OIVis2{T}`, `OIT3{T}` and `OIFlux{T}`.  Parameter `T` is the
+floating-point type of the stored data.
 
 """
 abstract type OIData{T} <: OIDataBlock{T} end
@@ -27,11 +27,11 @@ abstract type OIData{T} <: OIDataBlock{T} end
 """
 
 `OIMaster` stores the contents of an OI-FITS file.  All data-blocks containing
-measurements (OI_VIS, OI_VIS2, OI_T3, OI_SPECTRUM and OI_POLARIZATION) are
-stored into a vector and thus indexed by an integer.  Named data-blocks
-(OI_ARRAY, OI_WAVELENGTH and OI_CORREL) are indexed by their names (converted
-to upper case letters, with leading and trailing spaces stripped, multiple
-spaces replaced by a single ordinary space).
+measurements (OI_VIS, OI_VIS2, OI_T3, OI_FLUX and OI_POLARIZATION) are stored
+into a vector and thus indexed by an integer.  Named data-blocks (OI_ARRAY,
+OI_WAVELENGTH and OI_CORREL) are indexed by their names (converted to upper
+case letters, with leading and trailing spaces stripped, multiple spaces
+replaced by a single ordinary space).
 
 ```julia
 for db in master
@@ -268,7 +268,7 @@ mutable struct OIT3{T} <: OIData{T}
         Builder.initialize!(new{T}(), kwds)
 end
 
-mutable struct OISpectrum{T} <: OIData{T}
+mutable struct OIFlux{T} <: OIData{T}
     # Custom Part
     owner::OIMaster{T}      # master structure owning this datablock
     array::OIArray{T}       # related telescope array
@@ -289,9 +289,10 @@ mutable struct OISpectrum{T} <: OIData{T}
     int_time::Vector{T}     # integration time [s]
     fluxdata::Matrix{T}     # flux
     fluxerr::Matrix{T}      # flux error
-    corrindx_fluxdata::Vector{Int} # index into correlation matrix for 1st FLUXDATA element
+    corrindx_fluxdata::Vector{Int}# index into correlation matrix for 1st FLUXDATA element
     sta_index::Vector{Int}  # station number contributing to the data
-    OISpectrum{T}(; kwds...) where {T<:AbstractFloat} =
+    flag::Matrix{Bool}      # flags
+    OIFlux{T}(; kwds...) where {T<:AbstractFloat} =
         Builder.initialize!(new{T}(), kwds)
 end
 

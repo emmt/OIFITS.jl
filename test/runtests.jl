@@ -298,11 +298,11 @@ end
     @test isa(subset, OIMaster)
     for db in subset
         @test isa(subset, Union{OIWavelength,OIVis,OIVis2,OIT3,
-                                OISpectrum,OIPolarization}) == false
+                                OIFlux,OIPolarization}) == false
     end
     for db in master
         if isa(db, Union{OIWavelength,OIVis,OIVis2,OIT3,
-                         OISpectrum,OIPolarization})
+                         OIFlux,OIPolarization})
             @test OIFITS.select_wavelength(db, w -> false) === nothing
         end
     end
@@ -339,7 +339,7 @@ end
     for db in master
         @test OIFITS.get_extname(db) == db.extname
         @test OIFITS.Builder.last_revision(db) ≥ db.revn
-        if isa(db, Union{OIVis,OIVis2,OIT3,OISpectrum,OIPolarization})
+        if isa(db, Union{OIVis,OIVis2,OIT3,OIFlux,OIPolarization})
             @test OIFITS.get_eff_wave(db) === db.instr.eff_wave
             @test OIFITS.get_eff_band(db) === db.instr.eff_band
             @test OIFITS.get_instrument(db) === db.instr
@@ -347,14 +347,14 @@ end
         end
         if isa(db, OITarget)
             @test OIFITS.get_target(db) === db.target
-        elseif isa(db, Union{OIVis,OIVis2,OIT3,OISpectrum,OIPolarization})
+        elseif isa(db, Union{OIVis,OIVis2,OIT3,OIFlux,OIPolarization})
             @test OIFITS.get_target(db) === db.owner.target
         else
             @test OIFITS.get_target(db) === nothing
         end
         if isa(db, OIWavelength)
             @test OIFITS.get_instrument(db) === db
-        elseif isa(db, Union{OIVis,OIVis2,OIT3,OISpectrum,OIPolarization})
+        elseif isa(db, Union{OIVis,OIVis2,OIT3,OIFlux,OIPolarization})
             @test OIFITS.get_instrument(db) === db.instr
             @test isa(OIFITS.get_instrument(db), OIWavelength)
         else
@@ -362,7 +362,7 @@ end
         end
         if isa(db, OIArray)
             @test OIFITS.get_array(db) === db
-        elseif isa(db, Union{OIVis,OIVis2,OIT3,OISpectrum,OIPolarization})
+        elseif isa(db, Union{OIVis,OIVis2,OIT3,OIFlux,OIPolarization})
             @test OIFITS.get_array(db) === db.array
         else
             @test OIFITS.get_array(db) === nothing
@@ -379,6 +379,8 @@ end
     @test OIFITS.is_attached(instr1) == false
     @test iswritable(instr1, :extname) == false
     @test iswritable(instr1, :insname) == true
+    @test isreadonly(instr1, :extname) == true
+    @test isreadonly(instr1, :insname) == false
     @test instr1.extname == "OI_WAVELENGTH"
     instr2 = OIWavelength{Float32}(eff_wave=rand(nwaves), eff_band=rand(nwaves),
                                    insname="Instr2")

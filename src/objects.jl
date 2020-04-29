@@ -46,7 +46,7 @@ OICorrelation(; kwds...) = OICorrelation{Float64}(; kwds...)
 OIVis(; kwds...) = OIVis{Float64}(; kwds...)
 OIVis2(; kwds...) = OIVis2{Float64}()
 OIT3(; kwds...) = OIT3{Float64}(; kwds...)
-OISpectrum(; kwds...) = OISpectrum{Float64}(; kwds...)
+OIFlux(; kwds...) = OIFlux{Float64}(; kwds...)
 OIPolarization(; kwds...) = OIPolarization{Float64}(; kwds...)
 
 OIMaster{T}(args::OIDataBlock...) where {T} = OIMaster{T}(args)
@@ -66,7 +66,7 @@ is returned; otherwise an unlinked object is returned.
 
 # Constructors for copy/conversion.
 for T in (:OITarget, :OIArray, :OIWavelength, :OICorrelation,
-          :OIVis, :OIVis2, :OIT3, :OISpectrum, :OIPolarization)
+          :OIVis, :OIVis2, :OIT3, :OIFlux, :OIPolarization)
     @eval begin
         # Constructor from an object of same kind yields same object if exactly
         # same type, a copy if floating-point type is different.
@@ -185,7 +185,7 @@ end
 
 # Known OI-FITS extension names.
 const EXTNAMES = ("OI_TARGET", "OI_WAVELENGTH", "OI_ARRAY", "OI_VIS",
-                  "OI_VIS2", "OI_T3", "OI_SPECTRUM", "OI_CORR", "OI_INSPOL")
+                  "OI_VIS2", "OI_T3", "OI_FLUX", "OI_CORR", "OI_INSPOL")
 
 """
     OIFITS.get_datablock_type([T = Float64,] extname)
@@ -204,7 +204,7 @@ get_datablock_type(::Type{T}, extname::Symbol) where {T<:AbstractFloat} =
      extname === :OI_VIS        ? OIVis{T}          :
      extname === :OI_VIS2       ? OIVis2{T}         :
      extname === :OI_T3         ? OIT3{T}           :
-     extname === :OI_SPECTRUM   ? OISpectrum{T}     :
+     extname === :OI_FLUX       ? OIFlux{T}         :
      extname === :OI_CORR       ? OICorrelation{T}  :
      extname === :OI_INSPOL     ? OIPolarization{T} :
      bad_extname(extname))
@@ -216,7 +216,7 @@ get_datablock_type(::Type{T}, extname::AbstractString) where {T<:AbstractFloat} 
      extname == "OI_VIS"        ? OIVis{T}          :
      extname == "OI_VIS2"       ? OIVis2{T}         :
      extname == "OI_T3"         ? OIT3{T}           :
-     extname == "OI_SPECTRUM"   ? OISpectrum{T}     :
+     extname == "OI_FLUX"       ? OIFlux{T}         :
      extname == "OI_CORR"       ? OICorrelation{T}  :
      extname == "OI_INSPOL"     ? OIPolarization{T} :
      bad_extname(extname))
@@ -241,7 +241,7 @@ get_extname(::Type{<:OIArray})        = "OI_ARRAY"
 get_extname(::Type{<:OIVis})          = "OI_VIS"
 get_extname(::Type{<:OIVis2})         = "OI_VIS2"
 get_extname(::Type{<:OIT3})           = "OI_T3"
-get_extname(::Type{<:OISpectrum})     = "OI_SPECTRUM"
+get_extname(::Type{<:OIFlux})         = "OI_FLUX"
 get_extname(::Type{<:OICorrelation})  = "OI_CORR"
 get_extname(::Type{<:OIPolarization}) = "OI_INSPOL"
 get_extname(hdr::FITSHeader) =
@@ -298,8 +298,8 @@ function show(io::IO, db::OIWavelength)
     end
 end
 
-function show(io::IO, db::OISpectrum)
-    print(io, "OI_SPECTRUM")
+function show(io::IO, db::OIFlux)
+    print(io, "OI_FLUX")
 end
 
 function _show(io::IO, db::OIDataBlock,
@@ -439,7 +439,7 @@ function _select_target(src::T, id::Int) where {T<:OITarget}
 end
 
 function _select_target(src::T, id::Int) where {T<:Union{OIVis,OIVis2,OIT3,
-                                                        OISpectrum,
+                                                        OIFlux,
                                                         OIPolarization}}
     # Pre-select target.
     target_id = src.target_id
@@ -545,7 +545,7 @@ select_wavelength(src::OIDataBlock, select::Function) = copy(src)
 function select_wavelength(src::T,
                            select::Function) where {T<:Union{OIWavelength,
                                                              OIVis,OIVis2,OIT3,
-                                                             OISpectrum,
+                                                             OIFlux,
                                                              OIPolarization}}
     # Pre-select wavelengths.
     isintr = isa(src, OIWavelength) # source is instrument?

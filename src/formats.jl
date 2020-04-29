@@ -235,15 +235,15 @@ define("OI_T3", 2,
         "STA_INDEX       I(3)  station numbers contributing to the data",
         "FLAG            L(W)  flag"])
 
-# OI_SPECTRUM definition (1st revision):
-define("OI_SPECTRUM", 1,
+# OI_FLUX definition (1st revision):
+define("OI_FLUX", 1,
        ["OI_REVN            I     revision number of the table definition",
         "DATE-OBS           A     UTC start date of observations",
         "INSNAME            A     name of corresponding detector",
         "ARRNAME           ?A     name of corresponding array",
         "CORRNAME          ?A     name of corresponding correlation table",
-        "FOV                D     area of sky over which flux is integrated [arcsec]",
-        "FOVTYPE            A     model for FOV: 'FWHM' or 'RADIUS'",
+        "FOV               ?D     area of sky over which flux is integrated [arcsec]",
+        "FOVTYPE           ?A     model for FOV: 'FWHM' or 'RADIUS'",
         "CALSTAT            A     'C': spectrum is calibrated, 'U': uncalibrated",
         "------------------------------------------------------------",
         "TARGET_ID          I(1)  target number as index into OI_TARGET table",
@@ -252,7 +252,8 @@ define("OI_SPECTRUM", 1,
         "FLUXDATA           D(W)  flux",
         "FLUXERR            D(W)  flux error",
         "CORRINDX_FLUXDATA ?J(1)  index into correlation matrix for 1st FLUXDATA element",
-        "STA_INDEX          I(1)  station number contributing to the data"])
+        "STA_INDEX         ?I(1)  station number contributing to the data",
+        "FLAG               L(W)  flag"])
 
 # OI_CORR definition (1st revision):
 define("OI_CORR", 1,
