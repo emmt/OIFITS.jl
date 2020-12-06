@@ -1,6 +1,6 @@
 name = "OIFITS"
 uuid = "53eb397e-dec1-5dcf-8dc9-2db916067267"
-authors = ["Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>"]
+authors = ["Éric Thiébaut <https://github.com/emmt>"]
 version = "0.4.0"
 
 [deps]
