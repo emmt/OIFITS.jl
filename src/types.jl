@@ -1,9 +1,16 @@
 #
-# types.jl --
+# types.jl -
 #
 # Definitions of OI-FITS data types.
 #
 #------------------------------------------------------------------------------
+
+"""
+
+`OIFITS.Undef` is the type of `undef`.
+
+"""
+const Undef = typeof(undef)
 
 """
 
@@ -13,8 +20,6 @@
 """
 abstract type OIDataBlock{T<:AbstractFloat} end
 
-const OIContents{T} = Dict{Symbol,OIDataBlock{T}}
-
 """
 
 `OIData{T}` is the abstract super-type of any OI data-block containing measured
@@ -22,45 +27,7 @@ data: `OIVis{T}`, `OIVis2{T}`, `OIT3{T}` and `OIFlux{T}`.  Parameter `T` is the
 floating-point type of the stored data.
 
 """
-abstract type OIData{T} <: OIDataBlock{T} end
-
-"""
-
-`OIMaster` stores the contents of an OI-FITS file.  All data-blocks containing
-measurements (OI_VIS, OI_VIS2, OI_T3, OI_FLUX and OI_POLARIZATION) are stored
-into a vector and thus indexed by an integer.  Named data-blocks (OI_ARRAY,
-OI_WAVELENGTH and OI_CORREL) are indexed by their names (converted to upper
-case letters, with leading and trailing spaces stripped, multiple spaces
-replaced by a single ordinary space).
-
-```julia
-for db in master
-    # Loop over all data in master.
-    ...
-end
-master.target           # yields an OITarget instance
-master.instr[insname]   # yields an OIWavelength instance
-master.array[arrname]   # yields an OIArray instance
-master.correl[corrname] # yields an OICorrel instance
-```
-
-"""
-mutable struct OIMaster{T<:AbstractFloat} <: AbstractVector{OIDataBlock{T}}
-    # OIMaster must be defined before concrete sub-types of OIDataBlock are
-    # defined so it can only use the abstract OIDataBlock type.
-    all::Vector{OIDataBlock{T}}    # All data-blocks
-    array::Dict{String,OIDataBlock{T}}  # ARRNAME to OI_ARRAY
-    instr::Dict{String,OIDataBlock{T}}  # INSNAME to OI_WAVELENGTH
-    correl::Dict{String,OIDataBlock{T}} # CORRNAME to OI_CORREL
-    target::OIDataBlock{T}              # OI_TARGET data-block (last)
-
-    # The inner constructor creates an empty structure.  Outer constructors are
-    # provided to populate this structure with datablaocks.
-    OIMaster{T}() where {T<:AbstractFloat} = new{T}(OIDataBlock{T}[],
-                                                    Dict{String,OIDataBlock{T}}(),
-                                                    Dict{String,OIDataBlock{T}}(),
-                                                    Dict{String,OIDataBlock{T}}())
-end
+abstract type OIData{T<:AbstractFloat} <: OIDataBlock{T} end
 
 # The data fields are specified as separate arrays, instead of arrays of
 # structures.
@@ -83,9 +50,7 @@ end
 # a master.  One has to rebuild a master.  Hopefully this is easy (with the
 # API), fast and memory efficient.
 #
-mutable struct OITarget{T} <: OIDataBlock{T}
-    # Custom Part
-    owner::OIMaster{T}      # master structure owning this datablock
+mutable struct OITarget{T<:AbstractFloat} <: OIDataBlock{T}
     # Header Part
     revn::Int               # revision number of the table definition
     # Data Part
@@ -107,13 +72,10 @@ mutable struct OITarget{T} <: OIDataBlock{T}
     para_err::Vector{T}     # error in parallax [deg]
     spectyp::Vector{String} # spectral type
     category::Vector{String}# "CAL"ibrator or "SCI"ence target
-    OITarget{T}(; kwds...) where {T<:AbstractFloat} =
-        Builder.initialize!(new{T}(), kwds)
+    OITarget{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
 end
 
-mutable struct OIArray{T} <: OIDataBlock{T}
-    # Custom Part
-    owner::OIMaster{T}      # master structure owning this datablock
+mutable struct OIArray{T<:AbstractFloat} <: OIDataBlock{T}
     # Header Part
     revn::Int               # revision number of the table definition
     arrname::String         # array name for cross-referencing
@@ -129,26 +91,20 @@ mutable struct OIArray{T} <: OIDataBlock{T}
     staxyz::Matrix{T}       # station coordinates relative to array center [m]
     fov::Vector{T}          # photometric field of view [arcsec]
     fovtype::Vector{String} # model for FOV: "FWHM" or "RADIUS"
-    OIArray{T}(; kwds...) where {T<:AbstractFloat} =
-        Builder.initialize!(new{T}(), kwds)
+    OIArray{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
 end
 
-mutable struct OIWavelength{T} <: OIDataBlock{T}
-    # Custom Part
-    owner::OIMaster{T}      # master structure owning this datablock
+mutable struct OIWavelength{T<:AbstractFloat} <: OIDataBlock{T}
     # Header Part
     revn::Int               # revision number of the table definition
     insname::String         # name of detector for cross-referencing
     # Data Part
     eff_wave::Vector{T}     # effective wavelength of channel [m]
     eff_band::Vector{T}     # effective bandpass of channel [m]
-    OIWavelength{T}(; kwds...) where {T<:AbstractFloat} =
-        Builder.initialize!(new{T}(), kwds)
+    OIWavelength{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
 end
 
-mutable struct OICorrelation{T} <: OIDataBlock{T}
-    # Custom Part
-    owner::OIMaster{T}      # master structure owning this datablock
+mutable struct OICorr{T<:AbstractFloat} <: OIDataBlock{T}
     # Header Part
     revn::Int               # revision number of the table definition
     corrname::String        # name of correlation data set
@@ -157,20 +113,18 @@ mutable struct OICorrelation{T} <: OIDataBlock{T}
     iindx::Vector{Int}      # 1st index of correlation matrix element
     jindx::Vector{Int}      # 2nd index of correlation matrix element
     corr::Vector{T}         # matrix element
-    OICorrelation{T}(; kwds...) where {T<:AbstractFloat} =
-        Builder.initialize!(new{T}(), kwds)
+    OICorr{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
 end
 
 # FIXME: In OI-FITS Rev. 2 only MJD and DATE-OBS must be used to express
 #        time. The TIME column is retained only for backwards compatibility
 #        and must contain zeros.
 
-mutable struct OIVis{T} <: OIData{T}
-    # Custom Part
-    owner::OIMaster{T}      # master structure owning this datablock
+mutable struct OIVis{T<:AbstractFloat} <: OIData{T}
+    # Links
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
-    correl::OICorrelation{T}# related correlation data
+    correl::OICorr{T}       # related correlation data
     # Header Part
     revn::Int               # revision number of the table definition
     date_obs::String        # UTC start date of observations
@@ -192,7 +146,7 @@ mutable struct OIVis{T} <: OIData{T}
     visphi::Matrix{T}       # visibility phase [deg]
     visphierr::Matrix{T}    # error in visibility phase [deg]
     corrindx_visphi::Vector{Int} # index into correlation matrix for 1st VISPHI element
-    visrefmap::Array{T,3}   # true where spectral channels were taken as reference for differential visibility computation
+    visrefmap::Array{Bool,3}# true where spectral channels were taken as reference for differential visibility computation
     rvis::Matrix{T}         # real part of complex coherent flux
     rviserr::Matrix{T}      # error on RVIS
     corrindx_rvis::Vector{Int} # index into correlation matrix for 1st RVIS element
@@ -203,16 +157,14 @@ mutable struct OIVis{T} <: OIData{T}
     vcoord::Vector{T}       # V coordinate of the data [m]
     sta_index::Matrix{Int}  # station numbers contributing to the data
     flag::Matrix{Bool}      # flags
-    OIVis{T}(; kwds...) where {T<:AbstractFloat} =
-        Builder.initialize!(new{T}(), kwds)
+    OIVis{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
 end
 
 mutable struct OIVis2{T} <: OIData{T}
-    # Custom Part
-    owner::OIMaster{T}      # master structure owning this datablock
+    # Links
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
-    correl::OICorrelation{T}# related correlation data
+    correl::OICorr{T}       # related correlation data
     # Header Part
     revn::Int               # revision number of the table definition
     date_obs::String        # UTC start date of observations
@@ -231,16 +183,14 @@ mutable struct OIVis2{T} <: OIData{T}
     vcoord::Vector{T}       # V coordinate of the data [m]
     sta_index::Matrix{Int}  # station numbers contributing to the data
     flag::Matrix{Bool}      # flags
-    OIVis2{T}(; kwds...) where {T<:AbstractFloat} =
-        Builder.initialize!(new{T}(), kwds)
+    OIVis2{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
 end
 
-mutable struct OIT3{T} <: OIData{T}
-    # Custom Part
-    owner::OIMaster{T}      # master structure owning this datablock
+mutable struct OIT3{T<:AbstractFloat} <: OIData{T}
+    # Links
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
-    correl::OICorrelation{T}# related correlation data
+    correl::OICorr{T}       # related correlation data
     # Header Part
     revn::Int               # revision number of the table definition
     date_obs::String        # UTC start date of observations
@@ -264,16 +214,14 @@ mutable struct OIT3{T} <: OIData{T}
     v2coord::Vector{T}      # V coordinate of baseline BC of the triangle [m]
     sta_index::Matrix{Int}  # station numbers contributing to the data
     flag::Matrix{Bool}      # flags
-    OIT3{T}(; kwds...) where {T<:AbstractFloat} =
-        Builder.initialize!(new{T}(), kwds)
+    OIT3{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
 end
 
-mutable struct OIFlux{T} <: OIData{T}
-    # Custom Part
-    owner::OIMaster{T}      # master structure owning this datablock
+mutable struct OIFlux{T<:AbstractFloat} <: OIData{T}
+    # Links
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
-    correl::OICorrelation{T}# related correlation data
+    correl::OICorr{T}       # related correlation data
     # Header Part
     revn::Int               # revision number of the table definition
     date_obs::String        # UTC start date of observations
@@ -292,13 +240,11 @@ mutable struct OIFlux{T} <: OIData{T}
     corrindx_fluxdata::Vector{Int}# index into correlation matrix for 1st FLUXDATA element
     sta_index::Vector{Int}  # station number contributing to the data
     flag::Matrix{Bool}      # flags
-    OIFlux{T}(; kwds...) where {T<:AbstractFloat} =
-        Builder.initialize!(new{T}(), kwds)
+    OIFlux{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
 end
 
-mutable struct OIPolarization{T} <: OIDataBlock{T}
-    # Custom Part
-    owner::OIMaster{T}      # master structure owning this datablock
+mutable struct OIInsPol{T<:AbstractFloat} <: OIDataBlock{T}
+    # Links
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
     # Header Part
@@ -318,6 +264,51 @@ mutable struct OIPolarization{T} <: OIDataBlock{T}
     jxy::Matrix{Complex{T}} # complex Jones Matrix component between Y and X axis
     jyx::Matrix{Complex{T}} # complex Jones Matrix component between Y and X axis
     sta_index::Vector{Int}  # station number for the above matrices
-    OIPolarization{T}(; kwds...) where {T<:AbstractFloat} =
-        Builder.initialize!(new{T}(), kwds)
+    OIInsPol{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
+end
+
+"""
+
+`OIMaster` stores the contents of an OI-FITS file.  All data-blocks containing
+measurements (OI_VIS, OI_VIS2, OI_T3, OI_FLUX and OI_INSPOL) are stored into a
+vector and thus indexed by an integer.  Named data-blocks (OI_ARRAY,
+OI_WAVELENGTH and OI_CORR) are indexed by their names (converted to upper case
+letters, with leading and trailing spaces stripped, multiple spaces replaced by
+a single ordinary space).
+
+    # Loop over OIVis instances in master.
+    for db in master.vis
+        ...
+    end
+    master.target           # yields an OITarget instance
+    master.instr[insname]   # yields an OIWavelength instance
+    master.array[arrname]   # yields an OIArray instance
+    master.correl[corrname] # yields an OICorr instance
+
+"""
+mutable struct OIMaster{T<:AbstractFloat}
+    target::OITarget{T}           # OI_TARGET data-block (unique)
+    array::Vector{OIArray{T}}     # OI_ARRAY data-blocks
+    instr::Vector{OIWavelength{T}}# OI_WAVELENGTH data-blocks
+    correl::Vector{OICorr{T}}     # OI_CORR data-blocks
+    vis::Vector{OIVis{T}}         # OI_VIS data-blocks
+    vis2::Vector{OIVis2{T}}       # OI_VIS2 data-blocks
+    t3::Vector{OIT3{T}}           # OI_T3 data-blocks
+    flux::Vector{OIFlux{T}}       # OI_FLUX data-blocks
+    inspol::Vector{OIInsPol{T}}   # OI_INSPOL data-blocks
+
+    # The inner constructor creates an empty structure.  Outer constructors are
+    # provided to populate this structure with datablocks.
+    OIMaster{T}() where {T<:AbstractFloat} = begin
+        master = new{T}()
+        master.array  = OIArray{T}[]
+        master.instr  = OIWavelength{T}[]
+        master.correl = OICorr{T}[]
+        master.vis    = OIVis{T}[]
+        master.vis2   = OIVis2{T}[]
+        master.t3     = OIT3{T}[]
+        master.flux   = OIFlux{T}[]
+        master.instr  = OIInsPol{T}[]
+        return master
+    end
 end

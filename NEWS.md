@@ -1,17 +1,61 @@
-# V1.0.0
+# User visible changes in Julia interface to OI-FITS
 
-The version 1.0 has many changes.  Most of the information is available by the
-`obj.key` syntax and methods should be more type-stable.  Data-blocks are now
-structured objects and no longer dictionaries.  Most accessors functions are
-deprecated.
+
+## Things to be done
+
+`OIFITS` package is *work-in-progress*, it can currently read any compliant
+OI-FITS file and provides easy and fast access to the contents of a set of OI
+data.  In a near future more capabilities will be implemented to meet the
+requirements of data processing softwares:
+
+- Extract sub-sets of OI-FITS data: to select a chosen wavelength range, a
+  given target, etc.
+
+- Merge the contents of several OI-FITS files.
+
+- Build and check OI data-blocks.
+
+- Write OI-FITS files.
+
+
+## Versions 1.0
+
+This version introduces major changes.
+
+- Data-blocks are now structured objects and no longer dictionaries.  As a
+  result, type-stability of structures and methods has been much improved.
+
+- The `obj.key` syntax is encouraged for any OI-FITS object `obj`.  Accessors
+  functions are no longer needed (and have been discarded).  Provided
+  dependencies have been correctly set, shortcuts are provided so that
+  `obj.eff_wave` (or `obj.eff_band`) can be used instead of
+  `obj.instr.eff_wave` (or `obj.instr.eff_band`) for any object `obj` storing
+  OI data.  Building an `OIMaster` instance by calling `push!` automatically
+  takes care of updating dependencies.
+
+- Calling `using OIFITS` only exports OI-FITS types (all prefixed with `OI*`)
+  and no methods other than type constructors.
+
+- `push!(master,db)` takes care of updating dependencies in `master` and `db`
+  with a *copy-on-write* policy for `db` to avoid side effects and so that `db`
+  may be used in other OI data sets.
 
 - `OIFITS.get_hdutype` renamed `OIFITS.get_hdu_type`.
 
 - `Base.copy` has been extended and replaces `OIFITS.clone`.
 
-# v0.2.0 (unreleased)
+- `OIFITS.OIPolarization` and `OIFITS.OICorrelation` renamed `OIFITS.OIInsPol`
+  and `OIFITS.OICorrel` to more closely follow names in OI-FITS specifications.
 
-## User interface
+- Use macros `@header` and `@column` to define OI-FITS formats with a syntax
+  very close to the tables in OI-FITS specifications.
+
+- The package no longer hacks `FITSIO` and `CFITSIO` packages to handle FITS
+  files.  As a result, `OIFITS` should be much less sensitive to the evolution
+  of these dependencies.
+
+
+## Versions 0.4
 
  - All `oifits_` prefixes have been removed and no methods are exported.
 

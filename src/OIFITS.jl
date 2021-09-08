@@ -1,5 +1,5 @@
 #
-# OIFITS.jl --
+# OIFITS.jl -
 #
 # Support for OI-FITS (optical interferometry data format) in Julia.
 #
@@ -9,31 +9,29 @@ module OIFITS
 
 export
     OIArray,
-    OICorrelation,
+    OICorr,
     OIDataBlock,
     OIFlux,
+    OIInsPol,
     OIMaster,
-    OIPolarization,
     OIT3,
     OITarget,
     OIVis,
     OIVis2,
     OIWavelength
 
-using Compat
-import Base: getindex, setindex!, haskey, keys, show
+import Base:
+    convert, copy, eltype, push!, read, haskey, keys, show,
+    getindex, setindex!,
+    getproperty, setproperty!, propertynames
 
-using FITSIO
-using FITSIO.Libcfitsio
-
-using FITSIO: libcfitsio, fits_assert_ok, fits_assert_open
-using FITSIO.Libcfitsio: fits_get_errstatus
+import FITSIO
+import CFITSIO
+using FITSIO: FITS, HDU, TableHDU
 
 include("types.jl")
-include("utils.jl")
-include("objects.jl")
-include("builder.jl")
-include("files.jl")
-include("accessors.jl") # must be *after* oifile.jl and all oiformat*.jl
+include("formats.jl")
+import .Formats: FieldDefinition, get_format
+include("methods.jl")
 
 end # module
