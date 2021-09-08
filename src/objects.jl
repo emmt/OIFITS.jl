@@ -15,14 +15,6 @@ float_type(::OIDataBlock{T}) where {T} = T
 float_type(::OIMaster{T}) where {T} = T
 
 """
-    OIFITS.contents(obj)
-
-yields the vector of the data-blocks owned by OI-FITS master object `obj`.
-
-"""
-contents(obj::OIMaster) = getfield(obj, :all)
-
-"""
     OIFITS.is_attached(db)
 
 yields whether OI-FITS data-block `db` is attached to an OI-FITS master object.
@@ -37,22 +29,28 @@ is_attached(db::OIDataBlock) = isdefined(db, :owner)
 is_attached(db::OIDataBlock{T}, owner::OIMaster{T}) where {T} =
     (is_attached(db) && db.owner === owner)
 
-# By default, create data in double precision.
+# By default, create instances in double precision.
 OIMaster(args...) = OIMaster{Float64}(args...)
-OITarget(; kwds...) = OITarget{Float64}(; kwds...)
-OIArray(; kwds...) = OIArray{Float64}(; kwds...)
-OIWavelength(; kwds...) = OIWavelength{Float64}(; kwds...)
-OICorrelation(; kwds...) = OICorrelation{Float64}(; kwds...)
-OIVis(; kwds...) = OIVis{Float64}(; kwds...)
-OIVis2(; kwds...) = OIVis2{Float64}()
-OIT3(; kwds...) = OIT3{Float64}(; kwds...)
-OIFlux(; kwds...) = OIFlux{Float64}(; kwds...)
-OIPolarization(; kwds...) = OIPolarization{Float64}(; kwds...)
+for T in (:OIArray,
+          :OICorr,
+          :OIFlux,
+          :OIInsPol,
+          :OIT3,
+          :OITarget,
+          :OIVis,
+          :OIVis2,
+          :OIWavelength,)
+    @eval $T(; kwds...) = $T{Float64}(; kwds...)
+end
 
 OIMaster{T}(args::OIDataBlock...) where {T} = OIMaster{T}(args)
 function OIMaster{T}(args::Union{AbstractVector{<:OIDataBlock},
                                  Tuple{Vararg{OIDataBlock}}}) where {T}
-    push!(OIMaster{T}(), args)
+    master = OIMaster{T}()
+    for arg in args
+        push!(master, arg) # FIXME: there should be 2 versions of push!
+    end
+    return update_links(master)
 end
 
 """
@@ -65,8 +63,8 @@ is returned; otherwise an unlinked object is returned.
 """ convert_float_type
 
 # Constructors for copy/conversion.
-for T in (:OITarget, :OIArray, :OIWavelength, :OICorrelation,
-          :OIVis, :OIVis2, :OIT3, :OIFlux, :OIPolarization)
+for T in (:OITarget, :OIArray, :OIWavelength, :OICorr,
+          :OIVis, :OIVis2, :OIT3, :OIFlux, :OIInsPol)
     @eval begin
         # Constructor from an object of same kind yields same object if exactly
         # same type, a copy if floating-point type is different.
@@ -121,7 +119,7 @@ Base.copy(obj::T) where {T<:OIDataBlock} = copyto!(T(), obj)
 @inline Base.isreadonly(::Type{T}, sym::Symbol) where {T<:OIData} =
     (sym == :extname || sym == :owner || sym == :array || sym == :instr ||
      sym == :correl)
-@inline Base.isreadonly(::Type{T}, sym::Symbol) where {T<:OIPolarization} =
+@inline Base.isreadonly(::Type{T}, sym::Symbol) where {T<:OIInsPol} =
     (sym == :extname || sym == :owner || sym == :array)
 
 # Extend `getproperty` and `setproperty!` to implement consistent `obj.field`
@@ -198,28 +196,26 @@ get_datablock_type(extname::Union{AbstractString,Symbol}) =
     get_datablock_type(Float64, extname)
 
 get_datablock_type(::Type{T}, extname::Symbol) where {T<:AbstractFloat} =
-    (extname === :OI_TARGET     ? OITarget{T}       :
-     extname === :OI_WAVELENGTH ? OIWavelength{T}   :
-     extname === :OI_ARRAY      ? OIArray{T}        :
-     extname === :OI_VIS        ? OIVis{T}          :
-     extname === :OI_VIS2       ? OIVis2{T}         :
-     extname === :OI_T3         ? OIT3{T}           :
-     extname === :OI_FLUX       ? OIFlux{T}         :
-     extname === :OI_CORR       ? OICorrelation{T}  :
-     extname === :OI_INSPOL     ? OIPolarization{T} :
-     bad_extname(extname))
+    (extname === :OI_TARGET     ? OITarget{T}     :
+     extname === :OI_WAVELENGTH ? OIWavelength{T} :
+     extname === :OI_ARRAY      ? OIArray{T}      :
+     extname === :OI_VIS        ? OIVis{T}        :
+     extname === :OI_VIS2       ? OIVis2{T}       :
+     extname === :OI_T3         ? OIT3{T}         :
+     extname === :OI_FLUX       ? OIFlux{T}       :
+     extname === :OI_CORR       ? OICorr{T}       :
+     extname === :OI_INSPOL     ? OIInsPol{T}     : bad_extname(extname))
 
 get_datablock_type(::Type{T}, extname::AbstractString) where {T<:AbstractFloat} =
-    (extname == "OI_TARGET"     ? OITarget{T}       :
-     extname == "OI_WAVELENGTH" ? OIWavelength{T}   :
-     extname == "OI_ARRAY"      ? OIArray{T}        :
-     extname == "OI_VIS"        ? OIVis{T}          :
-     extname == "OI_VIS2"       ? OIVis2{T}         :
-     extname == "OI_T3"         ? OIT3{T}           :
-     extname == "OI_FLUX"       ? OIFlux{T}         :
-     extname == "OI_CORR"       ? OICorrelation{T}  :
-     extname == "OI_INSPOL"     ? OIPolarization{T} :
-     bad_extname(extname))
+    (extname == "OI_TARGET"     ? OITarget{T}     :
+     extname == "OI_WAVELENGTH" ? OIWavelength{T} :
+     extname == "OI_ARRAY"      ? OIArray{T}      :
+     extname == "OI_VIS"        ? OIVis{T}        :
+     extname == "OI_VIS2"       ? OIVis2{T}       :
+     extname == "OI_T3"         ? OIT3{T}         :
+     extname == "OI_FLUX"       ? OIFlux{T}       :
+     extname == "OI_CORR"       ? OICorr{T}       :
+     extname == "OI_INSPOL"     ? OIInsPol{T}     : bad_extname(extname))
 
 @noinline bad_extname(extname::Union{Symbol,AbstractString}) =
     error("bad OI-FITS extension name \"", extname, "\"")
@@ -234,16 +230,16 @@ a FITS Header Data Unit.  If `arg` is an OI-FITS data-block instance,
 `arg.extname` yields the same result.
 
 """
-get_extname(::T) where {T<:OIDataBlock} = get_extname(T)
-get_extname(::Type{<:OITarget})       = "OI_TARGET"
-get_extname(::Type{<:OIWavelength})   = "OI_WAVELENGTH"
-get_extname(::Type{<:OIArray})        = "OI_ARRAY"
-get_extname(::Type{<:OIVis})          = "OI_VIS"
-get_extname(::Type{<:OIVis2})         = "OI_VIS2"
-get_extname(::Type{<:OIT3})           = "OI_T3"
-get_extname(::Type{<:OIFlux})         = "OI_FLUX"
-get_extname(::Type{<:OICorrelation})  = "OI_CORR"
-get_extname(::Type{<:OIPolarization}) = "OI_INSPOL"
+get_extname(db::OIDataBlock) = get_extname(typeof(db))
+get_extname(::Type{<:OITarget})     = "OI_TARGET"
+get_extname(::Type{<:OIWavelength}) = "OI_WAVELENGTH"
+get_extname(::Type{<:OIArray})      = "OI_ARRAY"
+get_extname(::Type{<:OIVis})        = "OI_VIS"
+get_extname(::Type{<:OIVis2})       = "OI_VIS2"
+get_extname(::Type{<:OIT3})         = "OI_T3"
+get_extname(::Type{<:OIFlux})       = "OI_FLUX"
+get_extname(::Type{<:OICorr})       = "OI_CORR"
+get_extname(::Type{<:OIInsPol})     = "OI_INSPOL"
 get_extname(hdr::FITSHeader) =
     (get_hdu_type(hdr) !== :binary_table ? "" :
      fix_name(get_string(hdr, "EXTNAME", "")))
@@ -439,7 +435,7 @@ end
 
 function _select_target(src::T, id::Int) where {T<:Union{OIVis,OIVis2,OIT3,
                                                         OIFlux,
-                                                        OIPolarization}}
+                                                        OIInsPol}}
     # Pre-select target.
     target_id = src.target_id
     sel = findall(x -> x == id, target_id)
@@ -545,7 +541,7 @@ function select_wavelength(src::T,
                            select::Function) where {T<:Union{OIWavelength,
                                                              OIVis,OIVis2,OIT3,
                                                              OIFlux,
-                                                             OIPolarization}}
+                                                             OIInsPol}}
     # Pre-select wavelengths.
     isintr = isa(src, OIWavelength) # source is instrument?
     wave = (isintr ? src.eff_wave : src.instr.eff_wave)

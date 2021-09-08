@@ -25,7 +25,7 @@ get_eff_band(db::Union{OIVis,OIVis2,OIT3}) = db.instr.eff_band
     OIFITS.get_target_id(obj)
 
 yields the "TARGET_ID" field of OI-FITS data-block object `obj` (an instance of
-`OITarget`, `OIVis`, `OIVis2`, `OIT3`, `OIFlux` or `OIPolarization`).
+`OITarget`, `OIVis`, `OIVis2`, `OIT3`, `OIFlux` or `OIInsPol`).
 
 !!! note
     This method is to be deprecated, use `obj.target_id` instead.
@@ -47,7 +47,7 @@ get_target(obj::OIMaster{T}) where {T} =
     obj.target :: Union{Nothing,OITarget{T}}
 #get_target(obj::OITarget) = obj
 get_target(obj::OIDataBlock) = nothing
-get_target(obj::Union{OIVis,OIVis2,OIT3,OIFlux,OIPolarization}) =
+get_target(obj::Union{OIVis,OIVis2,OIT3,OIFlux,OIInsPol}) =
     get_target(obj.owner)
 
 """
@@ -71,7 +71,7 @@ get_array(obj::OIMaster{T}, arrname::AbstractString) where {T} =
         nothing) :: Union{Nothing,OIArray{T}}
 get_array(obj::OIDataBlock) = nothing
 get_array(obj::OIArray) = obj
-get_array(obj::Union{OIMaster,OIVis,OIVis2,OIT3,OIFlux,OIPolarization}) =
+get_array(obj::Union{OIMaster,OIVis,OIVis2,OIT3,OIFlux,OIInsPol}) =
     obj.array
 
 """
@@ -95,7 +95,7 @@ get_instrument(obj::OIMaster{T}, insname::AbstractString) where {T} =
         nothing) :: Union{Nothing,OIWavelength{T}}
 get_instrument(obj::OIDataBlock) = nothing
 get_instrument(obj::OIWavelength) = obj
-get_instrument(obj::Union{OIMaster,OIVis,OIVis2,OIT3,OIFlux,OIPolarization}) =
+get_instrument(obj::Union{OIMaster,OIVis,OIVis2,OIT3,OIFlux,OIInsPol}) =
     obj.instr
 
 """

@@ -8,7 +8,7 @@
 
 module Builder
 
-using Compat
+#using Compat
 
 using ..OIFITS
 using ..OIFITS:
@@ -36,22 +36,22 @@ keyword/column field.
 
 """
 struct FieldDefinition
-    name::String     # Keyword/column name as a string.
-    symb::Symbol     # Keyword/column symbolic name.
-    iskeyword::Bool  # Is keyword? (otherwise column)
-    isoptional::Bool # Optional field?
-    multiplier::Int  # Multiplier: 1 for keywords, number of cells for columns
-                     # (a negative number -N means an array of N dimensions
-                     # each equal to the number of spectral channels.
-    type::Symbol     # Data type.
-    units::String    # Units.
-    descr::String    # Description.
+    name::String    # Keyword/column name as a string.
+    symb::Symbol    # Keyword/column symbolic name.
+    type::Symbol    # Data type.
+    multiplier::Int # Multiplier: 0 for keywords, otherwise number of cells for
+                    # columns except that a negative number -N means an array
+                    # of N dimensions each equal to the number of spectral
+                    # channels.
+    optional::Bool  # Optional field?
+    descr::String   # Description.
+    units::String   # Units.
 end
 
 """
 
 Type `OIFITS.Builder.DataBlockDefinition` is used to store the definition of
-data-block.
+a given data-block type.
 
 """
 struct DataBlockDefinition
@@ -75,16 +75,28 @@ end
 
 OIFITS.get_extname(def::DataBlockDefinition) = def.extname
 
-# FIELDS is a dictionary indexed by the extension name (e,g., "OI_VIS"), each
-# entry stores a set of its fields.
+"""
+
+`OIFITS.Builder.FIELDS` is a dictionary indexed by the extension name (e,g.,
+"OI_VIS"), each entry stores a set of its fields.
+
+"""
 const FIELDS = Dict{String,Set{Symbol}}()
 
-# REVISIONS is a dictionary indexed by the extension name (e,g., "OI_VIS") and
-# whose value is the last revision number.
+"""
+
+`OIFITS.Builder.REVISIONS` is a dictionary indexed by the extension name (e,g.,
+"OI_VIS") and whose value is the last revision number.
+
+"""
 const REVISIONS = Dict{String,Int}()
 
-# FORMATS table is indexed by a 2-tuple composed by the datablock name
-# and by the revision number of the corresponding OI-FITS table.
+"""
+
+`OIFITS.Builder.FORMATS` is a dictionary indexed by a 2-tuple composed by the
+datablock name and by the revision number of the corresponding OI-FITS table.
+
+"""
 const FORMATS = Dict{Tuple{String,Int},DataBlockDefinition}()
 format_key(name::AbstractString, revn::Integer) =
     (to_string(name), to_integer(revn))
@@ -97,8 +109,8 @@ data-block type or a data-block instance.  The value `0` is returned if `arg`
 is not a known OI-FITS extension name.
 
 """
-last_revision(db::OIDataBlock) = last_revision(db.extname)
-last_revision(::Type{T}) where {T<:OIDataBlock} = last_revision(get_extname(T))
+last_revision(db::OIDataBlock) = last_revision(typeof(db))
+last_revision(T::Type{<:OIDataBlock}) = last_revision(get_extname(T))
 last_revision(extname::String) = get(REVISIONS, extname, 0)
 
 """
@@ -159,10 +171,12 @@ if the fields is a number.
 
 """
 clear_field!(obj::T, sym::Symbol) where {T} =
-    (_clear_field!(obj, sym, fieldtype(T, sym)); nothing)
+    _clear_field!(obj, sym, fieldtype(T, sym))
 
-_clear_field!(obj, sym::Symbol, ::Type{T}) where {T<:Number} =
+_clear_field!(obj, sym::Symbol, ::Type{T}) where {T<:Number} = begin
     setfield!(obj, sym, zero(T))
+    nothing
+end
 
 _clear_field!(obj, sym::Symbol, ::Type{<:Any}) =
     nothing
@@ -174,7 +188,7 @@ Base.push!(obj::OIMaster, others::OIDataBlock...) = push!(obj, others)
 
 function Base.push!(obj::OIMaster{T},
                     others::Union{AbstractVector{<:OIDataBlock},
-                                Tuple{Vararg{OIDataBlock}}}) where {T}
+                                  Tuple{Vararg{OIDataBlock}}}) where {T}
     # First push each new data-block.  Second, update links of all stored
     # data-blocks.
     for i in eachindex(others)
@@ -186,45 +200,104 @@ end
 # Push nothing.
 _push!(master::OIMaster, ::Nothing) = nothing
 
+
+common_length(x::Int) = x
+common_length(x::Int, y::Int) = (x === y ? x : -1)
+@inline common_length(x::Int, y::Int, vals::Int...) =
+    common_length(common_length(x, y), vals)
+
+
+checked_length(db::OITarget) = begin
+    len = common_length(length(db.target_id),
+                        length(db.target),
+                        length(db.raep0),
+                        length(db.decep0),
+                        length(db.equinox),
+                        length(db.ra_err),
+                        length(db.dec_err),
+                        length(db.sysvel),
+                        length(db.veltyp),
+                        length(db.veldef),
+                        length(db.pmra),
+                        length(db.pmdec),
+                        length(db.pmra_err),
+                        length(db.pmdec_err),
+                        length(db.parallax),
+                        length(db.para_err),
+                        length(db.spectyp),
+                        length(db.category))
+    len ≥ 0 ||
+        throw(DimensionMismatch("all members of OITarget must have the same length"))
+    return len
+end
+
 # Just push one data-block.
-function _push!(master::OIMaster{T}, db::OIDataBlock{T}) where {T}
-    # Do nothing if data-block already attached to master.
-    is_attached(db, master) && return
+function push!(master::OIMaster{T}, db::OITarget{T}) where {T}
 
-    # Consider special cases.
-    if isa(db, OITarget)
-        isdefined(master, :target) &&
-            error("only one OI_TARGET data-block can be attached")
-        setfield!(master, :target, db)
-    elseif isa(db, OIWavelength)
-        insname = fix_name(db.insname)
-        haskey(master.instr, insname) && error("master already have an ",
-                                               "OI_WAVELENGTH data-block with ",
-                                               "INSNAME=\"", insname, "\"")
-        master.instr[insname] = db
-    elseif isa(db, OIArray)
-        arrname = fix_name(db.arrname)
-        haskey(master.array, arrname) && error("master already have an ",
-                                               "OI_ARRAY data-block with ",
-                                               "ARRNAME=\"", arrname, "\"")
-        master.array[arrname] = db
-    elseif isa(db, OICorrelation)
-        corrname = fix_name(db.corrname)
-        haskey(master.correl, corrname) && error("master already have an ",
-                                                 "OI_CORR data-block with ",
-                                                 "CORRNAME=\"", corrname, "\"")
-        master.correl[corrname] = db
-    end
+    len = checked_length(master.target)
+    append!(master.target.target_id, db.target_id)
+    append!(master.target.target, db.target)
+    append!(master.target.raep0, db.raep0)
+    append!(master.target.decep0, db.decep0)
+    append!(master.target.equinox, db.equinox)
+    append!(master.target.ra_err, db.ra_err)
+    append!(master.target.dec_err, db.dec_err)
+    append!(master.target.sysvel, db.sysvel)
+    append!(master.target.veltyp, db.veltyp)
+    append!(master.target.veldef, db.veldef)
+    append!(master.target.pmra, db.pmra)
+    append!(master.target.pmdec, db.pmdec)
+    append!(master.target.pmra_err, db.pmra_err)
+    append!(master.target.pmdec_err, db.pmdec_err)
+    append!(master.target.parallax, db.parallax)
+    append!(master.target.para_err, db.para_err)
+    append!(master.target.spectyp, db.spectyp)
+    append!(master.target.category, db.category)
+    master.checked = false
+    return master
+end
 
-    # Push data-block to the list of data-blocks stored by the master.
-    if is_attached(db)
-        # Make a copy if data-block attached to any (other) master.
-        push!(contents(master), copy(db))
-    else
-        push!(contents(master), db)
+function push!(master::OIMaster{T}, db::OIWavelength{T}) where {T}
+    insname = fix_name(db.insname) # FIXME: should be done as soon as possible
+    haskey(master.insname_dict, insname) &&
+        error("master already have an OI_WAVELENGTH data-block with INSNAME=\"",
+              insname, "\"")
+    push!(master.wavelength, db)
+    master.insname_dict[insname] = detached_copy(db, insname=insname)
+    master.checked = false
+    return master
+end
+
+function push!(master::OIMaster{T}, db::OIArray{T}) where {T}
+    arrname = fix_name(db.arrname) # FIXME: should be done as soon as possible
+    haskey(master.arrname_dict, arrname) &&
+        error("master already have an OI_ARRAY data-block with ARRNAME=\"",
+              arrname, "\"")
+    master.arrname_dict[arrname] = detached_copy(db, arrname=arrname)
+    master.checked = false
+    return master
+end
+
+function push!(master::OIMaster{T}, db::OICorr{T}) where {T}
+    corrname = fix_name(db.corrname) # FIXME: should be done as soon as possible
+    haskey(master.corrname_dict, corrname) &&
+        error("master already have an OI_CORR data-block with CORRNAME=\"",
+              corrname, "\"")
+    master.corrname_dict[corrname] = detached_copy(db, corrname=corrname)
+    master.checked = false
+    return master
+end
+
+for (sym, DB) in ((:vis,    OIVis),
+                  (:vis2,   OIVis2),
+                  (:t3,     OIT3),
+                  (:flux,   OIFlux),
+                  (:inspol, OIInsPol))
+    @eval function push!(master::OIMaster{T}, db::$DB{T}) where {T}
+        push!(master.$sym, detached_copy(db))
+        master.checked = false
+        return master
     end
-    setfield!(db, :owner, master)
-    nothing
 end
 
 function _update_links!(master::OIMaster)
@@ -234,31 +307,31 @@ function _update_links!(master::OIMaster)
     master
 end
 
-_update_links!(db::OITarget) = nothing
-_update_links!(db::OIArray) = nothing
-_update_links!(db::OICorrelation) = nothing
-_update_links!(db::OIWavelength) = nothing
-_update_links!(db::OIPolarization) = begin
-    _link_array!(db)
-    _link_instr!(db)
-end
-_update_links!(db::OIData) = begin
-    _link_array!(db)
-    _link_instr!(db)
-    _link_correl!(db)
-end
-
-_link_array!(db::OIDataBlock) = _link_field!(db, :arrname, :array)
-_link_instr!(db::OIDataBlock) = _link_field!(db, :insname, :instr)
-_link_correl!(db::OIDataBlock) = _link_field!(db, :corrname, :correl)
-
-function _link_field!(db::OIDataBlock, from::Symbol, to::Symbol)
-    if (is_attached(db) && (name = getproperty(db, from)) !== nothing &&
-        (lnk = get(getfield(db.owner, to), fix_name(name), nothing)) !== nothing)
-        setfield!(db, to, lnk)
-    end
+_update_links!(db::OITarget, master::OIMaster) = nothing
+_update_links!(db::OIArray, master::OIMaster) = nothing
+_update_links!(db::OICorr, master::OIMaster) = nothing
+_update_links!(db::OIWavelength, master::OIMaster) = nothing
+_update_links!(db::OIInsPol, master::OIMaster) = begin
+    _link_array!(db, master)
+    _link_instr!(db, master)
     nothing
 end
+_update_links!(db::OIDataBlock, master::OIMaster) = begin
+    _link_array!(db, master)
+    _link_instr!(db, master)
+    _link_correl!(db, master)
+    nothing
+end
+
+_link_array!(db::OIDataBlock, master::OIMaster) =
+    db.array = master.array_dict[db.arrname]
+
+_link_instr!(db::OIDataBlock, master::OIMaster) =
+    db.instr = master.instr_dict[db.insname]
+
+_link_correl!(db::OIDataBlock, master::OIMaster) =
+    db.correl = master.correl_dict[db.corrname]
+
 
 """
      OIFITS.Builder.get_datatype(c)
@@ -279,21 +352,14 @@ the letter `c`.
 get_datatype(c::Char) =
     # It is about 2 times faster to search with a series of tests instead of
     # using a dictionary.  Converting to uppercase/lowercase is much longer so
-    # we keep upper- and lowercase version of each letter.
-    (c == 'A' ? :STRING  :
-     c == 'C' ? :COMPLEX :
-     c == 'D' ? :FLOAT   :
-     c == 'E' ? :FLOAT   :
-     c == 'I' ? :INTEGER :
-     c == 'J' ? :INTEGER :
-     c == 'L' ? :LOGICAL :
-     c == 'a' ? :STRING  :
-     c == 'c' ? :COMPLEX :
-     c == 'd' ? :FLOAT   :
-     c == 'e' ? :FLOAT   :
-     c == 'i' ? :INTEGER :
-     c == 'j' ? :INTEGER :
-     c == 'l' ? :LOGICAL : :UNKNOWN)
+    # we keep the upper- and lower-case versions of each letter.
+    (((c === 'A')||(c === 'a')) ? :STRING  :
+     ((c === 'C')||(c === 'c')) ? :COMPLEX :
+     ((c === 'D')||(c === 'd')||
+      (c === 'E')||(c === 'e')) ? :FLOAT   :
+     ((c === 'I')||(c === 'i')||
+      (c === 'J')||(c === 'j')) ? :INTEGER :
+     ((c === 'L')||(c === 'l')) ? :LOGICAL : :UNKNOWN)
 
 """
     OIFITS.Builder.get_description(db) -> (extname, revn, defn)
@@ -368,30 +434,73 @@ end
 
 check_contents(obj::OIDataBlock) = check_contents(obj, obj.extname, obj.revn)
 
-function check_contents(obj::Union{AbstractDict{Symbol},OIDataBlock},
-                        extname::String, revn::Int)
-    def = get_definition(extname, revn)
-    rows = -1         # number of rows in the OI-FITS table
-    channels = -1     # number of spectral channels
+
+is_keyword(def::FieldDefinition) = (def.multiplier == 0)
+is_optional(def::FieldDefinition) = def.optional
+
+function check_field_value(nrows::Ref{Int}, nwaves::Ref{Int},
+                           val, spec::FieldDefinition, extname)
+    # Check value type.
+    if spec.type === :L
+        is_logical(val) || error("expecting boolean value for `", spec.name,
+                                 "` field of OI-FITS extension ", extname)
+    elseif spec.type ∈ (:I, :J)
+        is_integer(val) || error("expecting integer value for `", spec.name,
+                                 "` field of OI-FITS extension ", extname)
+    elseif spec.typ ∈ (:D, :E)
+        is_float(val) || error("expecting floating-point value for `", spec.name,
+                               "` field of OI-FITS extension ", extname)
+    elseif spec.type === :C
+        is_complex(val) || error("expecting complex value for `", spec.name,
+                                 "` field of OI-FITS extension ", extname)
+    elseif spec.type === :A
+        is_string(val) || error("expecting string value for `", spec.name,
+                                "` field of OI-FITS extension ", extname)
+    else
+        error("unknown value type `:", spec.type, "`")
+    end
+end
+
+function check_contents(db::OIDataBlock)
+    def = get_definition(db)
+    extname = get_extname(db)
+    nrows = Ref(-1)   # number of rows in the OI-FITS table
+    nwaves = Ref(-1)  # number of spectral channels
+    for name in fieldnames(typeof(db))
+        # Ignore fields not in the specifications.
+        spec = get(def.spec, name, nothing)
+        spec === nothing && continue
+
+        # Check field value.
+        if !isdefined(db, name)
+            spec.optional || error("missing mandatory ",
+                                   (is_keyword(spec) ? "keyword" : "column"),
+                                   " `", name, "` in OI-FITS extension ",
+                                   extname)
+        else
+            check_field_value(nrows, nwaves, getfield(db, name), spec, extname)
+        end
+    end
+
     for (key, val) in obj
         # Ignore fields not in the specifications.
         spec = get(def.spec, key, nothing)
         spec === nothing && continue
 
         # Check value type.
-        if spec.type === :LOGICAL
+        if spec.type === :L
             is_logical(val) || error("expecting boolean value for `", key,
                                      "` field of OI-FITS extension ", extname)
-        elseif spec.type === :INTEGER
+        elseif spec.type ∈ (:I, :J)
             is_integer(val) || error("expecting integer value for `", key,
                                      "` field of OI-FITS extension ", extname)
-        elseif spec.type === :FLOAT
+        elseif spec.typ ∈ (:D, :E)
             is_float(val) || error("expecting floating-point value for `", key,
                                    "` field of OI-FITS extension ", extname)
-        elseif spec.type === :COMPLEX
+        elseif spec.type === :C
             is_complex(val) || error("expecting complex value for `", key,
                                      "` field of OI-FITS extension ", extname)
-        elseif spec.type === :STRING
+        elseif spec.type === :A
             is_string(val) || error("expecting string value for `", key,
                                     "` field of OI-FITS extension ", extname)
         else
@@ -399,9 +508,9 @@ function check_contents(obj::Union{AbstractDict{Symbol},OIDataBlock},
         end
 
         # Check value dimensions.
-        dims = (isa(val, Array) ? size(val) : ())
+        dims = size(val)
         rank = length(dims)
-        if spec.iskeyword
+        if is_keyword(spec)
             rank == 0 || error("expecting a scalar value for field `", key,
                                "` in OI-FITS extension ", extname)
         else
@@ -503,6 +612,14 @@ See also [`get_definition`](@ref).
 
 """
 function define(extname::AbstractString,
+                revns::Tuple{Vararg{Integer}},
+                tbl::Vector{<:AbstractString})
+    for revn in revns
+        define(extname, revn, tbl)
+    end
+end
+
+function define(extname::AbstractString,
                 revn::Integer,
                 tbl::Vector{<:AbstractString})
     # Check OI-FITS extension name and revision number.
@@ -516,38 +633,39 @@ function define(extname::AbstractString,
                                       " already defined")
 
     # Parse table of definitions.
-    function bad_definition(reason::AbstractString, extname::AbstractString,
-                            revn::Integer, linenum::Integer,
-                            code::AbstractString)
+    @noinline function bad_definition(reason::AbstractString,
+                                      extname::AbstractString,
+                                      revn::Integer, linenum::Integer,
+                                      code::AbstractString)
         error(reason, " in definition of OI-FITS extension ", extname,
               " (revision ", revn, ", line ", linenum, "): \"", code, "\"")
     end
     fields = get(FIELDS, extname, Set{Symbol}())
-    def = Array{FieldDefinition}(undef, 0)
-    iskeyword = true
+    def = FieldDefinition[]
+    keyword = true
     for rownum in 1:length(tbl)
         row = strip(tbl[rownum])
         m = match(r"^([^ ]+) +([^ ]+) +(.*)$", row)
         if m === nothing
             match(r"^-+$", row) === nothing &&
                 bad_definition("syntax error", extname, revn, rownum, row)
-            iskeyword = false
+            keyword = false
             continue
         end
         name = uppercase(m.captures[1])
         symb = to_fieldname(name)
         format = m.captures[2]
         descr = m.captures[3]
-        isoptional = (format[1] == '?')
-        i = (isoptional ? 2 : 1)
+        optional = (format[1] == '?')
+        i = (optional ? 2 : 1)
         type = get_datatype(format[i])
         type == :UNKNOWN && bad_definition("invalid type letter",
                                            extname, revn, rownum, row)
-        if iskeyword
+        if keyword
             length(format) == i ||
                 bad_definition("invalid keyword format",
                                extname, revn, rownum, row)
-            multiplier = 1
+            multiplier = 0
         else
             # Very naive code to parse the dimension list of the column format.
             (length(format) > i + 2 && format[i+1] == '('
@@ -561,9 +679,10 @@ function define(extname::AbstractString,
                 multiplier = -2
             else
                 multiplier = tryparse(Int, format)
-                (multiplier === nothing || multiplier < 1) &&
+                if multiplier === nothing || multiplier < 1
                     bad_definition("invalid multiplier",
                                    extname, revn, rownum, row)
+                end
             end
         end
         mp = match(r"^(.*[^ ]) +\[([^\]])\]$", descr)
@@ -573,8 +692,8 @@ function define(extname::AbstractString,
             descr = mp.captures[1]
             units = mp.captures[2]
         end
-        push!(def, FieldDefinition(name, symb, iskeyword, isoptional,
-                                   multiplier, type, units, descr))
+        push!(def, FieldDefinition(name, symb, type, multiplier,
+                                   optional, descr, units))
         push!(fields, symb)
     end
 
@@ -582,6 +701,7 @@ function define(extname::AbstractString,
     FORMATS[fmtkey] = DataBlockDefinition(extname, revn, def)
     FIELDS[extname] = fields
     REVISIONS[extname] = max(revn, get(REVISIONS, extname, 0))
+    nothing
 end
 
 include("formats.jl")
