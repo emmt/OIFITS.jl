@@ -318,6 +318,12 @@ get_format(::Union{T,Type{T}}, rev::Integer; kwds...) where {T<:OIDataBlock} =
 get_format(extname::AbstractString, rev::Integer; kwds...) =
     get_format(Symbol(extname), rev; kwds...)
 
+const ReadInputs = Union{AbstractString,FITS}
+
+OIData(arg::ReadInputs; kwds...) = OIData{Float64}(arg; kwds...)
+OIData{T}(arg::ReadInputs; kwds...) where {T<:AbstractFloat} =
+    read(OIData{T}, arg; kwds...)
+
 read(::Type{OIData}, args...; kwds...) =
     read(OIData{Float64}, args...; kwds...)
 

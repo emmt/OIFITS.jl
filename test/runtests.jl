@@ -19,7 +19,7 @@ quiet = true
 function tryload(dir, file)
     global counter
     try
-        data = read(OIData, joinpath(dir, file))
+        data = OIData(joinpath(dir, file))
         counter += 1
         quiet || @info "file \"$file\" successfully loaded"
         return true
