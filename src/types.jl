@@ -31,10 +31,10 @@ abstract type OIDataBlock{T<:AbstractFloat} end
 #   code to ensure that may be provided.
 #
 # The sections called "Header Part" and "Data Part" correspond to the HDU FITS
-# Table.  The section called "Links" consists in additional fields managed by
-# the package to keep track of the data-set structure owning the data-block and
-# to links to other data-blocks such as the instrument and the telescope array
-# for complex visibility measurements.
+# Table.  The section called "Dependencies" consists in additional fields
+# managed by the package to keep track of the data-set structure owning the
+# data-block and to links to other data-blocks such as the instrument and the
+# telescope array for complex visibility measurements.
 #
 # There is (to my knowledge) no official means to "undefine" a field in a
 # structure so the OIFITS API does not provide means to pop a data-block out of
@@ -132,7 +132,7 @@ end
 #        and must contain zeros.
 
 mutable struct OIVis{T<:AbstractFloat} <: OIDataBlock{T}
-    # Links
+    # Dependencies
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
     correl::OICorr{T}       # related correlation data
@@ -178,7 +178,7 @@ mutable struct OIVis{T<:AbstractFloat} <: OIDataBlock{T}
 end
 
 mutable struct OIVis2{T} <: OIDataBlock{T}
-    # Links
+    # Dependencies
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
     correl::OICorr{T}       # related correlation data
@@ -208,7 +208,7 @@ mutable struct OIVis2{T} <: OIDataBlock{T}
 end
 
 mutable struct OIT3{T<:AbstractFloat} <: OIDataBlock{T}
-    # Links
+    # Dependencies
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
     correl::OICorr{T}       # related correlation data
@@ -243,7 +243,7 @@ mutable struct OIT3{T<:AbstractFloat} <: OIDataBlock{T}
 end
 
 mutable struct OIFlux{T<:AbstractFloat} <: OIDataBlock{T}
-    # Links
+    # Dependencies
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
     correl::OICorr{T}       # related correlation data
@@ -274,7 +274,7 @@ mutable struct OIFlux{T<:AbstractFloat} <: OIDataBlock{T}
 end
 
 mutable struct OIInsPol{T<:AbstractFloat} <: OIDataBlock{T}
-    # Links
+    # Dependencies
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
     # Header Part
@@ -301,6 +301,9 @@ mutable struct OIInsPol{T<:AbstractFloat} <: OIDataBlock{T}
         return db
     end
 end
+
+# Union of datablocks with dependencies.
+const DataBlocksWithDependencies = Union{OIVis,OIVis2,OIT3,OIFlux,OIInsPol}
 
 """
 
@@ -343,7 +346,7 @@ mutable struct OIData{T<:AbstractFloat}
         dat.vis2   = OIVis2{T}[]
         dat.t3     = OIT3{T}[]
         dat.flux   = OIFlux{T}[]
-        dat.instr  = OIInsPol{T}[]
+        dat.inspol = OIInsPol{T}[]
         return dat
     end
 end
