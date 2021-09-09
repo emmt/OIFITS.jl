@@ -2,6 +2,7 @@
 *.jl.mem
 
 # Specific files/directories
+Manifest.toml
 work/
 
 # Backup files
