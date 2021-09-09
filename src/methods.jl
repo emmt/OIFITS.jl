@@ -17,8 +17,8 @@ zero!(A::AbstractArray) = fill!(A, zero(eltype(A)))
 """
     unsafe_bzero!(x) -> x
 
-fills object `x` with zeros and returns it.  This function is unsafe, it shall only be called
-on a newly created object with undefined fields.
+fills object `x` with zeros and returns it.  This function is unsafe, it shall
+only be called on a newly created object with undefined fields.
 
 """
 unsafe_bzero!(x::T) where {T} = begin
@@ -97,14 +97,14 @@ yields type similar to `S` but with element type `T`.
 
 """ change_eltype
 
-for D in (:OIDataBlock, :OIData, :OITarget, :OIArray, :OIWavelength, :OICorr,
+for D in (:OIDataBlock, :OITarget, :OIArray, :OIWavelength, :OICorr,
           :OIVis, :OIVis2, :OIT3, :OIFlux, :OIInsPol)
     @eval begin
         change_eltype(::Type{<:$D}, T::Type{<:AbstractFloat}) = $D{T}
         convert(::Type{$D}, A::$D) = A
         convert(::Type{$D{T}}, A::$D{T}) where {T<:AbstractFloat} = A
     end
-    if D === :OIDataBlock || D === :OIData
+    if D === :OIDataBlock
         @eval begin
             convert(::Type{$D{T}}, A::$D) where {T<:AbstractFloat} =
                 convert(change_eltype(typeof(A), T), A)
@@ -134,12 +134,17 @@ end
 getproperty(db::OIDataBlock, sym::Symbol) = getproperty(db, Val(sym))
 getproperty(db::OIDataBlock, ::Val{S}) where {S} = getfield(db, S)
 
-# Indirections to instrument (OI_WAVELENGTH).
-getproperty(db::OIData, ::Val{:eff_wave}) = getfield(db, :instr).eff_wave
-getproperty(db::OIData, ::Val{:eff_band}) = getfield(db, :instr).eff_band
-
-propertynames(db::OIData) = (fieldnames(typeof(db))..., :eff_wave, :eff_band)
-
+# Indirections to instrument (OI_WAVELENGTH) for OI_VIS, OI_VIS2, OI_T3, and OI_FLUX.
+for type in (:OIVis, :OIVis2, :OIT3, :OIFlux)
+    @eval begin
+        @eval getproperty(db::$type, ::Val{:eff_wave}) =
+            getfield(db, :instr).eff_wave
+        @eval getproperty(db::$type, ::Val{:eff_band}) =
+            getfield(db, :instr).eff_band
+        @eval propertynames(db::$type) =
+            (fieldnames(typeof(db))..., :eff_wave, :eff_band)
+    end
+end
 
 @inline _get_field(A, sym::Symbol, def=undef) =
     isdefined(A, sym) ? getfield(A, sym) : def
@@ -313,16 +318,16 @@ get_format(::Union{T,Type{T}}, rev::Integer; kwds...) where {T<:OIDataBlock} =
 get_format(extname::AbstractString, rev::Integer; kwds...) =
     get_format(Symbol(extname), rev; kwds...)
 
-read(::Type{OIMaster}, args...; kwds...) =
-    read(OIMaster{Float64}, args...; kwds...)
+read(::Type{OIData}, args...; kwds...) =
+    read(OIData{Float64}, args...; kwds...)
 
-read(::Type{OIMaster{T}}, filename::AbstractString) where {T<:AbstractFloat} =
-    read(OIMaster{T}, FITS(filename))
+read(::Type{OIData{T}}, filename::AbstractString) where {T<:AbstractFloat} =
+    read(OIData{T}, FITS(filename))
 
-read(::Type{OIMaster{T}}, f::FITS) where {T<:AbstractFloat} =
-    read!(OIMaster{T}(), f)
+read(::Type{OIData{T}}, f::FITS) where {T<:AbstractFloat} =
+    read!(OIData{T}(), f)
 
-function read!(dest::Union{OIMaster{T}, Vector{OIDataBlock{T}}},
+function read!(dest::Union{OIData{T}, Vector{OIDataBlock{T}}},
                f::FITS) where {T<:AbstractFloat}
     for i in 2:length(f)
         hdu = f[i]
@@ -363,21 +368,21 @@ function copy(A::T) where {T<:OIDataBlock}
     return B
 end
 
-function push!(master::OIMaster, args::OIDataBlock...)
+function push!(data::OIData, args::OIDataBlock...)
     for db in args
-        push!(master, db)
+        push!(data, db)
     end
-    return master
+    return data
 end
 
 # This version is to convert element type.
-push!(master::OIMaster{T}, db::OIDataBlock) where {T<:AbstractFloat} =
-    push!(master, OIDataBlock{T}(db))
+push!(data::OIData{T}, db::OIDataBlock) where {T<:AbstractFloat} =
+    push!(data, OIDataBlock{T}(db))
 
-function push!(master::OIMaster{T}, db::OITarget{T}) where {T<:AbstractFloat}
-    isdefined(master, :target) && error("OI_TARGET already defined")
-    setfield!(master, :target, db)
-    return master
+function push!(data::OIData{T}, db::OITarget{T}) where {T<:AbstractFloat}
+    isdefined(data, :target) && error("OI_TARGET already defined")
+    setfield!(data, :target, db)
+    return data
 end
 
 @noinline throw_undefined_field(name::Union{AbstractString,Symbol}) =
@@ -388,16 +393,16 @@ for (type, name, field) in ((:OIArray,      QuoteNode(:arrname),  QuoteNode(:arr
                             (:OIWavelength, QuoteNode(:insname),  QuoteNode(:instr)),
                             (:OICorr,       QuoteNode(:corrname), QuoteNode(:correl)))
     @eval begin
-        function push!(master::OIMaster{T}, db::$type{T}) where {T<:AbstractFloat}
+        function push!(data::OIData{T}, db::$type{T}) where {T<:AbstractFloat}
             isdefined(db, $name) || throw_undefined_field($name)
-            other = getfield(master, $field)[getfield(db, $name)]
+            other = getfield(data, $field)[getfield(db, $name)]
             if other === nothing
-                push!(getfield(master, $field), db)
+                push!(getfield(data, $field), db)
             elseif other != db # FIXME:
                 error(string("attempt to replace already existing ",
                              extname($type), " named \"", name, "\""))
             end
-            return master
+            return data
         end
     end
 end
@@ -408,35 +413,35 @@ for (type, field) in ((:OIVis,    :vis),
                       (:OIFlux,   :flux),
                       (:OIInsPol, :inspol))
     @eval begin
-        function push!(master::OIMaster{T}, db::$type{T}) where {T<:AbstractFloat}
+        function push!(data::OIData{T}, db::$type{T}) where {T<:AbstractFloat}
             # Datablock must be copied on write to avoid side-effects.
             copy_on_write = true
 
             # Set/fix OI_WAVELENGTH dependency.
             isdefined(db, :insname) || throw_undefined_field(:insname)
             db, copy_on_write = _set_dependency!(
-                master.instr, db, copy_on_write, Val(:insname), Val(:instr))
+                data.instr, db, copy_on_write, Val(:insname), Val(:instr))
 
             # Set/fix OI_ARRAY dependency.
             if isdefined(db, :arrname)
                 db, copy_on_write = _set_dependency!(
-                    master.array, db, copy_on_write, Val(:arrname), Val(:array))
+                    data.array, db, copy_on_write, Val(:arrname), Val(:array))
             end
 
             # Set/fix OI_CORREL dependency.
             if $type !== OIInsPol && isdefined(db, :corrname)
                 db, copy_on_write = _set_dependency!(
-                    master.correl, db, copy_on_write, Val(:corrname), Val(:correl))
+                    data.correl, db, copy_on_write, Val(:corrname), Val(:correl))
             end
 
-            push!(master.$field, db)
-            return master
+            push!(data.$field, db)
+            return data
         end
     end
 end
 
-function _set_dependency!(deps::AbstractVector, # list of dependencies known by master
-                          db::T,                # datablock to be pushed on master
+function _set_dependency!(deps::AbstractVector, # list of dependencies known by data-set
+                          db::T,                # datablock to be pushed on data-set
                           copy_on_write::Bool,  # copy datablock on write?
                           ::Val{name},          # field name of dependency name
                           ::Val{value}          # field name of dependency value
@@ -452,7 +457,7 @@ function _set_dependency!(deps::AbstractVector, # list of dependencies known by 
                   fix_name(getfield(db, name)), "\" found")
         end
     else
-        # Another dependency with same name already in master.  Check that the
+        # Another dependency with same name already in data-set.  Check that the
         # two versions are identical.
         setfield = true
         if isdefined(db, value)

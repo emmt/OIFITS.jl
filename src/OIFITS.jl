@@ -10,10 +10,10 @@ module OIFITS
 export
     OIArray,
     OICorr,
+    OIData,
     OIDataBlock,
     OIFlux,
     OIInsPol,
-    OIMaster,
     OIT3,
     OITarget,
     OIVis,

@@ -36,13 +36,13 @@ This version introduces major changes.
 - Calling `using OIFITS` only exports OI-FITS types (all prefixed with `OI*`)
   and no methods other than type constructors.
 
-- `push!(master,db)` takes care of updating dependencies in `master` and `db`
+- `push!(data,db)` takes care of updating dependencies in `data` and `db`
   with a *copy-on-write* policy for `db` to avoid side effects and so that `db`
   may be used in other OI data sets.
 
-- `OIFITS.get_hdutype` renamed `OIFITS.get_hdu_type`.
-
 - `Base.copy` has been extended and replaces `OIFITS.clone`.
+
+- `OIMaster` renamed as `OIData`.
 
 - `OIFITS.OIPolarization` and `OIFITS.OICorrelation` renamed `OIFITS.OIInsPol`
   and `OIFITS.OICorrel` to more closely follow names in OI-FITS specifications.

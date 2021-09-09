@@ -1,7 +1,8 @@
-module TestOIFITS
+module TestingOIFITS
 
 using Test, Printf
 using OIFITS, FITSIO
+using OIFITS: extname, get_format, same_name, fix_name
 
 dir = @__DIR__
 
@@ -18,16 +19,96 @@ quiet = true
 function tryload(dir, file)
     global counter
     try
-        db = OIFITS.load(joinpath(dir, file))
+        data = read(OIData, joinpath(dir, file))
         counter += 1
-        quiet || @info "file \"", file, "\" successfully loaded"
+        quiet || @info "file \"$file\" successfully loaded"
         return true
     catch
-        @warn "failed to load \"", file, "\""
+        @warn "failed to load \"$file\""
         return false
     end
 end
 
+@testset "Strings" begin
+    @test  same_name("", "")
+    @test  same_name("", " ")
+    @test  same_name("\t", "")
+    @test  same_name(" ZCMa", " zcma")
+    @test  same_name(" ZCMa", " zcma ")
+    @test !same_name("ZCMa", " zcma")
+    @test  same_name("SAO-206462", "sao-206462")
+    @test  same_name("SAO-206462", "sao-206462\t")
+    @test  same_name("SAO 206462", "sao 206462")
+    @test  same_name("SAO 206462", "sao 206462\t")
+    @test !same_name("SAO 206462", "sao\t206462")
+
+    @test fix_name("") === ""
+    @test fix_name(" ") === ""
+    @test fix_name("a\t ") === "A"
+    @test fix_name("\tbcd\t ") === "\tBCD"
+    @test fix_name("\téëï\t ") === "\tÉËÏ"
+end
+
+@testset "OI type definitions and formats" begin
+    F = Float64
+    for T in (OIArray{F},
+              OICorr{F},
+              OIFlux{F},
+              OIInsPol{F},
+              OIT3{F},
+              OITarget{F},
+              OIVis{F},
+              OIVis2{F},
+              OIWavelength{F})
+
+        @testset "$(extname(T))" begin
+            for rev in 3:-1:1
+                spec = get_format(T, rev; throwerrors=false)
+                if spec === nothing
+                    continue
+                end
+                for s in spec
+                    @test s.type ∈ (:A, :C, :D, :E, :I, :J, :L)
+                    S = fieldtype(T, s.symb)
+                    rank = ndims(s)
+                    if rank == 0
+                        # Keyword.
+                        if s.type === :A
+                            @test S === String
+                        elseif s.type === :C
+                            @test S <: Complex{<:AbstractFloat}
+                        elseif s.type === :E || s.type === :D
+                            @test S <: AbstractFloat
+                        elseif s.type === :I || s.type === :J
+                            @test S <: Integer
+                        elseif s.type === :L
+                            @test S <: Bool
+                        end
+                    else
+                        # Column.
+                        if s.type === :A
+                            @test rank == 1
+                            @test S === Vector{String}
+                        else
+                            @test rank == ndims(S)
+                            if s.type === :C
+                                @test eltype(S) <: Complex{<:AbstractFloat}
+                            elseif s.type ∈ (:D, :E)
+                                @test eltype(S) <: AbstractFloat
+                            elseif s.type ∈ (:I, :J)
+                                @test eltype(S) <: Int
+                            elseif s.type === :L
+                                @test eltype(S) <: Bool
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+#=
 @testset "Low-level Interface" begin
     # Test string comparisons/conversion "à la FITS".
     @test OIFITS.to_upper('a') == 'A'
@@ -254,13 +335,15 @@ end
         end
     end
 end
+=#
 
-@testset "Load OI-FITS" begin
+@testset "Read OI FITS files" begin
     for file in files
         @test tryload(dir, file) == true
     end
 end
 
+#=
 @testset "High-level Interface" begin
     master = OIFITS.load(joinpath(dir, first(files)))
     @test eltype(master) <: OIDataBlock
@@ -399,6 +482,7 @@ end
     @test OIFITS.is_attached(instr2) == false
 
 end
+=#
 
 end # module
 

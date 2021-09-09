@@ -20,15 +20,6 @@ const Undef = typeof(undef)
 """
 abstract type OIDataBlock{T<:AbstractFloat} end
 
-"""
-
-`OIData{T}` is the abstract super-type of any OI data-block containing measured
-data: `OIVis{T}`, `OIVis2{T}`, `OIT3{T}` and `OIFlux{T}`.  Parameter `T` is the
-floating-point type of the stored data.
-
-"""
-abstract type OIData{T<:AbstractFloat} <: OIDataBlock{T} end
-
 # The data fields are specified as separate arrays, instead of arrays of
 # structures.
 #
@@ -39,15 +30,15 @@ abstract type OIData{T<:AbstractFloat} <: OIDataBlock{T} end
 # - Cons: It is not certain that the sizes of the fields are compatible, but
 #   code to ensure that may be provided.
 #
-# The section called "Custom Part" is additional data managed by the package to
-# keep track of the master structure owning the data-block and to links to
-# other data-blocks such as the instrument and the telescope array for complex
-# visibility measurements.  The sections called "Header Part" and "Data Part"
-# correspond to the HDU FITS Table.
+# The sections called "Header Part" and "Data Part" correspond to the HDU FITS
+# Table.  The section called "Links" consists in additional fields managed by
+# the package to keep track of the data-set structure owning the data-block and
+# to links to other data-blocks such as the instrument and the telescope array
+# for complex visibility measurements.
 #
 # There is (to my knowledge) no official means to "undefine" a field in a
 # structure so the OIFITS API does not provide means to pop a data-block out of
-# a master.  One has to rebuild a master.  Hopefully this is easy (with the
+# a data-set.  One has to rebuild a data-set.  Hopefully this is easy (with the
 # API), fast and memory efficient.
 #
 mutable struct OITarget{T<:AbstractFloat} <: OIDataBlock{T}
@@ -107,7 +98,7 @@ end
 mutable struct OICorr{T<:AbstractFloat} <: OIDataBlock{T}
     # Header Part
     revn::Int               # revision number of the table definition
-    corrname::String        # name of correlation data set
+    corrname::String        # name of correlation data-block
     ndata::Int              # number of correlated data
     # Data Part
     iindx::Vector{Int}      # 1st index of correlation matrix element
@@ -120,7 +111,7 @@ end
 #        time. The TIME column is retained only for backwards compatibility
 #        and must contain zeros.
 
-mutable struct OIVis{T<:AbstractFloat} <: OIData{T}
+mutable struct OIVis{T<:AbstractFloat} <: OIDataBlock{T}
     # Links
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
@@ -160,7 +151,7 @@ mutable struct OIVis{T<:AbstractFloat} <: OIData{T}
     OIVis{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
 end
 
-mutable struct OIVis2{T} <: OIData{T}
+mutable struct OIVis2{T} <: OIDataBlock{T}
     # Links
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
@@ -186,7 +177,7 @@ mutable struct OIVis2{T} <: OIData{T}
     OIVis2{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
 end
 
-mutable struct OIT3{T<:AbstractFloat} <: OIData{T}
+mutable struct OIT3{T<:AbstractFloat} <: OIDataBlock{T}
     # Links
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
@@ -217,7 +208,7 @@ mutable struct OIT3{T<:AbstractFloat} <: OIData{T}
     OIT3{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
 end
 
-mutable struct OIFlux{T<:AbstractFloat} <: OIData{T}
+mutable struct OIFlux{T<:AbstractFloat} <: OIDataBlock{T}
     # Links
     array::OIArray{T}       # related telescope array
     instr::OIWavelength{T}  # related instrument wavelengths
@@ -269,24 +260,24 @@ end
 
 """
 
-`OIMaster` stores the contents of an OI-FITS file.  All data-blocks containing
+`OIData` stores the contents of an OI-FITS file.  All data-blocks containing
 measurements (OI_VIS, OI_VIS2, OI_T3, OI_FLUX and OI_INSPOL) are stored into a
 vector and thus indexed by an integer.  Named data-blocks (OI_ARRAY,
 OI_WAVELENGTH and OI_CORR) are indexed by their names (converted to upper case
 letters, with leading and trailing spaces stripped, multiple spaces replaced by
 a single ordinary space).
 
-    # Loop over OIVis instances in master.
-    for db in master.vis
+    # Loop over OIVis instances in data-set.
+    for db in data.vis
         ...
     end
-    master.target           # yields an OITarget instance
-    master.instr[insname]   # yields an OIWavelength instance
-    master.array[arrname]   # yields an OIArray instance
-    master.correl[corrname] # yields an OICorr instance
+    data.target           # yields an OITarget instance
+    data.instr[insname]   # yields an OIWavelength instance
+    data.array[arrname]   # yields an OIArray instance
+    data.correl[corrname] # yields an OICorr instance
 
 """
-mutable struct OIMaster{T<:AbstractFloat}
+mutable struct OIData{T<:AbstractFloat}
     target::OITarget{T}           # OI_TARGET data-block (unique)
     array::Vector{OIArray{T}}     # OI_ARRAY data-blocks
     instr::Vector{OIWavelength{T}}# OI_WAVELENGTH data-blocks
@@ -298,17 +289,17 @@ mutable struct OIMaster{T<:AbstractFloat}
     inspol::Vector{OIInsPol{T}}   # OI_INSPOL data-blocks
 
     # The inner constructor creates an empty structure.  Outer constructors are
-    # provided to populate this structure with datablocks.
-    OIMaster{T}() where {T<:AbstractFloat} = begin
-        master = new{T}()
-        master.array  = OIArray{T}[]
-        master.instr  = OIWavelength{T}[]
-        master.correl = OICorr{T}[]
-        master.vis    = OIVis{T}[]
-        master.vis2   = OIVis2{T}[]
-        master.t3     = OIT3{T}[]
-        master.flux   = OIFlux{T}[]
-        master.instr  = OIInsPol{T}[]
-        return master
+    # provided to populate this structure with data-blocks.
+    OIData{T}() where {T<:AbstractFloat} = begin
+        dat = new{T}()
+        dat.array  = OIArray{T}[]
+        dat.instr  = OIWavelength{T}[]
+        dat.correl = OICorr{T}[]
+        dat.vis    = OIVis{T}[]
+        dat.vis2   = OIVis2{T}[]
+        dat.t3     = OIT3{T}[]
+        dat.flux   = OIFlux{T}[]
+        dat.instr  = OIInsPol{T}[]
+        return dat
     end
 end
