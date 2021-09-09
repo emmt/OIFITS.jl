@@ -6,31 +6,6 @@
 #------------------------------------------------------------------------------
 
 """
-    zero!(x) -> x
-
-fills the contents of `x` with zeros and returns it.
-
-"""
-zero!(A::AbstractArray) = fill!(A, zero(eltype(A)))
-
-
-"""
-    unsafe_bzero!(x) -> x
-
-fills object `x` with zeros and returns it.  This function is unsafe, it shall
-only be called on a newly created object with undefined fields.
-
-"""
-unsafe_bzero!(x::T) where {T} = begin
-    ccall(:memset, Ptr{Cvoid}, (Ref{T}, Cint, Csize_t), x, 0, sizeof(x))
-    return x
-end
-
-Base.setproperty!(x::OIDataBlock, f::Symbol, v) = _set_field!(x, f, v)
-
-#------------------------------------------------------------------------------
-
-"""
     same_name(A, B)
 
 yields whether strings `A` and `B` are the same according to FITS conventions
@@ -130,6 +105,8 @@ end
 
 #------------------------------------------------------------------------------
 # PROPERTIES
+
+setproperty!(x::OIDataBlock, f::Symbol, v) = _set_field!(x, f, v)
 
 getproperty(db::OIDataBlock, sym::Symbol) = getproperty(db, Val(sym))
 getproperty(db::OIDataBlock, ::Val{S}) where {S} = getfield(db, S)
@@ -333,7 +310,7 @@ read(::Type{OIData{T}}, filename::AbstractString) where {T<:AbstractFloat} =
 read(::Type{OIData{T}}, f::FITS) where {T<:AbstractFloat} =
     read!(OIData{T}(), f)
 
-function read!(dest::Union{OIData{T}, Vector{OIDataBlock{T}}},
+function read!(dest::Union{OIData{T},Vector{OIDataBlock{T}}},
                f::FITS) where {T<:AbstractFloat}
     for i in 2:length(f)
         hdu = f[i]

@@ -63,7 +63,11 @@ mutable struct OITarget{T<:AbstractFloat} <: OIDataBlock{T}
     para_err::Vector{T}     # error in parallax [deg]
     spectyp::Vector{String} # spectral type
     category::Vector{String}# "CAL"ibrator or "SCI"ence target
-    OITarget{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
+    OITarget{T}() where {T<:AbstractFloat} = begin
+        db = new{T}()
+        db.revn = 0
+        return db
+    end
 end
 
 mutable struct OIArray{T<:AbstractFloat} <: OIDataBlock{T}
@@ -82,7 +86,14 @@ mutable struct OIArray{T<:AbstractFloat} <: OIDataBlock{T}
     staxyz::Matrix{T}       # station coordinates relative to array center [m]
     fov::Vector{T}          # photometric field of view [arcsec]
     fovtype::Vector{String} # model for FOV: "FWHM" or "RADIUS"
-    OIArray{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
+    OIArray{T}() where {T<:AbstractFloat} = begin
+        db = new{T}()
+        db.revn = 0
+        db.arrayx = NaN
+        db.arrayy = NaN
+        db.arrayz = NaN
+        return db
+    end
 end
 
 mutable struct OIWavelength{T<:AbstractFloat} <: OIDataBlock{T}
@@ -92,7 +103,11 @@ mutable struct OIWavelength{T<:AbstractFloat} <: OIDataBlock{T}
     # Data Part
     eff_wave::Vector{T}     # effective wavelength of channel [m]
     eff_band::Vector{T}     # effective bandpass of channel [m]
-    OIWavelength{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
+    OIWavelength{T}() where {T<:AbstractFloat} = begin
+        db = new{T}()
+        db.revn = 0
+        return db
+    end
 end
 
 mutable struct OICorr{T<:AbstractFloat} <: OIDataBlock{T}
@@ -104,7 +119,12 @@ mutable struct OICorr{T<:AbstractFloat} <: OIDataBlock{T}
     iindx::Vector{Int}      # 1st index of correlation matrix element
     jindx::Vector{Int}      # 2nd index of correlation matrix element
     corr::Vector{T}         # matrix element
-    OICorr{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
+    OICorr{T}() where {T<:AbstractFloat} = begin
+        db = new{T}()
+        db.revn = 0
+        db.ndata = 0
+        return db
+    end
 end
 
 # FIXME: In OI-FITS Rev. 2 only MJD and DATE-OBS must be used to express
@@ -148,7 +168,13 @@ mutable struct OIVis{T<:AbstractFloat} <: OIDataBlock{T}
     vcoord::Vector{T}       # V coordinate of the data [m]
     sta_index::Matrix{Int}  # station numbers contributing to the data
     flag::Matrix{Bool}      # flags
-    OIVis{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
+    OIVis{T}() where {T<:AbstractFloat} = begin
+        db = new{T}()
+        db.revn = 0
+        db.amporder = 0
+        db.phiorder = 0
+       return db
+    end
 end
 
 mutable struct OIVis2{T} <: OIDataBlock{T}
@@ -174,7 +200,11 @@ mutable struct OIVis2{T} <: OIDataBlock{T}
     vcoord::Vector{T}       # V coordinate of the data [m]
     sta_index::Matrix{Int}  # station numbers contributing to the data
     flag::Matrix{Bool}      # flags
-    OIVis2{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
+    OIVis2{T}() where {T<:AbstractFloat} = begin
+        db = new{T}()
+        db.revn = 0
+        return db
+    end
 end
 
 mutable struct OIT3{T<:AbstractFloat} <: OIDataBlock{T}
@@ -205,7 +235,11 @@ mutable struct OIT3{T<:AbstractFloat} <: OIDataBlock{T}
     v2coord::Vector{T}      # V coordinate of baseline BC of the triangle [m]
     sta_index::Matrix{Int}  # station numbers contributing to the data
     flag::Matrix{Bool}      # flags
-    OIT3{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
+    OIT3{T}() where {T<:AbstractFloat} = begin
+        db = new{T}()
+        db.revn = 0
+        return db
+    end
 end
 
 mutable struct OIFlux{T<:AbstractFloat} <: OIDataBlock{T}
@@ -231,7 +265,12 @@ mutable struct OIFlux{T<:AbstractFloat} <: OIDataBlock{T}
     corrindx_fluxdata::Vector{Int}# index into correlation matrix for 1st FLUXDATA element
     sta_index::Vector{Int}  # station number contributing to the data
     flag::Matrix{Bool}      # flags
-    OIFlux{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
+    OIFlux{T}() where {T<:AbstractFloat} = begin
+        db = new{T}()
+        db.revn = 0
+        db.fov = NaN
+        return db
+    end
 end
 
 mutable struct OIInsPol{T<:AbstractFloat} <: OIDataBlock{T}
@@ -255,7 +294,12 @@ mutable struct OIInsPol{T<:AbstractFloat} <: OIDataBlock{T}
     jxy::Matrix{Complex{T}} # complex Jones Matrix component between Y and X axis
     jyx::Matrix{Complex{T}} # complex Jones Matrix component between Y and X axis
     sta_index::Vector{Int}  # station number for the above matrices
-    OIInsPol{T}() where {T<:AbstractFloat} = unsafe_bzero!(new{T}())
+    OIInsPol{T}() where {T<:AbstractFloat} = begin
+        db = new{T}()
+        db.revn = 0
+        db.npol = 0
+        return db
+    end
 end
 
 """
