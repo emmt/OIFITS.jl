@@ -1,7 +1,7 @@
 #
 # OIFITS.jl -
 #
-# Support for OI-FITS (optical interferometry data format) in Julia.
+# Support for OI-FITS (Optical Interferometry data format) in Julia.
 #
 #------------------------------------------------------------------------------
 

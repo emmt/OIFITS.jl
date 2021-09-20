@@ -11,6 +11,38 @@ export
     FieldDefinition,
     get_format
 
+"""
+    def = OIFITS.Formats.FieldDefinition(...)
+
+yields a field definition of a keyword or column, of an entry of an OI-FITS
+data-block.   The following fields are available:
+
+- `def.name` specifies the name of the keyword or column in the FITS file.
+
+- `def.symb` specifies the symbolic field name in the corresponding Julia
+  structure.
+
+- `def.type` specifies the data type.  It is `:A` for strings, `:C` for
+  complexes, `:D` or `:E` for reals (floating-points), `:I` or `:J` for
+  integers, and `:L` for booleans.
+
+- `def.rank` is `0` for keywords, `n > 0` for `n` elements per row, `n < 0` for
+  cell of `-n` dimensions of length equal to the number of
+  spectral channels.
+
+- `def.optional` specifies whether the keyword / column is optional according
+  to the standard.
+
+- `def.descr` is a string describing the keyword / column.
+
+These instances are built by the macros [`OIFITS.Formats.@header`](@ref) and
+[`OIFITS.Formats.@column`](@ref) for a FITS keyword and column respectively.
+
+Base method `ndims(def)` yields the dimensionality of `def`, that is `0` for a
+FITS keyword, `1` for a column of scalar cells and `n ≥ 2` for a column of
+wavelength-wise multi-dimensional cells.
+
+"""
 struct FieldDefinition
     name::String   # Keyword/column name in FITS file.
     symb::Symbol   # Keyword/column symbolic name in structures.
@@ -23,9 +55,6 @@ struct FieldDefinition
     units::String  # Units.
 end
 
-FieldDefinition(name::String, type::Symbol, descr::String) =
-    FieldDefinition(name, Symbol(name), false, false, 0, type, "", descr)
-
 Base.ndims(s::FieldDefinition) =
     (s.rank == 0   ? 0          : # keyword
      s.type === :A ? 1          : # column of strings
@@ -35,6 +64,24 @@ Base.ndims(s::FieldDefinition) =
 
 const FORMATS = Dict{Tuple{Symbol,Int},Vector{FieldDefinition}}()
 
+"""
+    OIFITS.Formats.get_format(ext, revn; throwerrors=false) -> A
+
+yields a vector of `OIFITS.Formats.Field` instances corresponding to the FITS
+keywords and columns of an OI-FITS data-block `ext` with revision number
+`revn`.  If `ext` and `revn` do not correspond to any known definition,
+`nothing` is returned if `throwerrors` is `false` (the default), otherwise an
+exception is thrown.
+
+For example:
+
+    for def in OIFITS.Formats.get_format(:OI_VIS2, 2)
+        println(
+            (def.rank == 0 ? "Keyword" : "Column "), " \"",
+            def.name, "\" => `", def.symb, "` -- ", def.descr)
+    end
+
+"""
 function get_format(ext::Symbol, rev::Integer; throwerrors::Bool=false)
     spec = get(FORMATS, (ext,Int(rev)), nothing)
     if spec === nothing && throwerrors

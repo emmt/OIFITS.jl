@@ -446,7 +446,9 @@ end
 """
     extname(db)
 
-yields the extension name of OI-FITS datablock instance or type `db`.
+yields the extension name of OI-FITS datablock instance or type `db`.  This
+method is not exported, the same result for a data-block instance is obtained
+by `db.extname`.
 
 """
 exname(db::OIDataBlock) = extname(typeof(db))
