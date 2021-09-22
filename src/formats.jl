@@ -65,7 +65,7 @@ Base.ndims(s::FieldDefinition) =
 const FORMATS = Dict{Tuple{Symbol,Int},Vector{FieldDefinition}}()
 
 """
-    OIFITS.Formats.get_format(ext, revn; throwerrors=false) -> A
+    OIFITS.get_format(ext, revn; throwerrors=false) -> A
 
 yields a vector of `OIFITS.Formats.Field` instances corresponding to the FITS
 keywords and columns of an OI-FITS data-block `ext` with revision number
@@ -89,6 +89,7 @@ function get_format(ext::Symbol, rev::Integer; throwerrors::Bool=false)
     end
     return spec
 end
+
 
 """
     @header key type descr

@@ -4,23 +4,30 @@ using Test, Printf
 using OIFITS, FITSIO
 using OIFITS: extname, get_format, is_same, fix_name
 
-dir = @__DIR__
+const dir = @__DIR__
 
-files = ("contest-2004-obj1.oifits" ,"contest-2004-obj2.oifits",
-         "contest-2008-binary.oifits", "contest-2008-obj1-H.oifits",
-         "contest-2008-obj1-J.oifits", "contest-2008-obj1-K.oifits",
-         "contest-2008-obj2-H.oifits", "contest-2008-obj2-J.oifits",
-         "contest-2008-obj2-K.oifits", "contest-2008-obj1-J.oifits")
+const files = ("contest-2004-obj1.oifits" ,"contest-2004-obj2.oifits",
+               "contest-2008-binary.oifits", "contest-2008-obj1-H.oifits",
+               "contest-2008-obj1-J.oifits", "contest-2008-obj1-K.oifits",
+               "contest-2008-obj2-H.oifits", "contest-2008-obj2-J.oifits",
+               "contest-2008-obj2-K.oifits", "contest-2008-obj1-J.oifits")
 
-counter = 0
+const counter = Ref(0)
 
-quiet = true
+const quiet = true
+
+const tempfile = let tup = mktemp()
+    close(tup[2])
+    tup[1]
+end
+
+println("tempfile = \"$tempfile\"")
 
 function tryload(dir, file)
     global counter
     try
         data = OIData(joinpath(dir, file))
-        counter += 1
+        counter[] += 1
         quiet || @info "file \"$file\" successfully loaded"
         return true
     catch
@@ -337,9 +344,15 @@ end
 end
 =#
 
-@testset "Read OI FITS files" begin
+@testset "Read/write OI-FITS files" begin
     for file in files
-        @test tryload(dir, file) == true
+        A = OIData(joinpath(dir, file))
+        @test isa(A, OIData)
+        isfile(tempfile) && rm(tempfile; force=true)
+        write(tempfile, A)
+        B = read(OIData, tempfile)
+        @test isa(B, OIData)
+        @test_throws ErrorException write(tempfile, B)
     end
 end
 
@@ -483,6 +496,8 @@ end
 
 end
 =#
+
+isfile(tempfile) && rm(tempfile; force=true)
 
 end # module
 

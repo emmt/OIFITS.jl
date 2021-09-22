@@ -40,15 +40,17 @@ import Base:
     setproperty!,
     show,
     size,
-    take!
+    take!,
+    write
 
 import FITSIO
 import CFITSIO
-using FITSIO: FITS, HDU, TableHDU
+using FITSIO: FITS, HDU, TableHDU, FITSHeader
 
 include("types.jl")
 include("formats.jl")
 import .Formats: FieldDefinition, get_format
 include("methods.jl")
+include("io.jl")
 
 end # module
