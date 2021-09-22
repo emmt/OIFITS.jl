@@ -6,13 +6,29 @@
 #------------------------------------------------------------------------------
 
 """
-    same_name(A, B)
+    OIFITS.is_same(a, b)
 
-yields whether strings `A` and `B` are the same according to FITS conventions
-that case of letters and trailing spaces are irrelevant.
+yields whether `a` and `b` are sufficiently identical for OI-FITS data.  If `a`
+and `b` are strings, trailing spaces and case of letters are irrelevant.  If
+`a` and `b` are arrays, they are compared element-wise.  This operator is used
+in OI-FITS to merge contents.
 
 """
-function same_name(A::AbstractString, B::AbstractString)
+is_same(a, b) = false
+is_same(a::Integer, b::Integer) = (a == b)
+is_same(a::AbstractFloat, b::AbstractFloat) = (a == b)
+is_same(a::Complex{<:AbstractFloat}, b::Complex{<:AbstractFloat}) = (a == b)
+
+function is_same(A::AbstractArray{<:Any,N},
+                 B::AbstractArray{<:Any,N}) where {N}
+    axes(A) == axes(B) || return false
+    @inbounds for i in eachindex(A, B)
+        is_same(A[i], B[i]) || return false
+    end
+    return true
+end
+
+function is_same(A::AbstractString, B::AbstractString)
     i_last = lastindex(A)
     j_last = lastindex(B)
     i = firstindex(A)
@@ -39,7 +55,7 @@ function same_name(A::AbstractString, B::AbstractString)
 end
 
 """
-    fix_name(str)
+    OIFITS.fix_name(str)
 
 yields string `str` converted to uppercase letters and with trailing spaces
 removed.  This is to follows FITS conventions that names comparisons should be
@@ -55,7 +71,7 @@ for (T, field) in ((OIArray,      :arrname),
                    (OICorr,       :corrname))
     @eval function Base.getindex(A::AbstractArray{<:$T}, name::AbstractString)
         @inbounds for i in eachindex(A)
-            if same_name(A[i].$field, name)
+            if is_same(A[i].$field, name)
                 return A[i]
             end
         end
@@ -71,7 +87,7 @@ eltype(::Type{<:OIDataBlock{T}}) where {T} = T
 eltype(::Type{<:OIData{T}}) where {T} = T
 
 """
-    change_eltype(S, T)
+    OIFITS.change_eltype(S, T)
 
 yields type similar to `S` but with element type `T`.
 
@@ -153,7 +169,8 @@ getproperty(db::OIDataBlock, sym::Symbol) = getproperty(db, Val(sym))
 getproperty(db::OIDataBlock, ::Val{S}) where {S} = getfield(db, S)
 getproperty(db::OIDataBlock, ::Val{:extname}) = extname(typeof(db))
 
-# Indirections to instrument (OI_WAVELENGTH) for OI_VIS, OI_VIS2, OI_T3, and OI_FLUX.
+# Indirections to instrument (OI_WAVELENGTH) for OI_VIS, OI_VIS2, OI_T3, and
+# OI_FLUX.
 for type in (:OIVis, :OIVis2, :OIT3, :OIFlux)
     @eval begin
         @eval propertynames(db::$type) =
@@ -243,6 +260,15 @@ function copy(A::T) where {T<:OIDataBlock}
     return B
 end
 
+"""
+    push!(data::OIData, args::OIDataBlock...) -> data
+
+pushes OI-FITS data-blocks `args...` in `data`.  This method ensures that
+`data` (and its contents) remain consistent.  If a data-block has undefined
+dependencies, they must be already part of `data`.  If a data-block has defined
+dependencies, they will be merged with those already stored in `data`.
+
+"""
 function push!(data::OIData, args::OIDataBlock...)
     for db in args
         push!(data, db)
@@ -261,9 +287,10 @@ function push!(data::OIData{T}, db::OITarget{T}) where {T<:AbstractFloat}
 end
 
 # Extend push! for OI_ARRAY, OI_WAVELENGTH, and OI_CORR.
-for (type, name, field) in ((:OIArray,      QuoteNode(:arrname),  QuoteNode(:array)),
-                            (:OIWavelength, QuoteNode(:insname),  QuoteNode(:instr)),
-                            (:OICorr,       QuoteNode(:corrname), QuoteNode(:correl)))
+for (type, name, field) in (
+    (:OIArray,      QuoteNode(:arrname),  QuoteNode(:array)),
+    (:OIWavelength, QuoteNode(:insname),  QuoteNode(:instr)),
+    (:OICorr,       QuoteNode(:corrname), QuoteNode(:correl)))
     @eval begin
         function push!(data::OIData{T}, db::$type{T}) where {T<:AbstractFloat}
             isdefined(db, $name) || throw_undefined_field($name)
@@ -360,7 +387,7 @@ end
 const KeywordTypes = Union{Bool,Int,Cdouble,String}
 
 """
-    read_keyword(T, hdu, key, def=nothing) -> val
+    OIFITS.read_keyword(T, hdu, key, def=nothing) -> val
 
 yields the value of keyword `key` in FITS header of `hdu` converted to type
 `T`.  If the keyword is not part of the header, `def` is returned
@@ -393,7 +420,7 @@ end
           " cannot be converted to type ", T)
 
 """
-    read_column(T, hdu, col, def=nothing) -> val
+    OIFITS.read_column(T, hdu, col, def=nothing) -> val
 
 yields the contents of column `col` in FITS table `hdu` converted to array type
 `T`.  If the column is not part of the table, `def` is returned (unconverted).
@@ -444,44 +471,41 @@ end
           " cannot be converted to type ", T)
 
 """
-    extname(db)
+    OIFITS.extname(db)
 
 yields the extension name of OI-FITS datablock instance or type `db`.  This
 method is not exported, the same result for a data-block instance is obtained
 by `db.extname`.
 
-"""
-exname(db::OIDataBlock) = extname(typeof(db))
-extname(::Type{<:OITarget}) = "OI_TARGET"
-extname(::Type{<:OIArray}) = "OI_ARRAY"
-extname(::Type{<:OIWavelength}) = "OI_WAVELENGTH"
-extname(::Type{<:OICorr}) = "OI_CORR"
-extname(::Type{<:OIVis}) = "OI_VIS"
-extname(::Type{<:OIVis2}) = "OI_VIS2"
-extname(::Type{<:OIT3}) = "OI_T3"
-extname(::Type{<:OIFlux}) = "OI_FLUX"
-extname(::Type{<:OIInsPol}) = "OI_INSPOL"
+An optional first argument, `Symbol` or `String`, may be used to specify the
+type of the result:
+
+    OIFITS.extname(Symbol, db) -> ext::Symbol
+    OIFITS.extname(String, db) -> ext::String
 
 """
-    symbolic_extname(db)
+extname(db::OIDataBlock) = extname(typeof(db))
+extname(T::Type{<:Union{String,Symbol}}, db::OIDataBlock) =
+    extname(T, typeof(db))
 
-yields the extension name of OI-FITS datablock instance or type `db` a
-symbol.
-
-"""
-symbolic_extname(db::OIDataBlock) = symbolic_extname(typeof(db))
-symbolic_extname(::Type{<:OITarget}) = :OI_TARGET
-symbolic_extname(::Type{<:OIArray}) = :OI_ARRAY
-symbolic_extname(::Type{<:OIWavelength}) = :OI_WAVELENGTH
-symbolic_extname(::Type{<:OICorr}) = :OI_CORR
-symbolic_extname(::Type{<:OIVis}) = :OI_VIS
-symbolic_extname(::Type{<:OIVis2}) = :OI_VIS2
-symbolic_extname(::Type{<:OIT3}) = :OI_T3
-symbolic_extname(::Type{<:OIFlux}) = :OI_FLUX
-symbolic_extname(::Type{<:OIInsPol}) = :OI_INSPOL
+for (type, ext) in ((:OITarget,     :OI_TARGET),
+                    (:OIArray,      :OI_ARRAY),
+                    (:OIWavelength, :OI_WAVELENGTH),
+                    (:OICorr,       :OI_CORR),
+                    (:OIVis,        :OI_VIS),
+                    (:OIVis2,       :OI_VIS2),
+                    (:OIT3,         :OI_T3),
+                    (:OIFlux,       :OI_FLUX),
+                    (:OIInsPol,     :OI_INSPOL))
+    @eval begin
+        extname(::Type{<:$type}) = $(String(ext))
+        extname(::Type{String}, ::Type{<:$type}) = $(String(ext))
+        extname(::Type{Symbol}, ::Type{<:$type}) = $(QuoteNode(ext))
+    end
+end
 
 get_format(::Union{T,Type{T}}, rev::Integer; kwds...) where {T<:OIDataBlock} =
-    get_format(symbolic_extname(T), rev; kwds...)
+    get_format(extname(Symbol, T), rev; kwds...)
 get_format(extname::AbstractString, rev::Integer; kwds...) =
     get_format(Symbol(extname), rev; kwds...)
 

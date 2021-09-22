@@ -2,7 +2,7 @@ module TestingOIFITS
 
 using Test, Printf
 using OIFITS, FITSIO
-using OIFITS: extname, get_format, same_name, fix_name
+using OIFITS: extname, get_format, is_same, fix_name
 
 dir = @__DIR__
 
@@ -30,17 +30,17 @@ function tryload(dir, file)
 end
 
 @testset "Strings" begin
-    @test  same_name("", "")
-    @test  same_name("", " ")
-    @test  same_name("\t", "")
-    @test  same_name(" ZCMa", " zcma")
-    @test  same_name(" ZCMa", " zcma ")
-    @test !same_name("ZCMa", " zcma")
-    @test  same_name("SAO-206462", "sao-206462")
-    @test  same_name("SAO-206462", "sao-206462\t")
-    @test  same_name("SAO 206462", "sao 206462")
-    @test  same_name("SAO 206462", "sao 206462\t")
-    @test !same_name("SAO 206462", "sao\t206462")
+    @test  is_same("", "")
+    @test  is_same("", " ")
+    @test  is_same("\t", "")
+    @test  is_same(" ZCMa", " zcma")
+    @test  is_same(" ZCMa", " zcma ")
+    @test !is_same("ZCMa", " zcma")
+    @test  is_same("SAO-206462", "sao-206462")
+    @test  is_same("SAO-206462", "sao-206462\t")
+    @test  is_same("SAO 206462", "sao 206462")
+    @test  is_same("SAO 206462", "sao 206462\t")
+    @test !is_same("SAO 206462", "sao\t206462")
 
     @test fix_name("") === ""
     @test fix_name(" ") === ""
@@ -118,10 +118,10 @@ end
     @test OIFITS.to_upper('B') == 'B'
     @test OIFITS.to_upper('Z') == 'Z'
     @test OIFITS.to_upper('é') == 'é'
-    @test OIFITS.same_name("Beta  ", "BETA") == true
-    @test OIFITS.same_name(" Beta  ", "BETA") == false
-    @test OIFITS.same_name("beta", " Beta  ") == false
-    @test OIFITS.same_name("beta  ", "BeTa  ") == true
+    @test OIFITS.is_same("Beta  ", "BETA") == true
+    @test OIFITS.is_same(" Beta  ", "BETA") == false
+    @test OIFITS.is_same("beta", " Beta  ") == false
+    @test OIFITS.is_same("beta  ", "BeTa  ") == true
     @test OIFITS.fix_name("beTa  ") == "BETA"
 
     fits =  FITS(joinpath(dir, first(files)), "r")

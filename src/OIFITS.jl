@@ -21,9 +21,26 @@ export
     OIWavelength
 
 import Base:
-    convert, copy, eltype, push!, read, haskey, keys, show,
-    getindex, setindex!,
-    getproperty, setproperty!, propertynames
+    IndexStyle,
+    convert,
+    copy,
+    eltype,
+    getindex,
+    getproperty,
+    haskey,
+    isempty,
+    keys,
+    length,
+    merge,
+    merge!,
+    propertynames,
+    push!,
+    read,
+    setindex!,
+    setproperty!,
+    show,
+    size,
+    take!
 
 import FITSIO
 import CFITSIO
