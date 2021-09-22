@@ -27,21 +27,19 @@ get_format(db::OIDataBlock, revn::Integer=db.revn; kwds...) =
 get_format(extname::Union{Symbol,AbstractString}, revn::Integer; kwds...) =
     get_format(Symbol(extname), revn; kwds...)
 
-"""
-    OIFITS.get_format(db,  revn=db.revn; throwerrors=false)
-    OIFITS.get_format(T,   revn;         throwerrors=false)
-    OIFITS.get_format(ext, revn;         throwerrors=false)
+MissingColumn(col::AbstractString, src::Union{TableHDU,OIDataBlock}) =
+    MissingColumn(col, extname(src))
 
-all yield OI-FITS definitions for data-block `db`, of data-block type `T`, or
-of OI-FITS extension `ext` (a string or a symbol).
+MissingKeyword(key::AbstractString, src::Union{TableHDU,OIDataBlock}) =
+    MissingKeyword(key, extname(src))
 
-"""
-get_format(::Type{T}, revn::Integer; kwds...) where {T<:OIDataBlock} =
-    get_format(extname(Symbol, T), revn; kwds...)
-get_format(db::OIDataBlock, revn::Integer=db.revn; kwds...) =
-    get_format(extname(Symbol, db), revn; kwds...)
-get_format(extname::Union{Symbol,AbstractString}, revn::Integer; kwds...) =
-    get_format(Symbol(extname), revn; kwds...)
+show(io::IO, ::MIME"text/plain", e::MissingKeyword) =
+    print(io, "keyword \"", e.key, "\" not found in FITS extension ", e.ext)
+
+show(io::IO, ::MIME"text/plain", e::MissingColumn) =
+    print(io, "column \"", e.col, "\" not found in FITS extension ", e.ext)
+
+extname(hdu::TableHDU) = read_keyword(String, hdu, "EXTNAME", "")
 
 #------------------------------------------------------------------------------
 # WRITING OF OI-FITS FILES
@@ -150,25 +148,34 @@ end
 #------------------------------------------------------------------------------
 # READING OF OI-FITS FILES
 
+# Yields whether an exception was due to a missing FITS keyword.
+missing_keyword(ex::CFITSIO.CFITSIOError) = ex.errcode == 202
+missing_keyword(ex::Exception) = false
+
+# Yields whether an exception was due to a missing FITS column.
+missing_column(ex::CFITSIO.CFITSIOError) = ex.errcode == 219
+missing_column(ex::Exception) = false
+
 """
-    OIFITS.read_keyword(T, hdu, key, def=nothing) -> val
+    OIFITS.read_keyword(T, hdu, key [, def]) -> val
 
 yields the value of keyword `key` in FITS header of `hdu` converted to type
-`T`.  If the keyword is not part of the header, `def` is returned
-(unconverted).  This method provides some type-stability.
+`T`.  If the keyword is not part of the header, then the default value `def` is
+returned if specified, otherwise a `MissingKeyword` exception is thrown.  This
+method provides some type-stability.
 
 """
-function read_keyword(::Type{T}, hdu::HDU, key::String,
-                      def=nothing) where {T<:KeywordTypes}
+function read_keyword(T::Type{<:KeywordTypes}, hdu::HDU, key::String,
+                      def = unspecified)
     try
         val, com = FITSIO.read_key(hdu, key)
         return _convert_keyword(T, key, val)
     catch ex
-        if isa(ex, CFITSIO.CFITSIOError) && ex.errcode == 202
-            # Keyword does not exist in header.
+        if missing_keyword(ex)
+            def === unspecified && throw(MissingKeyword(key, hdu))
             return def
         end
-        rethrow(ex)
+        rethrow()
     end
 end
 
@@ -176,7 +183,8 @@ for (T, S) in ((Bool, Bool),
                (Int, Integer),
                (Cdouble, AbstractFloat),
                (String, AbstractString))
-    @eval _convert_keyword(::Type{T}, key::String, val::$S) where {T<:$T} = convert(T, val)
+    @eval _convert_keyword(::Type{T}, key::String, val::$S) where {T<:$T} =
+        convert(T, val)
 end
 
 @noinline _convert_keyword(::Type{T}, key::String, val::S) where {T,S} =
@@ -184,25 +192,26 @@ end
           " cannot be converted to type ", T)
 
 """
-    OIFITS.read_column(T, hdu, col, def=nothing) -> val
+    OIFITS.read_column([T,] hdu, col [, def]) -> val
 
-yields the contents of column `col` in FITS table `hdu` converted to array type
-`T`.  If the column is not part of the table, `def` is returned (unconverted).
+yields the contents of column `col` in FITS table `hdu` and converted to array
+type `T`.  If the column is not part of the table, then the default value `def`
+is returned if specified, otherwise a `MissingColumn` exception is thrown.
 This method provides some type-stability and add missing leading dimensions as
 needed.
 
 """
-function read_column(::Type{T}, hdu::TableHDU, col::String,
-                     def=nothing) where {S,T<:Union{Vector{S},Matrix{S}}}
+function read_column(T::Type{<:Array}, hdu::TableHDU, col::String,
+                     def = unspecified)
     try
         val = read(hdu, col; case_sensitive=false)
         return _convert_column(T, col, val)
     catch ex
-        if isa(ex, CFITSIO.CFITSIOError) && ex.errcode == 219
-            # Column does not exist in table.
+        if missing_column(ex)
+            def === unspecified && throw(MissingColumn(key, hdu))
             return def
         end
-        rethrow(ex)
+        rethrow()
     end
 end
 
@@ -251,7 +260,7 @@ function read!(dest::Union{OIData{T},Vector{OIDataBlock{T}}},
                f::FITS) where {T<:AbstractFloat}
     for i in 2:length(f)
         hdu = f[i]
-        extn = read_keyword(String, hdu, "EXTNAME")
+        extn = read_keyword(String, hdu, "EXTNAME", nothing)
         if extn !== nothing
             if extn == "OI_TARGET"
                 push!(dest, _read(OITarget{T}, hdu))
@@ -281,9 +290,6 @@ _read(T::Type{<:OIDataBlock}, hdu::TableHDU) = _read!(T(), hdu)
 
 function _read!(db::OIDataBlock, hdu::TableHDU)
     revn = read_keyword(Int, hdu, "OI_REVN")
-    if revn === nothing
-        error("mandatory FITS \"OI_REVN\" keyword is missing for ", T)
-    end
     nrows = read_keyword(Int, hdu, "NAXIS2")
     nwaves = -1
     for spec in get_format(db, revn)
@@ -298,28 +304,22 @@ end
 
 function _read_keyword!(db::T, ::Val{S}, hdu::TableHDU,
                         spec::FieldDefinition) where {T<:OIDataBlock,S}
-    val = read_keyword(fieldtype(T, S), hdu, spec.name)
-    if val === nothing
-        if !spec.optional
-            error("missing mandatory keyword \"", spec.name,
-                  "in FITS HDU #", hdu.ext, " \"", extname(db), "\"")
-        end
-    else
+    try
+        val = read_keyword(fieldtype(T, S), hdu, spec.name)
         setfield!(db, S, val)
+    catch ex
+        (spec.optional && isa(ex, MissingKeyword)) || rethrow()
     end
     nothing
 end
 
 function _read_column!(db::T, ::Val{S}, hdu::TableHDU,
                        spec::FieldDefinition) where {T<:OIDataBlock,S}
-    val = read_column(fieldtype(T, S), hdu, spec.name)
-    if val === nothing
-        if !spec.optional
-            error("missing mandatory column \"", spec.name,
-                  "in FITS HDU #", hdu.ext, " \"", extname(db), "\"")
-        end
-    else
+    try
+        val = read_column(fieldtype(T, S), hdu, spec.name)
         setfield!(db, S, val)
+    catch ex
+        (spec.optional && isa(ex, MissingColumn)) || rethrow()
     end
     nothing
 end

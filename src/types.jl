@@ -12,6 +12,22 @@
 """
 const Undef = typeof(undef)
 
+# Private singleton type used to indicate unspecified arguments/keywords.
+struct Unspecified; end
+const unspecified = Unspecified()
+
+# Exception thrown when a keyword is not found in a FITS header.
+struct MissingKeyword <: Exception
+    key::String
+    ext::String
+end
+
+# Exception thrown when a column is not found in a FITS table.
+struct MissingColumn <: Exception
+    col::String
+    ext::String
+end
+
 """
 
 `OIDataBlock{T}` is the abstract super-type of any OI data-block.  Parameter
