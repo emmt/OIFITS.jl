@@ -114,87 +114,6 @@ for (type, ext) in ((:OITarget,     :OI_TARGET),
 end
 
 #------------------------------------------------------------------------------
-# ELEMENT TYPE CONVERSION
-
-eltype(x::Union{OIDataBlock,OIData}) = eltype(typeof(x))
-eltype(::Type{<:OIDataBlock{T}}) where {T} = T
-eltype(::Type{<:OIData{T}}) where {T} = T
-
-"""
-    OIFITS.change_eltype(S, T)
-
-yields type similar to `S` but with element type `T`.
-
-""" change_eltype
-
-for D in (:OIDataBlock, :OITarget, :OIArray, :OIWavelength, :OICorr,
-          :OIVis, :OIVis2, :OIT3, :OIFlux, :OIInsPol)
-    @eval begin
-        change_eltype(::Type{<:$D}, T::Type{<:AbstractFloat}) = $D{T}
-        convert(::Type{$D}, A::$D) = A
-        convert(::Type{$D{T}}, A::$D{T}) where {T<:AbstractFloat} = A
-    end
-    if D === :OIDataBlock
-        @eval begin
-            convert(::Type{$D{T}}, A::$D) where {T<:AbstractFloat} =
-                convert(change_eltype(typeof(A), T), A)
-            $D(A::$D) = A
-            $D{T}(A::$D{T}) where {T<:AbstractFloat} = A
-            $D{T}(A::$D) where {T<:AbstractFloat} =
-                convert($D{T}, A)
-        end
-    else
-        @eval begin
-            function convert(::Type{$D{T}}, A::$D) where {T<:AbstractFloat}
-                B = $D{T}()
-                for sym in fieldnames($D{T})
-                    if isdefined(A, sym)
-                        _set_field!(B, sym, getfield(A, sym))
-                    end
-                end
-                return B
-            end
-        end
-    end
-end
-
-convert(::Type{T}, A::T) where {T<:OIData} = A
-convert(::Type{OIData{T}}, A::OIData{T}) where {T<:AbstractFloat} = A
-function convert(::Type{OIData{T}}, A::OIData) where {T<:AbstractFloat}
-    # Create an empty data-set and first push independent data-blocks.
-    B = OIData{T}()
-    if isdefined(A, :target)
-        push!(B, A.target)
-    end
-    for db in A.array
-        push!(B, db)
-    end
-    for db in A.instr
-        push!(B, db)
-    end
-    for db in A.correl
-        push!(B, db)
-    end
-    # For other data-blocks, calling push! automatically set dependencies.
-    for db in A.vis
-        push!(B, db)
-    end
-    for db in A.vis2
-        push!(B, db)
-    end
-    for db in A.t3
-        push!(B, db)
-    end
-    for db in A.flux
-        push!(B, db)
-    end
-    for db in A.inspol
-        push!(B, db)
-    end
-    return B
-end
-
-#------------------------------------------------------------------------------
 # PROPERTIES
 
 propertynames(db::OIDataBlock) = (fieldnames(typeof(db))..., :extname)
@@ -262,22 +181,14 @@ end
 # BUILDING OF DATA-SETS
 
 function OIData(args::OIDataBlock...)
-    T = promote_type(map(eltype, args)...)
-    return OIData{T}(args...)
-end
-
-function OIData{T}(args::OIDataBlock...) where {T<:AbstractFloat}
     # Create empty instance, then push the dependecy-less data-blocks and,
     # finally, the data-blocks with dependencies.
-    data = OIData{T}()
-    for db in args
-        if !isa(db, DataBlocksWithDependencies)
-            push!(data, db)
-        end
-    end
-    for db in args
-        if isa(db, DataBlocksWithDependencies)
-            push!(data, db)
+    data = OIData(undef)
+    for flag in (false, true)
+        for db in args
+            if isa(db, DataBlocksWithDependencies) == flag
+                push!(data, db)
+            end
         end
     end
     return data
@@ -285,7 +196,7 @@ end
 
 # Copy the outer structure of an OI-FITS data-block.
 function copy(A::T) where {T<:OIDataBlock}
-    B = T()
+    B = T(undef)
     for sym in fieldnames(T)
         if isdefined(A, sym)
             setfield!(B, sym, getfield(A, sym))
@@ -310,11 +221,8 @@ function push!(data::OIData, args::OIDataBlock...)
     return data
 end
 
-# This version is to convert element type.
-push!(data::OIData{T}, db::OIDataBlock) where {T<:AbstractFloat} =
-    push!(data, OIDataBlock{T}(db))
-
-function push!(data::OIData{T}, db::OITarget{T}) where {T<:AbstractFloat}
+# FIXME:
+function push!(data::OIData, db::OITarget)
     isdefined(data, :target) && error("OI_TARGET already defined")
     setfield!(data, :target, db)
     return data
@@ -326,7 +234,7 @@ for (type, name, field) in (
     (:OIWavelength, QuoteNode(:insname),  QuoteNode(:instr)),
     (:OICorr,       QuoteNode(:corrname), QuoteNode(:correl)))
     @eval begin
-        function push!(data::OIData{T}, db::$type{T}) where {T<:AbstractFloat}
+        function push!(data::OIData, db::$type)
             isdefined(db, $name) || throw_undefined_field($name)
             other = getfield(data, $field)[getfield(db, $name)]
             if other === nothing
@@ -346,7 +254,7 @@ for (type, field) in ((:OIVis,    :vis),
                       (:OIFlux,   :flux),
                       (:OIInsPol, :inspol))
     @eval begin
-        function push!(data::OIData{T}, db::$type{T}) where {T<:AbstractFloat}
+        function push!(data::OIData, db::$type)
             # Datablock must be copied on write to avoid side-effects.
             copy_on_write = true
 
@@ -413,4 +321,155 @@ function _set_dependency!(deps::AbstractVector, # list of dependencies known by 
         end
     end
     return db, copy_on_write
+end
+
+#------------------------------------------------------------------------------
+# OI_TARGET DATA-BLOCKS
+
+"""
+    OITargetEntry([def::OITargetEntry]; kwds...)
+
+yields an entry (a row) of the OI_TARGET table in an OI-FITS file.  All fields
+are specified by keywords.  If template entry `def` is specified, keywords have
+default values taken from `def`; otherwise all keywords are mandatory but
+`category` which is assmed to be `""` if unspecified.
+
+"""
+function OITargetEntry(;
+                       target_id ::Integer,
+                       target    ::AbstractString,
+                       raep0     ::AbstractFloat,
+                       decep0    ::AbstractFloat,
+                       equinox   ::AbstractFloat,
+                       ra_err    ::AbstractFloat,
+                       dec_err   ::AbstractFloat,
+                       sysvel    ::AbstractFloat,
+                       veltyp    ::AbstractString,
+                       veldef    ::AbstractString,
+                       pmra      ::AbstractFloat,
+                       pmdec     ::AbstractFloat,
+                       pmra_err  ::AbstractFloat,
+                       pmdec_err ::AbstractFloat,
+                       parallax  ::AbstractFloat,
+                       para_err  ::AbstractFloat,
+                       spectyp   ::AbstractString,
+                       category  ::AbstractString = empty_string)
+    return OITargetEntry(target_id,
+                         target,
+                         raep0,
+                         decep0,
+                         equinox,
+                         ra_err,
+                         dec_err,
+                         sysvel,
+                         veltyp,
+                         veldef,
+                         pmra,
+                         pmdec,
+                         pmra_err,
+                         pmdec_err,
+                         parallax,
+                         para_err,
+                         spectyp,
+                         category)
+end
+
+function OITargetEntry(def::OITargetEntry;
+                       target_id ::Integer        = def.target_id,
+                       target    ::AbstractString = def.target,
+                       raep0     ::AbstractFloat  = def.raep0,
+                       decep0    ::AbstractFloat  = def.decep0,
+                       equinox   ::AbstractFloat  = def.equinox,
+                       ra_err    ::AbstractFloat  = def.ra_err,
+                       dec_err   ::AbstractFloat  = def.dec_err,
+                       sysvel    ::AbstractFloat  = def.sysvel,
+                       veltyp    ::AbstractString = def.veltyp,
+                       veldef    ::AbstractString = def.veldef,
+                       pmra      ::AbstractFloat  = def.pmra,
+                       pmdec     ::AbstractFloat  = def.pmdec,
+                       pmra_err  ::AbstractFloat  = def.pmra_err,
+                       pmdec_err ::AbstractFloat  = def.pmdec_err,
+                       parallax  ::AbstractFloat  = def.parallax,
+                       para_err  ::AbstractFloat  = def.para_err,
+                       spectyp   ::AbstractString = def.spectyp,
+                       category  ::AbstractString = def.category)
+    return OITargetEntry(target_id,
+                         target,
+                         raep0,
+                         decep0,
+                         equinox,
+                         ra_err,
+                         dec_err,
+                         sysvel,
+                         veltyp,
+                         veldef,
+                         pmra,
+                         pmdec,
+                         pmra_err,
+                         pmdec_err,
+                         parallax,
+                         para_err,
+                         spectyp,
+                         category)
+end
+
+rows(db::OITarget) = getfield(db, :rows)
+
+# Make OITarget instances be iterable and behave more or less like vectors.
+
+length(db::OITarget) = length(db.rows)
+
+@inline @propagate_inbounds getindex(db::OITarget, i::Integer) = rows(db)[i]
+
+function getindex(db::OITarget, name::AbstractString)
+    for tgt in db
+        if is_same(tgt.target, name)
+            return tgt
+        end
+    end
+    error("no targets named \"", fix_name(name), "\" found in ",
+          db.extname, "data-block")
+end
+
+firstindex(db::OITarget) = firstindex(rows(db))
+lastindex(db::OITarget) = lastindex(rows(db))
+
+function iterate(db::OITarget,
+                 state::Tuple{Int,Int} = (firstindex(db),
+                                          lastindex(db)))
+    i, n = state
+    if i > n
+        return nothing
+    else
+        return db.rows[i], (i + 1, n)
+    end
+end
+
+"""
+    OIFITS.get_column([T,] db::OITarget, col)
+
+yields the column `col` of an OI-FITS data-block `db`.  Column is identified by
+`col` which is either `sym` or `Val(sym)` where `sym` is the symbolic name of
+the corresponding field in `OITargetEntry`.
+
+Optional argument `T` is to specify the element type of the returned array.
+
+""" get_column
+
+@inline get_column(db::OITarget, sym::Symbol) =
+    get_column(db, Val(sym))
+
+@inline get_column(T::Type, db::OITarget, sym::Symbol) =
+    get_column(T, db, Val(sym))
+
+get_column(db::OITarget, ::Val{sym}) where {sym} =
+    get_column(fieldtype(OITargetEntry, sym), db, sym)
+
+function get_column(::Type{T}, db::OITarget, ::Val{sym}) where {T,sym}
+    len = length(db)
+    col = Vector{T}(undef, len)
+    for i in 1:len
+        col[i] = getfield(db[i], sym)
+    end
+    return col
 end

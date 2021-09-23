@@ -16,6 +16,7 @@ export
     OIInsPol,
     OIT3,
     OITarget,
+    OITargetEntry,
     OIVis,
     OIVis2,
     OIWavelength
@@ -25,11 +26,14 @@ import Base:
     convert,
     copy,
     eltype,
+    firstindex,
     getindex,
     getproperty,
     haskey,
     isempty,
+    iterate,
     keys,
+    lastindex,
     length,
     merge,
     merge!,
@@ -42,6 +46,8 @@ import Base:
     size,
     take!,
     write
+
+using Base: @propagate_inbounds
 
 import FITSIO
 import CFITSIO

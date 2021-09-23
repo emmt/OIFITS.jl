@@ -27,6 +27,30 @@ get_format(db::OIDataBlock, revn::Integer=db.revn; kwds...) =
 get_format(extname::Union{Symbol,AbstractString}, revn::Integer; kwds...) =
     get_format(Symbol(extname), revn; kwds...)
 
+extname(hdu::TableHDU) = read_keyword(String, hdu, "EXTNAME", "")
+
+"""
+    OIFITS.column_type(sym)
+
+yields the exact element type in a column of a FITS table whose type is
+specified by the letter `sym`.
+
+"""
+column_type(sym::Symbol) = (
+    sym === :A ? String :
+    sym === :I ? Int16 :
+    sym === :J ? Int32 :
+    sym === :K ? Int64 :
+    sym === :L ? Bool :
+    sym === :E ? Float32 :
+    sym === :D ? Float64 :
+    sym === :C ? Complex{Float32} :
+    sym === :M ? Complex{Float64} :
+    error("unknown FITS column type `", sym, "`"))
+
+
+# Exceptions.
+
 MissingColumn(col::AbstractString, src::Union{TableHDU,OIDataBlock}) =
     MissingColumn(col, extname(src))
 
@@ -38,8 +62,6 @@ show(io::IO, ::MIME"text/plain", e::MissingKeyword) =
 
 show(io::IO, ::MIME"text/plain", e::MissingColumn) =
     print(io, "column \"", e.col, "\" not found in FITS extension ", e.ext)
-
-extname(hdu::TableHDU) = read_keyword(String, hdu, "EXTNAME", "")
 
 #------------------------------------------------------------------------------
 # WRITING OF OI-FITS FILES
@@ -115,27 +137,59 @@ function write(f::FITS, db::OIDataBlock)
     col_names = String[]
     col_data = Any[]
     col_units = Dict{String,String}()
-    for entry in get_format(db)
-        if !isdefined(db, entry.symb)
-            entry.optional || error(
-                "mandatory field `", entry.symb, "` is not defined in ",
+    for spec in get_format(db)
+        if !isdefined(db, spec.symb)
+            spec.optional || error(
+                "mandatory field `", spec.symb, "` is not defined in ",
                 db.extname, " data-block")
             continue
         end
-        if ndims(entry) == 0
+        if ndims(spec) == 0
             # Header keyword.
-            push!(hdr_names, entry.name)
-            push!(hdr_values, getfield(db, entry.symb))
-            if entry.units == ""
-                push!(hdr_comments, entry.descr)
+            push!(hdr_names, spec.name)
+            push!(hdr_values, getfield(db, spec.symb))
+            if spec.units == ""
+                push!(hdr_comments, spec.descr)
             else
-                push!(hdr_comments, "["*entry.units*"] "*entry.descr)
+                push!(hdr_comments, "["*spec.units*"] "*spec.descr)
             end
         else
             # Column keyword.
-            push!(col_names, entry.name)
-            push!(col_data, getfield(db, entry.symb))
-            col_units[entry.name] = entry.units
+            push!(col_names, spec.name)
+            push!(col_data, getfield(db, spec.symb))
+            col_units[spec.name] = spec.units
+        end
+    end
+    write(f, col_names, col_data;
+          hdutype = TableHDU,
+          name = db.extname,
+          header = FITSHeader(hdr_names, hdr_values, hdr_comments),
+          units = col_units)
+end
+
+function write(f::FITS, db::OITarget)
+    hdr_names = String[]
+    hdr_values = Any[]
+    hdr_comments = String[]
+    col_names = String[]
+    col_data = Any[]
+    col_units = Dict{String,String}()
+    for spec in get_format(db)
+        if ndims(spec) == 0
+            # Header keyword.
+            push!(hdr_names, spec.name)
+            push!(hdr_values, getfield(db, spec.symb))
+            if spec.units == empty_string
+                push!(hdr_comments, spec.descr)
+            else
+                push!(hdr_comments, "["*spec.units*"] "*spec.descr)
+            end
+        else
+            # Column keyword.
+            push!(col_names, spec.name)
+            push!(col_data, get_column(column_type(spec.type),
+                                       db, spec.symb))
+            col_units[spec.name] = spec.units
         end
     end
     write(f, col_names, col_data;
@@ -243,63 +297,113 @@ end
     error("FITS table column \"", col, "\" of type ", S,
           " cannot be converted to type ", T)
 
-OIData(arg::ReadInputs; kwds...) = OIData{Float64}(arg; kwds...)
-OIData{T}(arg::ReadInputs; kwds...) where {T<:AbstractFloat} =
-    read(OIData{T}, arg; kwds...)
+OIData(arg::ReadInputs; kwds...) = read(OIData, arg; kwds...)
 
-read(::Type{OIData}, args...; kwds...) =
-    read(OIData{Float64}, args...; kwds...)
+read(::Type{OIData}, filename::AbstractString) =
+    read(OIData, FITS(filename))
 
-read(::Type{OIData{T}}, filename::AbstractString) where {T<:AbstractFloat} =
-    read(OIData{T}, FITS(filename))
+read(::Type{OIData}, f::FITS) = push!(OIData(undef), f)
 
-read(::Type{OIData{T}}, f::FITS) where {T<:AbstractFloat} =
-    read!(OIData{T}(), f)
-
-function read!(dest::Union{OIData{T},Vector{OIDataBlock{T}}},
-               f::FITS) where {T<:AbstractFloat}
+function push!(dest::Union{OIData,Vector{OIDataBlock}}, f::FITS)
     for i in 2:length(f)
-        hdu = f[i]
-        extn = read_keyword(String, hdu, "EXTNAME", nothing)
-        if extn !== nothing
-            if extn == "OI_TARGET"
-                push!(dest, _read(OITarget{T}, hdu))
-            elseif extn == "OI_ARRAY"
-                push!(dest, _read(OIArray{T}, hdu))
-            elseif extn == "OI_WAVELENGTH"
-                push!(dest, _read(OIWavelength{T}, hdu))
-            elseif extn == "OI_CORR"
-                push!(dest, _read(OICorr{T}, hdu))
-            elseif extn == "OI_VIS"
-                push!(dest, _read(OIVis{T}, hdu))
-            elseif extn == "OI_VIS2"
-                push!(dest, _read(OIVis2{T}, hdu))
-            elseif extn == "OI_T3"
-                push!(dest, _read(OIT3{T}, hdu))
-            elseif extn == "OI_FLUX"
-                push!(dest, _read(OIFlux{T}, hdu))
-            elseif extn == "OI_INSPOL"
-                push!(dest, _read(OIInsPol{T}, hdu))
-            end
+        push!(dest, f[i])
+    end
+    return dest
+end
+
+function push!(dest::Union{OIData,Vector{OIDataBlock}}, hdu::TableHDU)
+    extn = read_keyword(String, hdu, "EXTNAME", nothing)
+    if extn !== nothing
+        if extn == "OI_TARGET"
+            push!(dest, _read(OITarget, hdu))
+        elseif extn == "OI_ARRAY"
+            push!(dest, _read(OIArray, hdu))
+        elseif extn == "OI_WAVELENGTH"
+            push!(dest, _read(OIWavelength, hdu))
+        elseif extn == "OI_CORR"
+            push!(dest, _read(OICorr, hdu))
+        elseif extn == "OI_VIS"
+            push!(dest, _read(OIVis, hdu))
+        elseif extn == "OI_VIS2"
+            push!(dest, _read(OIVis2, hdu))
+        elseif extn == "OI_T3"
+            push!(dest, _read(OIT3, hdu))
+        elseif extn == "OI_FLUX"
+            push!(dest, _read(OIFlux, hdu))
+        elseif extn == "OI_INSPOL"
+            push!(dest, _read(OIInsPol, hdu))
         end
     end
     return dest
 end
 
-_read(T::Type{<:OIDataBlock}, hdu::TableHDU) = _read!(T(), hdu)
-
-function _read!(db::OIDataBlock, hdu::TableHDU)
-    revn = read_keyword(Int, hdu, "OI_REVN")
-    nrows = read_keyword(Int, hdu, "NAXIS2")
-    nwaves = -1
-    for spec in get_format(db, revn)
+function _read(T::Type{<:OIDataBlock}, hdu::TableHDU)
+    db = T(undef)
+    db.revn = read_keyword(Int, hdu, "OI_REVN")
+    #nrows = read_keyword(Int, hdu, "NAXIS2")
+    #nwaves = -1
+    for spec in get_format(db)
         if spec.rank == 0
-            _read_keyword!(db, Val(spec.symb), hdu, spec)
+            if spec.symb !== :revn
+                _read_keyword!(db, Val(spec.symb), hdu, spec)
+            end
         else
             _read_column!(db, Val(spec.symb), hdu, spec)
         end
     end
     return db
+end
+
+function _read(::Type{<:OITarget}, hdu::TableHDU)
+    # Read keywords.
+    revn  = read_keyword(Int, hdu, "OI_REVN")
+    nrows = read_keyword(Int, hdu, "NAXIS2")
+
+    # Read columns.
+    target_id = read_column(Vector{Int16  }, hdu, "TARGET_ID")
+    target    = read_column(Vector{String }, hdu, "TARGET")
+    raep0     = read_column(Vector{Float64}, hdu, "RAEP0")
+    decep0    = read_column(Vector{Float64}, hdu, "DECEP0")
+    equinox   = read_column(Vector{Float32}, hdu, "EQUINOX")
+    ra_err    = read_column(Vector{Float64}, hdu, "RA_ERR")
+    dec_err   = read_column(Vector{Float64}, hdu, "DEC_ERR")
+    sysvel    = read_column(Vector{Float64}, hdu, "SYSVEL")
+    veltyp    = read_column(Vector{String }, hdu, "VELTYP")
+    veldef    = read_column(Vector{String }, hdu, "VELDEF")
+    pmra      = read_column(Vector{Float64}, hdu, "PMRA")
+    pmdec     = read_column(Vector{Float64}, hdu, "PMDEC")
+    pmra_err  = read_column(Vector{Float64}, hdu, "PMRA_ERR")
+    pmdec_err = read_column(Vector{Float64}, hdu, "PMDEC_ERR")
+    parallax  = read_column(Vector{Float32}, hdu, "PARALLAX")
+    para_err  = read_column(Vector{Float32}, hdu, "PARA_ERR")
+    spectyp   = read_column(Vector{String }, hdu, "SPECTYP")
+    if revn ≥ 2
+        category = read_column(Vector{String}, hdu, "CATEGORY")
+    end
+    rows = Vector{OITargetEntry}(undef, nrows)
+    for i in 1:nrows
+        rows[i] = OITargetEntry(
+            target_id[i],
+            target[i],
+            raep0[i],
+            decep0[i],
+            equinox[i],
+            ra_err[i],
+            dec_err[i],
+            sysvel[i],
+            veltyp[i],
+            veldef[i],
+            pmra[i],
+            pmdec[i],
+            pmra_err[i],
+            pmdec_err[i],
+            parallax[i],
+            para_err[i],
+            spectyp[i],
+            (revn ≥ 2 ? category[i] : empty_string),
+        )
+    end
+    return OITarget(revn=revn, rows=rows)
 end
 
 function _read_keyword!(db::T, ::Val{S}, hdu::TableHDU,
