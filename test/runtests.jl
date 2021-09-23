@@ -131,19 +131,39 @@ end
 end
 
 @testset "OI_TARGET methods" begin
-    A = OIData(joinpath(dir,files[1]))
-    @test isa(A.target, OITarget)
-    @test length(A.target) == length(A.target.rows)
+    data = OIData(joinpath(dir,files[1]))
+    A = data.target
+    @test isa(A, OITarget)
+    @test eltype(A) === OITargetEntry
+    @test length(A) == length(A.rows)
+    @test ndims(A) == 1
+    @test IndexStyle(A) === IndexLinear()
+    @test firstindex(A) == 1
+    @test lastindex(A) == length(A)
+    @test size(A) == (length(A),)
+    @test size(A,1) == length(A)
+    @test size(A,2) == 1
+    @test axes(A) == (1:length(A),)
+    @test axes(A,1) == 1:length(A)
+    for (key, val) in zip(keys(String, A), values(A))
+        @test A[key] === val
+    end
+    @test keys(Int, A) === 1:length(A)
     i = 0
-    for tgt in A.target
+    for tgt in A
         i += 1
         @test isa(tgt, OITargetEntry)
-        @test A.target[i] === tgt
+        @test A[i] === tgt
+        @test haskey(A, i) == true
         for key in (tgt.target,
                     uppercase(tgt.target),
                     lowercase(tgt.target),
                     tgt.target*"  \t")
-            @test A.target[key] === tgt
+            @test haskey(A, key)
+            @test !haskey(A, key*"+")
+            @test A[key] === tgt
+            @test get(A, key, nothing) === tgt
+            @test get(A, key*"+", nothing) === nothing
         end
     end
 end

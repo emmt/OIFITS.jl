@@ -75,7 +75,7 @@ exception is thrown.
 
 For example:
 
-    for def in OIFITS.Formats.get_format(:OI_VIS2, 2)
+    for def in OIFITS.get_format(:OI_VIS2, 2)
         println(
             (def.rank == 0 ? "Keyword" : "Column "), " \"",
             def.name, "\" => `", def.symb, "` -- ", def.descr)

@@ -23,10 +23,12 @@ export
 
 import Base:
     IndexStyle,
+    axes,
     convert,
     copy,
     eltype,
     firstindex,
+    get,
     getindex,
     getproperty,
     haskey,
@@ -37,6 +39,7 @@ import Base:
     length,
     merge,
     merge!,
+    ndims,
     propertynames,
     push!,
     read,
@@ -45,6 +48,7 @@ import Base:
     show,
     size,
     take!,
+    values,
     write
 
 using Base: @propagate_inbounds

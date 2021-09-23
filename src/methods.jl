@@ -415,9 +415,21 @@ end
 
 rows(db::OITarget) = getfield(db, :rows)
 
-# Make OITarget instances be iterable and behave more or less like vectors.
+# Make OITarget instances iterable and behave more or less like vectors
+# (with properties).
 
-length(db::OITarget) = length(db.rows)
+ndims(db::OITarget) = ndims(rows(db))
+size(db::OITarget) = size(rows(db))
+size(db::OITarget, i) = size(rows(db), i)
+axes(db::OITarget) = axes(rows(db))
+axes(db::OITarget, i) = axes(rows(db), i)
+length(db::OITarget) = length(rows(db))
+
+IndexStyle(db::OITarget) = IndexStyle(OITarget)
+IndexStyle(::Type{OITarget}) = IndexStyle(fieldtype(OITarget, :rows))
+
+eltype(db::OITarget) = eltype(OITarget)
+eltype(::Type{OITarget}) = OITargetEntry
 
 @inline @propagate_inbounds getindex(db::OITarget, i::Integer) = rows(db)[i]
 
@@ -444,6 +456,40 @@ function iterate(db::OITarget,
         return db.rows[i], (i + 1, n)
     end
 end
+
+haskey(db::OITarget, i::Integer) = (1 ≤ i ≤ length(db))
+
+haskey(db::OITarget, key::AbstractString) = begin
+    for tgt in db
+        if is_same(tgt.target, key)
+            return true
+        end
+    end
+    return false
+end
+
+get(db::OITarget, i::Integer, def) =
+    if 1 ≤ i ≤ length(db)
+        return @inbounds db[i]
+    else
+        return def
+    end
+
+get(db::OITarget, key::AbstractString, def) = begin
+    for tgt in db
+        if is_same(tgt.target, key)
+            return tgt
+        end
+    end
+    return def
+end
+
+# Note: this is the default behavior.
+values(db::OITarget) = db
+
+keys(db::OITarget) = Iterators.map(x -> fix_name(x.target), db)
+keys(::Type{String}, db::OITarget) = keys(db)
+keys(::Type{Int}, db::OITarget) = firstindex(db):lastindex(db)
 
 """
     OIFITS.get_column([T,] db::OITarget, col)
