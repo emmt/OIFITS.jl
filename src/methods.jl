@@ -65,19 +65,41 @@ done ignoring of the case of letters and trailing spaces.
 fix_name(str::AbstractString) = uppercase(rstrip(str))
 
 # Extend A[name] syntax to get an OI-ARRAY, OI-WAVELENGTH, or OI-CORR by its
-# name (accoding to FITS conventions).
+# name (according to FITS conventions).  The syntax keys(String,A) can be used
+# to get an iterator over the string keys of A.
 for (T, field) in ((OIArray,      :arrname),
                    (OIWavelength, :insname),
                    (OICorr,       :corrname))
-    @eval function Base.getindex(A::AbstractArray{<:$T}, name::AbstractString)
-        @inbounds for i in eachindex(A)
-            if is_same(A[i].$field, name)
-                return A[i]
+    @eval begin
+        getindex(A::AbstractArray{<:$T}, key::AbstractString) = begin
+            @inbounds for i in eachindex(A)
+                if is_same(A[i].$field, key)
+                    return A[i]
+                end
             end
+            throw(KeyError(fix_name(key)))
         end
-        return nothing
+        keys(::Type{String}, A::AbstractArray{<:$T}) =
+            Iterators.map(x -> fix_name(x.$field), A)
+        haskey(A::AbstractArray{<:$T}, key::AbstractString) = begin
+            @inbounds for i in eachindex(A)
+                if is_same(A[i].$field, key)
+                    return true
+                end
+            end
+            return false
+        end
+        get(A::AbstractArray{<:$T}, key::AbstractString, def) = begin
+            @inbounds for i in eachindex(A)
+                if is_same(A[i].$field, key)
+                    return A[i]
+                end
+            end
+            return def
+        end
     end
 end
+
 
 """
     OIFITS.extname(db)
@@ -236,7 +258,7 @@ for (type, name, field) in (
     @eval begin
         function push!(data::OIData, db::$type)
             isdefined(db, $name) || throw_undefined_field($name)
-            other = getfield(data, $field)[getfield(db, $name)]
+            other = get(getfield(data, $field), getfield(db, $name), nothing)
             if other === nothing
                 push!(getfield(data, $field), db)
             elseif other != db # FIXME:
@@ -291,7 +313,7 @@ function _set_dependency!(deps::AbstractVector, # list of dependencies known by 
                           ::Val{value}          # field name of dependency value
                           ) where {T<:OIDataBlock,name,value}
 
-    other = deps[getfield(db, name)]
+    other = get(deps, getfield(db, name), nothing)
     if other === nothing
         # Dependency not yet in list.
         if isdefined(db, value)
@@ -445,6 +467,7 @@ end
 
 firstindex(db::OITarget) = firstindex(rows(db))
 lastindex(db::OITarget) = lastindex(rows(db))
+eachindex(db::OITarget) = eachindex(rows(db))
 
 function iterate(db::OITarget,
                  state::Tuple{Int,Int} = (firstindex(db),
@@ -489,7 +512,7 @@ values(db::OITarget) = db
 
 keys(db::OITarget) = Iterators.map(x -> fix_name(x.target), db)
 keys(::Type{String}, db::OITarget) = keys(db)
-keys(::Type{Int}, db::OITarget) = firstindex(db):lastindex(db)
+keys(::Type{Int}, db::OITarget) = eachindex(db)
 
 """
     OIFITS.get_column([T,] db::OITarget, col)

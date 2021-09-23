@@ -26,6 +26,7 @@ import Base:
     axes,
     convert,
     copy,
+    eachindex,
     eltype,
     firstindex,
     get,

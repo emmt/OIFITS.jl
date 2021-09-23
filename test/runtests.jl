@@ -145,10 +145,11 @@ end
     @test size(A,2) == 1
     @test axes(A) == (1:length(A),)
     @test axes(A,1) == 1:length(A)
+    @test eachindex(A) === Base.OneTo(length(A))
+    @test keys(Int, A) === Base.OneTo(length(A))
     for (key, val) in zip(keys(String, A), values(A))
         @test A[key] === val
     end
-    @test keys(Int, A) === 1:length(A)
     i = 0
     for tgt in A
         i += 1
