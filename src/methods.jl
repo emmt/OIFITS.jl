@@ -100,7 +100,6 @@ for (T, field) in ((OIArray,      :arrname),
     end
 end
 
-
 """
     OIFITS.extname(db)
 

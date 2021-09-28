@@ -328,18 +328,33 @@ const DataBlocksWithDependencies = Union{OIVis,OIVis2,OIT3,OIFlux,OIInsPol}
 """
 
 `OIData` stores the contents of an OI-FITS file.  All data-blocks containing
-measurements (OI_VIS, OI_VIS2, OI_T3, OI_FLUX and OI_INSPOL) are stored into a
-vector and thus indexed by an integer.  Named data-blocks (OI_ARRAY,
-OI_WAVELENGTH and OI_CORR) are indexed by their names (converted to upper case
-letters, with leading and trailing spaces stripped, multiple spaces replaced by
-a single ordinary space).
+measurements (`OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX` and `OI_INSPOL`) are
+stored into a vector and thus indexed by an integer.  Named data-blocks
+(`OI_ARRAY`, `OI_WAVELENGTH` and `OI_CORR`) are indexed by their names
+(converted to upper case letters, with leading and trailing spaces stripped,
+multiple spaces replaced by a single ordinary space).
 
-    # Loop over OIVis instances in data-set.
+Reading an OI-FITS file is as simple as one of:
+
+    data = OIData(filename)
+    data = read(OIData, filename)
+
+with `filename` the name of the file.  Keyword `hack_revn` can be used to force
+the revision number (FITS keyword `OI-REVN`) of all OI-FITS data-blocks; the
+keyword may be set to an integer or to a function that takes 2 arguments, the
+type and actual revision number of the cuurent data-block, and that returns the
+revision number to assume.
+
+Looping over `OI_VIS` data-blocks in the data-set can be done as follows:
+
     for db in data.vis
         ...
     end
-    data.target           # yields an OITarget instance
-    data.instr[insname]   # yields an OIWavelength instance
+
+The data-set has a number of properties:
+
+    data.target           # yields the OI_TARGET data-block
+    data.instr[insname]   # yields an OI_WAVELENGTH data-block
     data.array[arrname]   # yields an OIArray instance
     data.correl[corrname] # yields an OICorr instance
 

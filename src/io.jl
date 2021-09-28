@@ -299,47 +299,54 @@ end
 
 OIData(arg::ReadInputs; kwds...) = read(OIData, arg; kwds...)
 
-read(::Type{OIData}, filename::AbstractString) =
-    read(OIData, FITS(filename))
+read(::Type{OIData}, filename::AbstractString; kwds...) =
+    read(OIData, FITS(filename); kwds...)
 
-read(::Type{OIData}, f::FITS) = push!(OIData(undef), f)
+read(::Type{OIData}, f::FITS; kwds...) = push!(OIData(undef), f)
 
-function push!(dest::Union{OIData,Vector{OIDataBlock}}, f::FITS)
+function push!(dest::Union{OIData,Vector{OIDataBlock}}, f::FITS; kwds...)
     for i in 2:length(f)
-        push!(dest, f[i])
+        push!(dest, f[i]; kwds...)
     end
     return dest
 end
 
-function push!(dest::Union{OIData,Vector{OIDataBlock}}, hdu::TableHDU)
+function push!(dest::Union{OIData,Vector{OIDataBlock}},
+               hdu::TableHDU; kwds...)
     extn = read_keyword(String, hdu, "EXTNAME", nothing)
     if extn !== nothing
         if extn == "OI_TARGET"
-            push!(dest, _read(OITarget, hdu))
+            push!(dest, _read(OITarget, hdu; kwds...))
         elseif extn == "OI_ARRAY"
-            push!(dest, _read(OIArray, hdu))
+            push!(dest, _read(OIArray, hdu; kwds...))
         elseif extn == "OI_WAVELENGTH"
-            push!(dest, _read(OIWavelength, hdu))
+            push!(dest, _read(OIWavelength, hdu; kwds...))
         elseif extn == "OI_CORR"
-            push!(dest, _read(OICorr, hdu))
+            push!(dest, _read(OICorr, hdu; kwds...))
         elseif extn == "OI_VIS"
-            push!(dest, _read(OIVis, hdu))
+            push!(dest, _read(OIVis, hdu; kwds...))
         elseif extn == "OI_VIS2"
-            push!(dest, _read(OIVis2, hdu))
+            push!(dest, _read(OIVis2, hdu; kwds...))
         elseif extn == "OI_T3"
-            push!(dest, _read(OIT3, hdu))
+            push!(dest, _read(OIT3, hdu; kwds...))
         elseif extn == "OI_FLUX"
-            push!(dest, _read(OIFlux, hdu))
+            push!(dest, _read(OIFlux, hdu; kwds...))
         elseif extn == "OI_INSPOL"
-            push!(dest, _read(OIInsPol, hdu))
+            push!(dest, _read(OIInsPol, hdu; kwds...))
         end
     end
     return dest
 end
 
-function _read(T::Type{<:OIDataBlock}, hdu::TableHDU)
+function _read(T::Type{<:OIDataBlock}, hdu::TableHDU; hack_revn = undef)
     db = T(undef)
-    db.revn = read_keyword(Int, hdu, "OI_REVN")
+    if hack_revn === undef
+        db.revn = read_keyword(Int, hdu, "OI_REVN")
+    elseif isa(hack_revn, Integer)
+        db.revn = hack_revn
+    else
+        db.revn = hack_revn(T, read_keyword(Int, hdu, "OI_REVN"))
+    end
     #nrows = read_keyword(Int, hdu, "NAXIS2")
     #nwaves = -1
     for spec in get_format(db)
