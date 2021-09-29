@@ -344,6 +344,8 @@ function _read(T::Type{<:OIDataBlock}, hdu::TableHDU; hack_revn = undef)
         db.revn = read_keyword(Int, hdu, "OI_REVN")
     elseif isa(hack_revn, Integer)
         db.revn = hack_revn
+    elseif applicable(hack_revn, hdu)
+        db.revn = hack_revn(hdu)
     else
         db.revn = hack_revn(T, read_keyword(Int, hdu, "OI_REVN"))
     end
