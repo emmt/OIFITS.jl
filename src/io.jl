@@ -302,7 +302,7 @@ OIDataSet(arg::ReadInputs; kwds...) = read(OIDataSet, arg; kwds...)
 read(::Type{OIDataSet}, filename::AbstractString; kwds...) =
     read(OIDataSet, FITS(filename); kwds...)
 
-read(::Type{OIDataSet}, f::FITS; kwds...) = push!(OIDataSet(undef), f)
+read(::Type{OIDataSet}, f::FITS; kwds...) = push!(OIDataSet(undef), f; kwds...)
 
 function push!(dest::Union{OIDataSet,Vector{OIDataBlock}}, f::FITS; kwds...)
     for i in 2:length(f)
@@ -363,9 +363,17 @@ function _read(T::Type{<:OIDataBlock}, hdu::TableHDU; hack_revn = undef)
     return db
 end
 
-function _read(::Type{<:OI_TARGET}, hdu::TableHDU)
+function _read(::Type{<:OI_TARGET}, hdu::TableHDU; hack_revn = undef)
     # Read keywords.
-    revn  = read_keyword(Int, hdu, "OI_REVN")
+    revn = if hack_revn === undef
+        read_keyword(Int, hdu, "OI_REVN")
+    elseif isa(hack_revn, Integer)
+        hack_revn
+    elseif applicable(hack_revn, hdu)
+        hack_revn(hdu)
+    else
+        hack_revn(OIDataBlock, read_keyword(Int, hdu, "OI_REVN"))
+    end
     nrows = read_keyword(Int, hdu, "NAXIS2")
 
     # Read columns.
