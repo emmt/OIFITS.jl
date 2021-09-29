@@ -26,7 +26,7 @@ println("tempfile = \"$tempfile\"")
 function tryload(dir, file)
     global counter
     try
-        data = OIData(joinpath(dir, file))
+        data = OIDataSet(joinpath(dir, file))
         counter[] += 1
         quiet || @info "file \"$file\" successfully loaded"
         return true
@@ -57,19 +57,19 @@ end
 end
 
 get_field_type(T::Type{<:OIDataBlock}, sym::Symbol) = fieldtype(T, sym)
-get_field_type(::Type{<:OITarget}, sym::Symbol) =
-    fieldtype((sym === :revn ? OITarget : OITargetEntry), sym)
+get_field_type(::Type{<:OI_TARGET}, sym::Symbol) =
+    fieldtype((sym === :revn ? OI_TARGET : OITargetEntry), sym)
 
 @testset "OI type definitions and formats" begin
-    for T in (OIArray,
-              OICorr,
-              OIFlux,
-              OIInsPol,
-              OIT3,
-              OITarget,
-              OIVis,
-              OIVis2,
-              OIWavelength)
+    for T in (OI_ARRAY,
+              OI_CORR,
+              OI_FLUX,
+              OI_INSPOL,
+              OI_T3,
+              OI_TARGET,
+              OI_VIS,
+              OI_VIS2,
+              OI_WAVELENGTH)
 
         @testset "$(extname(T))" begin
             for rev in 3:-1:1
@@ -98,9 +98,9 @@ get_field_type(::Type{<:OITarget}, sym::Symbol) =
                         # Column.
                         if s.type === :A
                             @test rank == 1
-                            @test S === (T === OITarget ? String : Vector{String})
+                            @test S === (T === OI_TARGET ? String : Vector{String})
                         else
-                            @test rank == (T === OITarget ? 1 : ndims(S))
+                            @test rank == (T === OI_TARGET ? 1 : ndims(S))
                             if s.type === :C
                                 @test eltype(S) <: Complex{<:AbstractFloat}
                             elseif s.type ∈ (:D, :E)
@@ -120,20 +120,20 @@ end
 
 @testset "Read/write OI-FITS files" begin
     for file in files
-        A = OIData(joinpath(dir, file))
-        @test isa(A, OIData)
+        A = OIDataSet(joinpath(dir, file))
+        @test isa(A, OIDataSet)
         isfile(tempfile) && rm(tempfile; force=true)
         write(tempfile, A)
-        B = read(OIData, tempfile)
-        @test isa(B, OIData)
+        B = read(OIDataSet, tempfile)
+        @test isa(B, OIDataSet)
         @test_throws ErrorException write(tempfile, B)
     end
 end
 
 @testset "OI_TARGET methods" begin
-    data = OIData(joinpath(dir,files[1]))
+    data = OIDataSet(joinpath(dir,files[1]))
     A = data.target
-    @test isa(A, OITarget)
+    @test isa(A, OI_TARGET)
     @test eltype(A) === OITargetEntry
     @test length(A) == length(A.rows)
     @test ndims(A) == 1

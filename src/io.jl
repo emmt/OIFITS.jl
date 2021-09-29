@@ -5,7 +5,7 @@
 #
 #------------------------------------------------------------------------------
 
-# Union of types from which OIData can be read.
+# Union of types from which OIDataSet can be read.
 const ReadInputs = Union{AbstractString,FITS}
 
 # Union of possible FITS keyword types.
@@ -66,7 +66,7 @@ show(io::IO, ::MIME"text/plain", e::MissingColumn) =
 #------------------------------------------------------------------------------
 # WRITING OF OI-FITS FILES
 
-function write(filename::AbstractString, data::OIData;
+function write(filename::AbstractString, data::OIDataSet;
                overwrite::Bool=false, kwds...)
     if !overwrite && isfile(filename)
         error("file \"", filename, "\" already exists, ",
@@ -78,7 +78,7 @@ function write(filename::AbstractString, data::OIData;
     return nothing
 end
 
-function write(f::FITS, data::OIData; quiet::Bool=false)
+function write(f::FITS, data::OIDataSet; quiet::Bool=false)
     if isdefined(data, :target)
         write(f, data.target)
     elseif !quiet
@@ -167,7 +167,7 @@ function write(f::FITS, db::OIDataBlock)
           units = col_units)
 end
 
-function write(f::FITS, db::OITarget)
+function write(f::FITS, db::OI_TARGET)
     hdr_names = String[]
     hdr_values = Any[]
     hdr_comments = String[]
@@ -297,42 +297,42 @@ end
     error("FITS table column \"", col, "\" of type ", S,
           " cannot be converted to type ", T)
 
-OIData(arg::ReadInputs; kwds...) = read(OIData, arg; kwds...)
+OIDataSet(arg::ReadInputs; kwds...) = read(OIDataSet, arg; kwds...)
 
-read(::Type{OIData}, filename::AbstractString; kwds...) =
-    read(OIData, FITS(filename); kwds...)
+read(::Type{OIDataSet}, filename::AbstractString; kwds...) =
+    read(OIDataSet, FITS(filename); kwds...)
 
-read(::Type{OIData}, f::FITS; kwds...) = push!(OIData(undef), f)
+read(::Type{OIDataSet}, f::FITS; kwds...) = push!(OIDataSet(undef), f)
 
-function push!(dest::Union{OIData,Vector{OIDataBlock}}, f::FITS; kwds...)
+function push!(dest::Union{OIDataSet,Vector{OIDataBlock}}, f::FITS; kwds...)
     for i in 2:length(f)
         push!(dest, f[i]; kwds...)
     end
     return dest
 end
 
-function push!(dest::Union{OIData,Vector{OIDataBlock}},
+function push!(dest::Union{OIDataSet,Vector{OIDataBlock}},
                hdu::TableHDU; kwds...)
     extn = read_keyword(String, hdu, "EXTNAME", nothing)
     if extn !== nothing
         if extn == "OI_TARGET"
-            push!(dest, _read(OITarget, hdu; kwds...))
+            push!(dest, _read(OI_TARGET, hdu; kwds...))
         elseif extn == "OI_ARRAY"
-            push!(dest, _read(OIArray, hdu; kwds...))
+            push!(dest, _read(OI_ARRAY, hdu; kwds...))
         elseif extn == "OI_WAVELENGTH"
-            push!(dest, _read(OIWavelength, hdu; kwds...))
+            push!(dest, _read(OI_WAVELENGTH, hdu; kwds...))
         elseif extn == "OI_CORR"
-            push!(dest, _read(OICorr, hdu; kwds...))
+            push!(dest, _read(OI_CORR, hdu; kwds...))
         elseif extn == "OI_VIS"
-            push!(dest, _read(OIVis, hdu; kwds...))
+            push!(dest, _read(OI_VIS, hdu; kwds...))
         elseif extn == "OI_VIS2"
-            push!(dest, _read(OIVis2, hdu; kwds...))
+            push!(dest, _read(OI_VIS2, hdu; kwds...))
         elseif extn == "OI_T3"
-            push!(dest, _read(OIT3, hdu; kwds...))
+            push!(dest, _read(OI_T3, hdu; kwds...))
         elseif extn == "OI_FLUX"
-            push!(dest, _read(OIFlux, hdu; kwds...))
+            push!(dest, _read(OI_FLUX, hdu; kwds...))
         elseif extn == "OI_INSPOL"
-            push!(dest, _read(OIInsPol, hdu; kwds...))
+            push!(dest, _read(OI_INSPOL, hdu; kwds...))
         end
     end
     return dest
@@ -363,7 +363,7 @@ function _read(T::Type{<:OIDataBlock}, hdu::TableHDU; hack_revn = undef)
     return db
 end
 
-function _read(::Type{<:OITarget}, hdu::TableHDU)
+function _read(::Type{<:OI_TARGET}, hdu::TableHDU)
     # Read keywords.
     revn  = read_keyword(Int, hdu, "OI_REVN")
     nrows = read_keyword(Int, hdu, "NAXIS2")
@@ -412,7 +412,7 @@ function _read(::Type{<:OITarget}, hdu::TableHDU)
             (revn ≥ 2 ? category[i] : empty_string),
         )
     end
-    return OITarget(revn=revn, rows=rows)
+    return OI_TARGET(revn=revn, rows=rows)
 end
 
 function _read_keyword!(db::T, ::Val{S}, hdu::TableHDU,

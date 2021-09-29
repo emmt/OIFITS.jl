@@ -67,9 +67,9 @@ fix_name(str::AbstractString) = uppercase(rstrip(str))
 # Extend A[name] syntax to get an OI-ARRAY, OI-WAVELENGTH, or OI-CORR by its
 # name (according to FITS conventions).  The syntax keys(String,A) can be used
 # to get an iterator over the string keys of A.
-for (T, field) in ((OIArray,      :arrname),
-                   (OIWavelength, :insname),
-                   (OICorr,       :corrname))
+for (T, field) in ((OI_ARRAY,      :arrname),
+                   (OI_WAVELENGTH, :insname),
+                   (OI_CORR,       :corrname))
     @eval begin
         getindex(A::AbstractArray{<:$T}, key::AbstractString) = begin
             @inbounds for i in eachindex(A)
@@ -118,15 +118,15 @@ extname(db::OIDataBlock) = extname(typeof(db))
 extname(T::Type{<:Union{String,Symbol}}, db::OIDataBlock) =
     extname(T, typeof(db))
 
-for (type, ext) in ((:OITarget,     :OI_TARGET),
-                    (:OIArray,      :OI_ARRAY),
-                    (:OIWavelength, :OI_WAVELENGTH),
-                    (:OICorr,       :OI_CORR),
-                    (:OIVis,        :OI_VIS),
-                    (:OIVis2,       :OI_VIS2),
-                    (:OIT3,         :OI_T3),
-                    (:OIFlux,       :OI_FLUX),
-                    (:OIInsPol,     :OI_INSPOL))
+for (type, ext) in ((:OI_TARGET,     :OI_TARGET),
+                    (:OI_ARRAY,      :OI_ARRAY),
+                    (:OI_WAVELENGTH, :OI_WAVELENGTH),
+                    (:OI_CORR,       :OI_CORR),
+                    (:OI_VIS,        :OI_VIS),
+                    (:OI_VIS2,       :OI_VIS2),
+                    (:OI_T3,         :OI_T3),
+                    (:OI_FLUX,       :OI_FLUX),
+                    (:OI_INSPOL,     :OI_INSPOL))
     @eval begin
         extname(::Type{<:$type}) = $(String(ext))
         extname(::Type{String}, ::Type{<:$type}) = $(String(ext))
@@ -145,7 +145,7 @@ getproperty(db::OIDataBlock, ::Val{:extname}) = extname(typeof(db))
 
 # Indirections to instrument (OI_WAVELENGTH) for OI_VIS, OI_VIS2, OI_T3, and
 # OI_FLUX.
-for type in (:OIVis, :OIVis2, :OIT3, :OIFlux)
+for type in (:OI_VIS, :OI_VIS2, :OI_T3, :OI_FLUX)
     @eval begin
         @eval propertynames(db::$type) =
             (fieldnames(typeof(db))..., :extname, :eff_wave, :eff_band)
@@ -201,10 +201,10 @@ end
 #------------------------------------------------------------------------------
 # BUILDING OF DATA-SETS
 
-function OIData(args::OIDataBlock...)
+function OIDataSet(args::OIDataBlock...)
     # Create empty instance, then push the dependecy-less data-blocks and,
     # finally, the data-blocks with dependencies.
-    data = OIData(undef)
+    data = OIDataSet(undef)
     for flag in (false, true)
         for db in args
             if isa(db, DataBlocksWithDependencies) == flag
@@ -227,7 +227,7 @@ function copy(A::T) where {T<:OIDataBlock}
 end
 
 """
-    push!(data::OIData, args::OIDataBlock...) -> data
+    push!(data::OIDataSet, args::OIDataBlock...) -> data
 
 pushes OI-FITS data-blocks `args...` in `data`.  This method ensures that
 `data` (and its contents) remain consistent.  If a data-block has undefined
@@ -235,7 +235,7 @@ dependencies, they must be already part of `data`.  If a data-block has defined
 dependencies, they will be merged with those already stored in `data`.
 
 """
-function push!(data::OIData, args::OIDataBlock...)
+function push!(data::OIDataSet, args::OIDataBlock...)
     for db in args
         push!(data, db)
     end
@@ -243,7 +243,7 @@ function push!(data::OIData, args::OIDataBlock...)
 end
 
 # FIXME:
-function push!(data::OIData, db::OITarget)
+function push!(data::OIDataSet, db::OI_TARGET)
     isdefined(data, :target) && error("OI_TARGET already defined")
     setfield!(data, :target, db)
     return data
@@ -251,11 +251,11 @@ end
 
 # Extend push! for OI_ARRAY, OI_WAVELENGTH, and OI_CORR.
 for (type, name, field) in (
-    (:OIArray,      QuoteNode(:arrname),  QuoteNode(:array)),
-    (:OIWavelength, QuoteNode(:insname),  QuoteNode(:instr)),
-    (:OICorr,       QuoteNode(:corrname), QuoteNode(:correl)))
+    (:OI_ARRAY,      QuoteNode(:arrname),  QuoteNode(:array)),
+    (:OI_WAVELENGTH, QuoteNode(:insname),  QuoteNode(:instr)),
+    (:OI_CORR,       QuoteNode(:corrname), QuoteNode(:correl)))
     @eval begin
-        function push!(data::OIData, db::$type)
+        function push!(data::OIDataSet, db::$type)
             isdefined(db, $name) || throw_undefined_field($name)
             other = get(getfield(data, $field), getfield(db, $name), nothing)
             if other === nothing
@@ -269,13 +269,13 @@ for (type, name, field) in (
     end
 end
 
-for (type, field) in ((:OIVis,    :vis),
-                      (:OIVis2,   :vis2),
-                      (:OIT3,     :t3),
-                      (:OIFlux,   :flux),
-                      (:OIInsPol, :inspol))
+for (type, field) in ((:OI_VIS,    :vis),
+                      (:OI_VIS2,   :vis2),
+                      (:OI_T3,     :t3),
+                      (:OI_FLUX,   :flux),
+                      (:OI_INSPOL, :inspol))
     @eval begin
-        function push!(data::OIData, db::$type)
+        function push!(data::OIDataSet, db::$type)
             # Datablock must be copied on write to avoid side-effects.
             copy_on_write = true
 
@@ -291,7 +291,7 @@ for (type, field) in ((:OIVis,    :vis),
             end
 
             # Set/fix OI_CORREL dependency.
-            if $type !== OIInsPol && isdefined(db, :corrname)
+            if $type !== OI_INSPOL && isdefined(db, :corrname)
                 db, copy_on_write = _set_dependency!(
                     data.correl, db, copy_on_write, Val(:corrname), Val(:correl))
             end
@@ -434,27 +434,27 @@ function OITargetEntry(def::OITargetEntry;
                          category)
 end
 
-rows(db::OITarget) = getfield(db, :rows)
+rows(db::OI_TARGET) = getfield(db, :rows)
 
-# Make OITarget instances iterable and behave more or less like vectors
+# Make OI_TARGET instances iterable and behave more or less like vectors
 # (with properties).
 
-ndims(db::OITarget) = ndims(rows(db))
-size(db::OITarget) = size(rows(db))
-size(db::OITarget, i) = size(rows(db), i)
-axes(db::OITarget) = axes(rows(db))
-axes(db::OITarget, i) = axes(rows(db), i)
-length(db::OITarget) = length(rows(db))
+ndims(db::OI_TARGET) = ndims(rows(db))
+size(db::OI_TARGET) = size(rows(db))
+size(db::OI_TARGET, i) = size(rows(db), i)
+axes(db::OI_TARGET) = axes(rows(db))
+axes(db::OI_TARGET, i) = axes(rows(db), i)
+length(db::OI_TARGET) = length(rows(db))
 
-IndexStyle(db::OITarget) = IndexStyle(OITarget)
-IndexStyle(::Type{OITarget}) = IndexStyle(fieldtype(OITarget, :rows))
+IndexStyle(db::OI_TARGET) = IndexStyle(OI_TARGET)
+IndexStyle(::Type{OI_TARGET}) = IndexStyle(fieldtype(OI_TARGET, :rows))
 
-eltype(db::OITarget) = eltype(OITarget)
-eltype(::Type{OITarget}) = OITargetEntry
+eltype(db::OI_TARGET) = eltype(OI_TARGET)
+eltype(::Type{OI_TARGET}) = OITargetEntry
 
-@inline @propagate_inbounds getindex(db::OITarget, i::Integer) = rows(db)[i]
+@inline @propagate_inbounds getindex(db::OI_TARGET, i::Integer) = rows(db)[i]
 
-function getindex(db::OITarget, name::AbstractString)
+function getindex(db::OI_TARGET, name::AbstractString)
     for tgt in db
         if is_same(tgt.target, name)
             return tgt
@@ -464,11 +464,11 @@ function getindex(db::OITarget, name::AbstractString)
           db.extname, "data-block")
 end
 
-firstindex(db::OITarget) = firstindex(rows(db))
-lastindex(db::OITarget) = lastindex(rows(db))
-eachindex(db::OITarget) = eachindex(rows(db))
+firstindex(db::OI_TARGET) = firstindex(rows(db))
+lastindex(db::OI_TARGET) = lastindex(rows(db))
+eachindex(db::OI_TARGET) = eachindex(rows(db))
 
-function iterate(db::OITarget,
+function iterate(db::OI_TARGET,
                  state::Tuple{Int,Int} = (firstindex(db),
                                           lastindex(db)))
     i, n = state
@@ -479,9 +479,9 @@ function iterate(db::OITarget,
     end
 end
 
-haskey(db::OITarget, i::Integer) = (1 ≤ i ≤ length(db))
+haskey(db::OI_TARGET, i::Integer) = (1 ≤ i ≤ length(db))
 
-haskey(db::OITarget, key::AbstractString) = begin
+haskey(db::OI_TARGET, key::AbstractString) = begin
     for tgt in db
         if is_same(tgt.target, key)
             return true
@@ -490,14 +490,14 @@ haskey(db::OITarget, key::AbstractString) = begin
     return false
 end
 
-get(db::OITarget, i::Integer, def) =
+get(db::OI_TARGET, i::Integer, def) =
     if 1 ≤ i ≤ length(db)
         return @inbounds db[i]
     else
         return def
     end
 
-get(db::OITarget, key::AbstractString, def) = begin
+get(db::OI_TARGET, key::AbstractString, def) = begin
     for tgt in db
         if is_same(tgt.target, key)
             return tgt
@@ -507,14 +507,14 @@ get(db::OITarget, key::AbstractString, def) = begin
 end
 
 # Note: this is the default behavior.
-values(db::OITarget) = db
+values(db::OI_TARGET) = db
 
-keys(db::OITarget) = Iterators.map(x -> fix_name(x.target), db)
-keys(::Type{String}, db::OITarget) = keys(db)
-keys(::Type{Int}, db::OITarget) = eachindex(db)
+keys(db::OI_TARGET) = Iterators.map(x -> fix_name(x.target), db)
+keys(::Type{String}, db::OI_TARGET) = keys(db)
+keys(::Type{Int}, db::OI_TARGET) = eachindex(db)
 
 """
-    OIFITS.get_column([T,] db::OITarget, col)
+    OIFITS.get_column([T,] db::OI_TARGET, col)
 
 yields the column `col` of an OI-FITS data-block `db`.  Column is identified by
 `col` which is either `sym` or `Val(sym)` where `sym` is the symbolic name of
@@ -524,16 +524,16 @@ Optional argument `T` is to specify the element type of the returned array.
 
 """ get_column
 
-@inline get_column(db::OITarget, sym::Symbol) =
+@inline get_column(db::OI_TARGET, sym::Symbol) =
     get_column(db, Val(sym))
 
-@inline get_column(T::Type, db::OITarget, sym::Symbol) =
+@inline get_column(T::Type, db::OI_TARGET, sym::Symbol) =
     get_column(T, db, Val(sym))
 
-get_column(db::OITarget, ::Val{sym}) where {sym} =
+get_column(db::OI_TARGET, ::Val{sym}) where {sym} =
     get_column(fieldtype(OITargetEntry, sym), db, sym)
 
-function get_column(::Type{T}, db::OITarget, ::Val{sym}) where {T,sym}
+function get_column(::Type{T}, db::OI_TARGET, ::Val{sym}) where {T,sym}
     len = length(db)
     col = Vector{T}(undef, len)
     for i in 1:len
