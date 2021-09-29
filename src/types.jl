@@ -296,7 +296,6 @@ end
 mutable struct OIInsPol <: OIDataBlock
     # Dependencies
     array::OIArray               # related telescope array
-    instr::OIWavelength          # related instrument wavelengths
     # Header Part
     revn::Int                    # revision number of the table definition
     date_obs::String             # UTC start date of observations
@@ -322,6 +321,10 @@ mutable struct OIInsPol <: OIDataBlock
     end
 end
 
+# Union of types of data-blocks that have a name (and are dependencies of
+# others).
+const NamedDataBlock = Union{OIArray,OIWavelength,OICorr}
+
 # Union of datablocks with dependencies.
 const DataBlocksWithDependencies = Union{OIVis,OIVis2,OIT3,OIFlux,OIInsPol}
 
@@ -340,10 +343,14 @@ Reading an OI-FITS file is as simple as one of:
     data = read(OIData, filename)
 
 with `filename` the name of the file.  Keyword `hack_revn` can be used to force
-the revision number (FITS keyword `OI-REVN`) of all OI-FITS data-blocks; the
-keyword may be set to an integer or to a function that takes 2 arguments, the
-type and actual revision number of the cuurent data-block, and that returns the
-revision number to assume.
+the revision number (FITS keyword `OI-REVN`) of all OI-FITS data-blocks;
+`hack_revn` may be set to an integer, the revision number to assume for all
+data-blocks, or to a function that takes 2 arguments, the type and actual
+revision number of the cuurrent data-block, and that returns the revision number
+to assume.  For example, to force revision number 1 for all `OI_VIS`
+data-blocks and left others unchanged:
+
+    data = OIData(filename; hack_revn = (T, revn) -> (T === OIVis ? 1 : revn))
 
 Looping over `OI_VIS` data-blocks in the data-set can be done as follows:
 
