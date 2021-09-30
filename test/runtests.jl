@@ -119,6 +119,7 @@ get_field_type(::Type{<:OI_TARGET}, sym::Symbol) =
 end
 
 @testset "Read/write OI-FITS files" begin
+    # Each file infdividually.
     for file in files
         A = OIDataSet(joinpath(dir, file))
         @test isa(A, OIDataSet)
@@ -128,6 +129,24 @@ end
         @test isa(B, OIDataSet)
         @test_throws ErrorException write(tempfile, B)
     end
+    A = OIDataSet(map(x -> joinpath(dir, x), files)...)
+    @test isa(A, OIDataSet)
+    @test A.instr[1].name ===  A.instr[1].insname
+    @test A.array[1].name ===  A.array[1].arrname
+    name = A.instr[end].name
+    @test isa(A.instr[name], OI_WAVELENGTH)
+    @test A.instr[name] === A.instr[end]
+    @test A.instr[uppercase(name*" ")] === A.instr[end]
+    @test A.instr[lowercase(name*" ")] === A.instr[end]
+    @test_throws KeyError A.instr[" "*name]
+    @test get(A.instr, " "*name, undef) === undef
+    name = A.array[end].name
+    @test isa(A.array[name], OI_ARRAY)
+    @test A.array[name] === A.array[end]
+    @test A.array[uppercase(name*" ")] === A.array[end]
+    @test A.array[lowercase(name*" ")] === A.array[end]
+    @test_throws KeyError A.array[" "*name]
+    @test get(A.array, " "*name, undef) === undef
 end
 
 @testset "OI_TARGET methods" begin
