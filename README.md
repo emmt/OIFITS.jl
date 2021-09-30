@@ -12,27 +12,26 @@ The `OIFITS.jl` package provides support for OI-FITS data in Julia language.
 
 OI-FITS is a standard to store optical interferometry data as a collection of
 data-blocks.  In the second revision of the standard (see [Ref. 1](#references)
-and [Ref. 2](#references)), the following data-blocks are available (the julia
-type of an OI-FITS data-block is the same as the name of the corresponding
-OI-FITS extension):
+and [Ref. 2](#references)), the following data-blocks are available:
 
-* `OI_TARGET` data-blocks provide a list of observed targets;
-* `OI_ARRAY` data-blocks describe a given array of stations;
-* `OI_WAVELENGTH` data-blocks describe a given instrument notably the effective
+* an `OI_TARGET` data-block provides a list of observed targets;
+* each `OI_ARRAY` data-block describes a given array of stations;
+* each `OI_WAVELENGTH` data-block describes a given instrument notably the effective
   wavelengths and bandwidths of its spectral channels;
 * `OI_CORR` data-blocks store correlation data;
 * `OI_VIS` data-blocks store complex visibility dat;
-* `OI_VIS2` data-blocks instances store squared visibility (powerspectrum)
+* `OI_VIS2` data-blocks store squared visibility (powerspectrum)
   data;
 * `OI_T3` data-blocks store triple product (bispectrum) data;
-* `OI_FLUX` data-blocks instances store spectral flux data;
-* `OI_INSPOL` contains instrumental polarization data.
+* `OI_FLUX` data-blocks store spectral flux data;
+* `OI_INSPOL` data-blocks contain instrumental polarization data.
 
 These data-blocks, are stored as binary tables in a FITS data file.  The
 support for FITS files is provided by the
 [`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package.
 
-In addition to these types for individual OI-FITS data-blocks, the `OIFITS`
+The julia type of an OI-FITS data-block is named as the
+corresponding OI-FITS extension. In addition to these types for individual OI-FITS data-blocks, the `OIFITS.jl`
 package provides data-sets (of type `OIDataSet`) that contain several OI-FITS
 data-blocks. Each data-set is an efficient representation of the contents of a
 compliant OI-FITS file.
@@ -47,8 +46,8 @@ using OIFITS
 ds = read(OIDataSet, input)
 ```
 
-where `input` it the name of the OI-FITS or an instance of `FITSIO.FITS` which
-represent an open FITS file.   The above `read` call is equivalent
+where `input` it the name of the OI-FITS file or an instance of `FITSIO.FITS` which
+represents an open FITS file.   The above `read` call is equivalent
 to the shortcut:
 
 ```julia
@@ -101,7 +100,7 @@ consistent set of OI-FITS data-blocks.  The following properties are available:
                     # matches insname
   ```
 
-  matching of names follows FITS conventions that case of letters and trailing
+  Matching of names follows FITS conventions that case of letters and trailing
   spaces are ignored.  An error is thrown if the index (integer or name) is not
   valid.  The `get` method can be used to provide a default value, for
   instance:
@@ -116,7 +115,7 @@ consistent set of OI-FITS data-blocks.  The following properties are available:
   that interferometric array names are assumed.
 
 - `ds.correl` is a list of `OI_CORR` data-blocks indexed like `ds.instr` except
-  that icorrelation data array names are assumed.
+  that correlation data array names are assumed.
 
 - `ds.vis` is a vector of `OI_VIS` data-blocks.
 
@@ -128,10 +127,10 @@ consistent set of OI-FITS data-blocks.  The following properties are available:
 
 - `ds.inspol` is a vector of `OI_INSPOL` data-blocks.
 
-Other fields of data-sets shall be cosidered as **private** and not accessed
+Other fields of data-sets shall be considered as **private** and not accessed
 directly.
 
-Using the dot notaion, it is easy to access to the different data-blocks.  For
+Using the dot notaion, it is easy to access to the different data-blocks containing measurements.  For
 instance:
 
 ```julia
@@ -173,7 +172,6 @@ via this syntax:
 - `db.name` is an alias for `db.arrname` for `OI_ARRAY` instances, for
   `db.insname` for `OI_WAVELENGTH` instances, and for `db.corrname` for
   `OI_CORR` instances,
-
 
 Of course, getting a given property must make sense.  For example,
 `db.sta_name` is only possible for `OI_ARRAY` data-blocks but not for an
