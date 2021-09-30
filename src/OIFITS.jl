@@ -45,6 +45,7 @@ import Base:
     propertynames,
     push!,
     read,
+    read!,
     setindex!,
     setproperty!,
     show,

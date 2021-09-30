@@ -73,7 +73,7 @@ get_field_type(::Type{<:OI_TARGET}, sym::Symbol) =
 
         @testset "$(extname(T))" begin
             for rev in 3:-1:1
-                spec = get_format(T, rev; throwerrors=false)
+                spec = get_format(T, rev; throw_errors=false)
                 if spec === nothing
                     continue
                 end
@@ -135,7 +135,7 @@ end
     A = data.target
     @test isa(A, OI_TARGET)
     @test eltype(A) === OITargetEntry
-    @test length(A) == length(A.rows)
+    @test length(A) == length(A.list)
     @test ndims(A) == 1
     @test IndexStyle(A) === IndexLinear()
     @test firstindex(A) == 1

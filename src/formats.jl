@@ -65,12 +65,12 @@ Base.ndims(s::FieldDefinition) =
 const FORMATS = Dict{Tuple{Symbol,Int},Vector{FieldDefinition}}()
 
 """
-    OIFITS.get_format(ext, revn; throwerrors=false) -> A
+    OIFITS.get_format(ext, revn; throw_errors=false) -> A
 
 yields a vector of `OIFITS.Formats.Field` instances corresponding to the FITS
 keywords and columns of an OI-FITS data-block `ext` with revision number
 `revn`.  If `ext` and `revn` do not correspond to any known definition,
-`nothing` is returned if `throwerrors` is `false` (the default), otherwise an
+`nothing` is returned if `throw_errors` is `false` (the default), otherwise an
 exception is thrown.
 
 For example:
@@ -82,9 +82,9 @@ For example:
     end
 
 """
-function get_format(ext::Symbol, rev::Integer; throwerrors::Bool=false)
+function get_format(ext::Symbol, rev::Integer; throw_errors::Bool=false)
     spec = get(FORMATS, (ext,Int(rev)), nothing)
-    if spec === nothing && throwerrors
+    if spec === nothing && throw_errors
         error("unknown revision ", rev, " of OI-FITS extension \"", ext, "\"")
     end
     return spec

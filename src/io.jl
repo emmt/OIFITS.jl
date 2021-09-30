@@ -5,16 +5,13 @@
 #
 #------------------------------------------------------------------------------
 
-# Union of types from which OIDataSet can be read.
-const ReadInputs = Union{AbstractString,FITS}
-
 # Union of possible FITS keyword types.
 const KeywordTypes = Union{Bool,Int,Cdouble,String}
 
 """
-    OIFITS.get_format(db,  revn=db.revn; throwerrors=false)
-    OIFITS.get_format(T,   revn;         throwerrors=false)
-    OIFITS.get_format(ext, revn;         throwerrors=false)
+    OIFITS.get_format(db,  revn=db.revn; throw_errors=false)
+    OIFITS.get_format(T,   revn;         throw_errors=false)
+    OIFITS.get_format(ext, revn;         throw_errors=false)
 
 all yield OI-FITS definitions for data-block `db`, of data-block type `T`, or
 of OI-FITS extension `ext` (a string or a symbol).
@@ -66,67 +63,45 @@ show(io::IO, ::MIME"text/plain", e::MissingColumn) =
 #------------------------------------------------------------------------------
 # WRITING OF OI-FITS FILES
 
-function write(filename::AbstractString, data::OIDataSet;
+function write(filename::AbstractString, ds::OIDataSet;
                overwrite::Bool=false, kwds...)
     if !overwrite && isfile(filename)
         error("file \"", filename, "\" already exists, ",
               "use keyword `overwrite=true` to overwrite")
     end
     FITS(filename, "w") do f
-        write(f, data; kwds...)
+        write(f, ds; kwds...)
     end
     return nothing
 end
 
-function write(f::FITS, data::OIDataSet; quiet::Bool=false)
-    if isdefined(data, :target)
-        write(f, data.target)
-    elseif !quiet
-        @warn "Missing OI_TARGET extension, OI-FITS file will be incomplete"
+# Writing an OI-FITS file is easy: just write all datablocks.  To make reading
+# easier, dependencies are written first.
+function write(f::FITS, ds::OIDataSet; quiet::Bool=false)
+    write(f, ds.target)
+    for db in ds.array
+        write(f, db)
     end
-    if isdefined(data, :array)
-        for db in data.array
-            write(f, db)
-        end
-    elseif !quiet
-        @warn "No OI_ARRAY extensions, OI-FITS file will be incomplete"
+    for db in ds.instr
+        write(f, db)
     end
-    if isdefined(data, :instr)
-        for db in data.instr
-            write(f, db)
-        end
-    elseif !quiet
-        @warn "No OI_WAVELENGTH extensions, OI-FITS file will be incomplete"
+    for db in ds.correl
+        write(f, db)
     end
-    if isdefined(data, :correl)
-        for db in data.correl
-            write(f, db)
-        end
+    for db in ds.vis
+        write(f, db)
     end
-    if isdefined(data, :vis)
-        for db in data.vis
-            write(f, db)
-        end
+    for db in ds.vis2
+        write(f, db)
     end
-    if isdefined(data, :vis2)
-        for db in data.vis2
-            write(f, db)
-        end
+    for db in ds.t3
+        write(f, db)
     end
-    if isdefined(data, :t3)
-        for db in data.t3
-            write(f, db)
-        end
+    for db in ds.flux
+        write(f, db)
     end
-    if isdefined(data, :flux)
-        for db in data.flux
-            write(f, db)
-        end
-    end
-    if isdefined(data, :inspol)
-        for db in data.inspol
-            write(f, db)
-        end
+    for db in ds.inspol
+        write(f, db)
     end
 end
 
@@ -137,7 +112,7 @@ function write(f::FITS, db::OIDataBlock)
     col_names = String[]
     col_data = Any[]
     col_units = Dict{String,String}()
-    for spec in get_format(db)
+    for spec in get_format(db; throw_errors=true)
         if !isdefined(db, spec.symb)
             spec.optional || error(
                 "mandatory field `", spec.symb, "` is not defined in ",
@@ -297,60 +272,82 @@ end
     error("FITS table column \"", col, "\" of type ", S,
           " cannot be converted to type ", T)
 
-OIDataSet(arg::ReadInputs; kwds...) = read(OIDataSet, arg; kwds...)
-
-read(::Type{OIDataSet}, filename::AbstractString; kwds...) =
-    read(OIDataSet, FITS(filename); kwds...)
-
-read(::Type{OIDataSet}, f::FITS; kwds...) = push!(OIDataSet(undef), f; kwds...)
-
-function push!(dest::Union{OIDataSet,Vector{OIDataBlock}}, f::FITS; kwds...)
-    for i in 2:length(f)
-        push!(dest, f[i]; kwds...)
+# To read into an existing data-set, first read the OI-FITS file (to make sure
+# it is a consistent data-set), then merge.
+function read!(ds::OIDataSet, args::Union{AbstractString,FITS}...; kwds...)
+    for arg in args
+        merge!(ds, read(OIDataSet, arg; kwds...))
     end
-    return dest
+    return ds
 end
 
-function push!(dest::Union{OIDataSet,Vector{OIDataBlock}},
-               hdu::TableHDU; kwds...)
-    extn = read_keyword(String, hdu, "EXTNAME", nothing)
-    if extn !== nothing
-        if extn == "OI_TARGET"
-            push!(dest, _read(OI_TARGET, hdu; kwds...))
-        elseif extn == "OI_ARRAY"
-            push!(dest, _read(OI_ARRAY, hdu; kwds...))
-        elseif extn == "OI_WAVELENGTH"
-            push!(dest, _read(OI_WAVELENGTH, hdu; kwds...))
-        elseif extn == "OI_CORR"
-            push!(dest, _read(OI_CORR, hdu; kwds...))
-        elseif extn == "OI_VIS"
-            push!(dest, _read(OI_VIS, hdu; kwds...))
-        elseif extn == "OI_VIS2"
-            push!(dest, _read(OI_VIS2, hdu; kwds...))
-        elseif extn == "OI_T3"
-            push!(dest, _read(OI_T3, hdu; kwds...))
-        elseif extn == "OI_FLUX"
-            push!(dest, _read(OI_FLUX, hdu; kwds...))
-        elseif extn == "OI_INSPOL"
-            push!(dest, _read(OI_INSPOL, hdu; kwds...))
+OIDataSet(args::Union{AbstractString,FITS}...; kwds...) =
+    read(OIDataSet, args...; kwds...)
+
+function read(::Type{OIDataSet}, arg::Union{AbstractString,FITS},
+              args::Union{AbstractString,FITS}...; kwds...)
+    read!(read(OIDataSet, arg; kwds...),  args...; kwds...)
+end
+
+read(::Type{OIDataSet}, filename::AbstractString; kwds...) =
+    FITS(filename, "r") do f
+        read(OIDataSet, f; kwds...)
+    end
+
+# Thanks to the implemented methods, reading an OI-FITS file is not too
+# difficult.  The dependencies must however be read first and the OI-FITS file
+# must be a consistent data-set in itself.
+function read(::Type{OIDataSet}, f::FITS; kwds...)
+    # Starting with an empty data-set, first read all dependencies, then all
+    # data.
+    ds = OIDataSet()
+    for pass in 1:2
+        for i in 2:length(f)
+            _read!(ds, f[i], pass; kwds...)
         end
     end
-    return dest
+    return ds
+end
+
+# skip non-table HDUs
+_read!(::OIDataSet, ::HDU, ::Integer; kwds...) = nothing
+
+function _read!(ds::OIDataSet, hdu::TableHDU, pass::Integer; kwds...)
+    extn = read_keyword(String, hdu, "EXTNAME", nothing)
+    if extn !== nothing
+        if pass == 1
+            # Read dependencies.
+            if extn == "OI_TARGET"
+                isempty(ds.target.list) || error(
+                    "only one OI_TARGET data-block is allowed in an OI-FITS file")
+                push!(ds, _read(OI_TARGET, hdu; kwds...))
+            elseif extn == "OI_ARRAY"
+                push!(ds, _read(OI_ARRAY, hdu; kwds...))
+            elseif extn == "OI_WAVELENGTH"
+                push!(ds, _read(OI_WAVELENGTH, hdu; kwds...))
+            elseif extn == "OI_CORR"
+                push!(ds, _read(OI_CORR, hdu; kwds...))
+            end
+        elseif pass == 2
+            # Read data.
+            if extn == "OI_VIS"
+                push!(ds, _read(OI_VIS, hdu; kwds...))
+            elseif extn == "OI_VIS2"
+                push!(ds, _read(OI_VIS2, hdu; kwds...))
+            elseif extn == "OI_T3"
+                push!(ds, _read(OI_T3, hdu; kwds...))
+            elseif extn == "OI_FLUX"
+                push!(ds, _read(OI_FLUX, hdu; kwds...))
+            elseif extn == "OI_INSPOL"
+                push!(ds, _read(OI_INSPOL, hdu; kwds...))
+            end
+        end
+    end
 end
 
 function _read(T::Type{<:OIDataBlock}, hdu::TableHDU; hack_revn = undef)
     db = T(undef)
-    if hack_revn === undef
-        db.revn = read_keyword(Int, hdu, "OI_REVN")
-    elseif isa(hack_revn, Integer)
-        db.revn = hack_revn
-    elseif applicable(hack_revn, hdu)
-        db.revn = hack_revn(hdu)
-    else
-        db.revn = hack_revn(T, read_keyword(Int, hdu, "OI_REVN"))
-    end
-    #nrows = read_keyword(Int, hdu, "NAXIS2")
-    #nwaves = -1
+    db.revn = _read_revn(T, hdu, hack_revn)
     for spec in get_format(db)
         if spec.rank == 0
             if spec.symb !== :revn
@@ -363,17 +360,9 @@ function _read(T::Type{<:OIDataBlock}, hdu::TableHDU; hack_revn = undef)
     return db
 end
 
-function _read(::Type{<:OI_TARGET}, hdu::TableHDU; hack_revn = undef)
+function _read(T::Type{<:OI_TARGET}, hdu::TableHDU; hack_revn = undef)
     # Read keywords.
-    revn = if hack_revn === undef
-        read_keyword(Int, hdu, "OI_REVN")
-    elseif isa(hack_revn, Integer)
-        hack_revn
-    elseif applicable(hack_revn, hdu)
-        hack_revn(hdu)
-    else
-        hack_revn(OIDataBlock, read_keyword(Int, hdu, "OI_REVN"))
-    end
+    revn = _read_revn(T, hdu, hack_revn)
     nrows = read_keyword(Int, hdu, "NAXIS2")
 
     # Read columns.
@@ -397,9 +386,9 @@ function _read(::Type{<:OI_TARGET}, hdu::TableHDU; hack_revn = undef)
     if revn ≥ 2
         category = read_column(Vector{String}, hdu, "CATEGORY")
     end
-    rows = Vector{OITargetEntry}(undef, nrows)
+    list = Vector{OITargetEntry}(undef, nrows)
     for i in 1:nrows
-        rows[i] = OITargetEntry(
+        list[i] = OITargetEntry(
             target_id[i],
             target[i],
             raep0[i],
@@ -420,8 +409,19 @@ function _read(::Type{<:OI_TARGET}, hdu::TableHDU; hack_revn = undef)
             (revn ≥ 2 ? category[i] : empty_string),
         )
     end
-    return OI_TARGET(revn=revn, rows=rows)
+    return OI_TARGET(list; revn=revn)
 end
+
+# Methods to allow for hacking the revision number.
+_read_revn(T::Type{<:OIDataBlock}, hdu::TableHDU, hack::Integer) = hack
+_read_revn(T::Type{<:OIDataBlock}, hdu::TableHDU, ::typeof(undef)) =
+   read_keyword(Int, hdu, "OI_REVN")
+_read_revn(T::Type{<:OIDataBlock}, hdu::TableHDU, hack) =
+    if applicable(hack, hdu)
+        hack(hdu)
+    else
+        hack(T, read_keyword(Int, hdu, "OI_REVN"))
+    end
 
 function _read_keyword!(db::T, ::Val{S}, hdu::TableHDU,
                         spec::FieldDefinition) where {T<:OIDataBlock,S}

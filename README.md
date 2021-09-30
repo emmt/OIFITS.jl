@@ -8,437 +8,403 @@
 The `OIFITS.jl` package provides support for OI-FITS data in Julia language.
 
 
-## OI-FITS Summary
+## OI-FITS types
 
 OI-FITS is a standard to store optical interferometry data as a collection of
 data-blocks.  In the second revision of the standard (see [Ref. 1](#references)
-and [Ref. 2](#references)), the following data-blocks are available:
+and [Ref. 2](#references)), the following data-blocks are available (the julia
+type of an OI-FITS data-block is the same as the name of the corresponding
+OI-FITS extension):
 
-* `OITarget` provides a list of observed targets (`OI_TARGET` extension in
-  OI-FITS files);
-* `OIArray` describes a given array of stations (`OI_ARRAY` extension in
-  OI-FITS files);
-* `OIWavelength` describes a given instrument notably the effective
-  wavelengths and bandwidths of its spectral channels (`OI_WAVELENGTH`
-  extension in OI-FITS files);
-* `OIVis` contains complex visibility data (`OI_VIS` extension in OI-FITS
-  files);
-* `OIVis2` contains squared visibility (powerspectrum) data (`OI_VIS2`
-  extension in OI-FITS files);
-* `OIT3` contains triple product (bispectrum) data (`OI_T3` extension in
-  OI-FITS files);
-* `OIFlux` contains spectral flux data (`OI_FLUX` extension in OI-FITS files);
-* `OIPolarization` contains instrumental polarization (`OI_INSPOL`
-  extension in OI-FITS files);
-* `OICorrelation` contains correlation data (`OI_CORR` extension in OI-FITS
-  files).
+* `OI_TARGET` data-blocks provide a list of observed targets;
+* `OI_ARRAY` data-blocks describe a given array of stations;
+* `OI_WAVELENGTH` data-blocks describe a given instrument notably the effective
+  wavelengths and bandwidths of its spectral channels;
+* `OI_CORR` data-blocks store correlation data;
+* `OI_VIS` data-blocks store complex visibility dat;
+* `OI_VIS2` data-blocks instances store squared visibility (powerspectrum)
+  data;
+* `OI_T3` data-blocks store triple product (bispectrum) data;
+* `OI_FLUX` data-blocks instances store spectral flux data;
+* `OI_INSPOL` contains instrumental polarization data.
 
 These data-blocks, are stored as binary tables in a FITS data file.  The
-support for the actual FITS files is provided by the
+support for FITS files is provided by the
 [`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package.
 
-
-## Installation
-
-OIFITS is a [registered Julia package](http://pkg.julialang.org/), the
-installation is as simple as:
-
-```julia
-using Pkg
-Pkg.add("OIFITS")
-Pkg.update()
-```
-
-The last command `Pkg.update()` may be unnecessary.
+In addition to these types for individual OI-FITS data-blocks, the `OIFITS`
+package provides data-sets (of type `OIDataSet`) that contain several OI-FITS
+data-blocks. Each data-set is an efficient representation of the contents of a
+compliant OI-FITS file.
 
 
-## Typical usage
+## Reading and writing OI-FITS files
 
-Loading an OI-FITS data file:
+Reading an OI-FITS data file yields a data-set and is done by:
 
 ```julia
 using OIFITS
-master = OIFITS.load("testdata.oifits")
+ds = read(OIDataSet, input)
 ```
 
-To iterate through all OI-FITS data-blocks:
+where `input` it the name of the OI-FITS or an instance of `FITSIO.FITS` which
+represent an open FITS file.   The above `read` call is equivalent
+to the shortcut:
 
 ```julia
-for db in master
-    extname = db.extname
-    revn = db.revn
-    println("Data-block is $extname, revision $revn")
+ds = OIDataSet(input)
+```
+
+It is possible to merge the contents of several OI-FITS file, say `inp1`,
+`inp2`, etc., by one of:
+
+```julia
+ds = read(OIDataSet, inp1, inp2, ...)
+ds = OIDataSet(inp1, inp2, ...)
+```
+
+or to merge them into an existing data-set `ds`:
+
+```julia
+read!(ds, inp1, inp2, ...)
+```
+
+To write an OI-FITS file, just write the data-set:
+
+```julia
+write(filename, ds)
+```
+
+Overwriting is forbidden by default, but the keyword `overwrite=true` may be
+specified to allow for silently overwriting an existing file.
+
+
+## Accessing the contents of data-blocks and data-sets
+
+The contents of OI-FITS data-blocks and data-sets may be accessed by the dot
+notation but also by indexation.
+
+
+### Contents of data-sets
+
+The dot notation can be used on a *data-set* object, say `ds`, storing a
+consistent set of OI-FITS data-blocks.  The following properties are available:
+
+- `ds.target` is the `OI_TARGET` data-block of the OI-FITS structure.
+
+- `ds.instr` is a list of `OI_WAVELENGTH` data-blocks indexed by a regular
+  integer index or by the instrument name:
+
+  ```julia
+  ds.instr[i]       # yields the i-th OI_WAVELENGTH data-block
+  ds.instr[insname] # yields the OI_WAVELENGTH data-block whose name
+                    # matches insname
+  ```
+
+  matching of names follows FITS conventions that case of letters and trailing
+  spaces are ignored.  An error is thrown if the index (integer or name) is not
+  valid.  The `get` method can be used to provide a default value, for
+  instance:
+
+  ```julia
+  get(ds.instr, insname, nothing)
+  ```
+
+  would yield `nothing` is `insname` is not found in `ds.instr`.
+
+- `ds.array` is a list of `OI_ARRAY` data-blocks indexed like `ds.instr` except
+  that interferometric array names are assumed.
+
+- `ds.correl` is a list of `OI_CORR` data-blocks indexed like `ds.instr` except
+  that icorrelation data array names are assumed.
+
+- `ds.vis` is a vector of `OI_VIS` data-blocks.
+
+- `ds.vis2` is a vector of `OI_VIS2` data-blocks.
+
+- `ds.t3` is a vector of `OI_T3` data-blocks.
+
+- `ds.flux` is a vector of `OI_FLUX` data-blocks.
+
+- `ds.inspol` is a vector of `OI_INSPOL` data-blocks.
+
+Other fields of data-sets shall be cosidered as **private** and not accessed
+directly.
+
+Using the dot notaion, it is easy to access to the different data-blocks.  For
+instance:
+
+```julia
+for db in ds.vis2
+    ...
 end
 ```
 
-To iterate through a sub-set of the data-blocks (here the complex visibility
-data, the powerspectrum data and the bispectrum data):
+is convenient to loop across all `OI_VIS2` instances stored by `ds`.
 
-```julia
-for db in OIFITS.select(master, "OI_VIS", "OI_VIS2", "OI_T3")
-    extname = db.extname
-    n = length(db.time)
-    println("Data-block is $extname, number of exposures is $n")
-end
-```
 
-Any OI-FITS field (keyword/column) of a given data-block can be accessed by the
-`db.key` syntax where `key` is the name of the field in lower case letters and
-with non-alphanumeric letters replaced by an underscore character `_`.  For
-instance `db.int_time` yields the value of `INT_TIME` the integration times of
-the measurements.  The revision number corresponding to the keyword `OI_REVN`
-is however accessed as `db.revn`, this is the only exception.  Other fields are
-also accessible via this syntax:
+### Contents of data-blocks
+
+The contents of a data-block, say `db`, may also be accessed by the dot
+notation.  As a general rule, `db.key` or `db.col` yield the value of the
+keyword `key` or the contents of the column `col` of the OI-FITS table
+corresponding to the data-block `db`.  In order to follow Julia conventions and
+to accommodate for some restrictions, `key` and `col` are the FITS keyword of
+column name converted to lower case letters and with non-alphanumeric letters
+replaced by underscores.  For instance `db.int_time` yields the values of the
+column `INT_TIME`, that is the integration times of the measurements.  The
+revision number corresponding to the keyword `OI_REVN` is however accessed as
+`db.revn`, this is the only exception.  Other properties are also accessible
+via this syntax:
 
 - `db.extname` yields the OI-FITS name of the extension corresponding to the
   data-block `db` (for all data-block types);
 
 - `db.array` yields the `OI_ARRAY` data-block associated with data-block `db`
-  (for `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX` and `OI_POLARIZATION`
+  (only for `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, and `OI_INSPOL`
   data-block);
 
 - `db.instr` yields the `OI_WAVELENGTH` data-block associated with data-block
-  `db` (for `OI_VIS`, `OI_VIS2`, `OI_T3` and `OI_FLUX` data-block);
+  `db` (only for `OI_VIS`, `OI_VIS2`, `OI_T3`, and `OI_FLUX` data-block);
 
-- `db.correl` yields the `OI_CORREL` data-block associated with data-block `db`
-  (for `OI_VIS`, `OI_VIS2`, `OI_T3` and `OI_FLUX` data-block).
+- `db.correl` yields the `OI_CORR` data-block associated with data-block `db`
+  (only for `OI_VIS`, `OI_VIS2`, `OI_T3`, and `OI_FLUX` data-block).
 
-Of course, getting a given field must make sense.  For instance, `db.eff_wave`
-is only possible for `OI_WAVELENGTH` data-blocks but not for an `OI_TARGET`
-data-block.  The dot notation can be however be chained and:
+- `db.name` is an alias for `db.arrname` for `OI_ARRAY` instances, for
+  `db.insname` for `OI_WAVELENGTH` instances, and for `db.corrname` for
+  `OI_CORR` instances,
+
+
+Of course, getting a given property must make sense.  For example,
+`db.sta_name` is only possible for `OI_ARRAY` data-blocks but not for an
+`OI_WAVELENGTH` data-block.  The dot notation can be however be chained and:
 
 ```julia
 db.instr.eff_wave
 ```
 
 can be used to access the effective wavelengths of the measurements in `db` via
-the instrument associated to `db`.
-
-The dot notation can also be used on the *master* object storing all the
-data-blocks:
-
-- `master.target` is the `OI_TARGET` data-block of the OI-FITS structure;
-
-- `master.instr` is a dictionary of `OI_WAVELENGTH` data-blocks indexed by the
-  instrument names: `master.instr[insname]` yields the `OI_WAVELENGTH`
-  data-block named `insname` or `nothing` if no such instrument exists;
-
-- `master.array` is a dictionary of `OI_ARRAY` data-blocks indexed by the
-  telescope array names: `master.array[arrname]` yields the `OI_ARRAY`
-  data-block named `arrname` or `nothing` if no such array exists;
-
-- `master.correl` is a dictionary of `OI_CORREL` data-blocks indexed by the
-  correlation data names: `master.correl[corrname]` yields the `OI_CORREL`
-  data-block named `corrname` or `nothing` if no such correlation data exists.
-
-As show in above examples, the *master* object storing OI-FITS data-blocks can
-be used as an iterator over all the stored data-blocks.  It can also be used as
-a vector of data-blocks indexed by the data-block number.  For instance:
+the instrument associated to `db`.  Shortcuts are provided:
 
 ```julia
-for i in eachindex(master)
-    let db = master[i]
-        extname = db.extname
-        revn = db.revn
-        println("Data-block is $extname, revisions $revn")
-    end
-end
+λ  = db.eff_wave # get effective wavelength
+Δλ = db.eff_band # get effective bandwidth
 ```
 
-However, beware that the *master* object storing OI-FITS data-blocks is not a
-simple vector, it does many things *under the hood* to maintain the consistency
-of the structure (for instance links between different data-blocks).  In order
-to append data-blocks to the ones already stored, call:
+for `OI_VIS`, `OI_VIS2`, `OI_T3`, and `OI_FLUX` data-blocks.
+
+Some fields of a data-block `db` may however be undefined because:
+
+- the field is not yet defined (the data-block is being constructed);
+
+- the field is optional in the revision `db.revn` of the data-block;
+
+- the field (for example `db.instr` for an `OI_VIS` data-block) involves links
+  with other data-blocks (the *dependencies)* and these links are only defined
+  when a data-block is pushed into a data-set.
+
+
+## Building of data-sets
+
+Reading an OI-FITS file is the easiest way to define a data-set but a new
+OI-FITS data-set may be built by creating an empty data-set with `OIDataSet()`,
+and then pushing OI-FITS data-blocks **in order** vith `push!(...)`.  Indeed,
+in order to ensure the consistency of a data-set, it is required to push into a
+data-set the dependencies (`OI_TARGET`, `OI_ARRAY`, `OI_WAVELENGTH`, and
+`OI_CORR` data-blocks) **before** the data-blocks containing measurements
+(`OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, and `OI_INSPOL`) that may refer to
+them.
+
+For example, building a new data-set, say `ds`, looks like:
 
 ```julia
-push!(master, db)
+ds = OIDataSet() # create empty data-set
+push!(ds, arr)   # push OI_ARRAY data-block(s)
+push!(ds, ins)   # push OI_WAVELENGTH data-block(s)
+push!(ds, cor)   # push OI_CORR data-block(s)
+push!(ds, tgt)   # push OI_TARGET data-block
+push!(ds, db1)   # push data
+push!(ds, db2)   # push more data
+...
 ```
 
-Argument `db` above can be a variable number of data-blocks, a tuple or an
-array of data-blocks.  If there many data-blocks, it is more efficient to push
-them all at the same time.
+with the dependencies:
 
-Iterating over a data-block yields `(key,val)` pairs with `key` each symbolic
-name of defined fields and `val` is their respective value.
+- `arr` an `OI_ARRAY` instance defining the interferometric array (several such
+   instances may be pushed),
 
+- `ins` an `OI_WAVELENGTH` instance defining the instrument (several such
+   instances can be pushed),
 
-## Deprecated accessor functions
+- `cor` an `OI_COORREL` instance defining the correlations (zero or any number
+   of such instances can be pushed),
 
-Although this is considered as deprecated, OI-FITS fields of a given data-block
-can also be retrieved via an accessor whose name has suffix `OIFITS.get_`
-followed by the name of the field in lower case letters and with all
-non-alphanumeric letters replaced by an underscore character `_`).  A notable
-exception is the revision number corresponding to the keyword "OI_REVN" which
-is retrieved with the method `OIFITS.get_revn()`.  For instance:
+- `tgt` an `OI_TARGET` instance defining the list of observed targets (at least
+  one such instance is required, if more such instances are pushed in the same
+  data-set, they are merged in a single one);
+
+and `db1`, `db2`, ... instances of `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, or
+`OI_INSPOL` that provide measurements.
+
+You may push all data-blocks in a single `push!` call:
 
 ```julia
-OIFITS.get_revn(db)      # get the revison number of the format (OI_REVN)
-OIFITS.get_eff_wave(db)  # get effective wavelengths (EFF_WAVE)
-OIFITS.get_eff_band(db)  # get effective bandwidths (EFF_BAND)
-OIFITS.get_ucoord(db)    # get the U coordinates of the data (UCOORD)
+ds = push!(OIDataSet(), arr, ins, cor, tgt, d1, db2, ...)
 ```
 
-
-
-## Reading data
-
-To load the contents of an OI-FITS file in memory, use:
+and the following shortcut is implemented:
 
 ```julia
-master = OIFITS.load(filename)
+ds = OIDataSet(arr, ins, cor, tgt, d1, db2, ...)
 ```
 
-where `filename` is the name of the file and the returned value, `master`,
-contains all the OI-FITS data-blocks of the file.  You may have the names
-of the data blocks printed as they get read with keyword `quiet=false`:
+These two are equivalent to the long example, but remember that pushing
+data-blocks in order (i.e., dependencies before they may be referenced) is
+required to have a consistent data-set.  Apart from this constraint,
+dependencies may be pushed in any order **before** the data-blocks with
+measurements and data-blocks with measurements can be be pushed in any order
+**after** dependencies.
+
+As a benefit of the constraint of pushing data-blocks in order, data-blocks
+with dependencies are automatically linked to these dependencies when pushed on
+the data-set (which implies that the dependencies already exist in the
+data-set).  This allows for syntaxic sugar like:
 
 ```julia
-master = OIFITS.load(filename, quiet=false)
+ds.vis2[i].eff_wave # the wavelengths of the i-th OI_VIS2 data-block in ds
+ds.t3[i].array      # the interferometric array for the i-th OI_T3 data-block in ds
+ds.vis[i].instr     # the instrument used for the i-th OI_VIS data-block in ds
 ```
 
-If you already have a `FITS` handle to the data, you can use it as the
-argument to `OIFITS.load` in place of the file name.
+Without linked dependencies, the first above example would require to (1) find
+in the data-set `ds` the `OI_WAVELENGTH` instance, say `ins`, whose name is
+matching `ds.vi2[i].insname` and (2) extract the field `eff_wave` of `ins`.
+The latter setp is as simple as `ins.eff_wave` but the former one has some
+overheads and scales as `O(n)` with `n` the number of `OI_WAVELENGTH` instances
+in the data-set.
 
+Since an OI-FITS data-set has a single list of targets (an `OI_TARGET` instance
+accessible via `ds.target`), a mean to merge list of targets had to de defined.
+The adopted rule is pretty simple:
 
-## Constructors
+> The `target_id` field of any data-block that is part of a data-set correspond
+> to the index of the target entry in the list of targets stored by the
+> data-set.
 
-It is possible to build OI-FITS data-blocks individually.  The general
-syntax is:
+As a consequence, whenever a data-block is pushed into a data-set, the target
+identifiers of the data-block have to be rewritten according to this rule.  Of
+course this does not apply for data-blocks with no `target_id` field such as
+`OI_ARRAY`, `OI_WAVELENGTH`, and `OI_CORR`.
+
+To summarize, here is what happens under the hood when a data-block `db` is
+pushed into a data-set `ds`:
+
+- When an `OI_ARRAY`, `OI_WAVELENGTH`, or `OI_CORR` instance `db` is pushed in
+  a data-set `ds`, it is appended to the corresponding list (`ds.array`,
+  `ds.instr`, or `ds.correl`) unless this list already has an entry with a name
+  matching `db.name`.  In this latter case, an assertion exception is thrown if
+  the two data-blocks whose names are matching do not have the same contents
+  (otherwise inconsistent data-sets could be built).
+
+- When an `OI_TARGET` instance is pushed in a data-set, the new targets
+  (according to their names) are appended to the list of targets in the
+  data-set and their identifiers set to their index in this list.  This also
+  re-initialize an internal dictionary used to perform the conversion from all
+  the target identifiers of the `OI_TARGET` instance that has been pushed to
+  the target identifiers in the data-set.  Until it is reinitialized (by
+  pushing another `OI_TARGET` instance), this mapping is used to rewrite the
+  target identifiers of subsequent data-blocks pushed in the data-set.
+
+- When an `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, or `OI_INSPOL` instance
+  `db` a data-set `ds`, it is appended to the corresponding list (`ds.vis`,
+  `ds.vis2`, `db.t3`, `db.flux`, or `ds.inspol`), after it has been linked to
+  its dependencies (`OI_ARRAY`, `OI_WAVELENGTH`, etc., which must already exist
+  in the data-set), and its target identifiers are rewritten according to the
+  mapping defined by the last `OI_TARGET` instance that has been pushed to the
+  data-set.  Rewriting of the target identifiers may be avoided by using the
+  keyword `rewrite_target_id=false`, this assumes that the target identifiers
+  in the newly pushed data-blocks are equal to the index in the list of targets
+  `ds.target`.
+
+Pushing a data-block in a data-set does check the consistency of the
+data-block.  This is to allow for building the data-blocks step by step so that
+they not need to be consistent at all times (just when pushed into a data-set).
+
+Pushing a data-block in a data-set left the data-block unchanged.  A swallow
+copy of it is added to the data-blocks stored by the data-set.  Most members of
+the pushed data-blocks are shared by the one stored by the data-set whith the
+notable exception of the target identifiers which are rewritten and the links
+to the dependencies which are updated.
+
+While it sounds complicated, the default rule of rewriting the target
+identifiers just amounts to assuming that the target identifiers of `OI_VIS`,
+`OI_VIS2`, `OI_T3`, `OI_FLUX`, or `OI_INSPOL` instances pushed in a data-set
+refer to the last `OI_TARGET` instance pushed on the same data-set.
+
+Pushing several groups of data-blocks, each group making a consistent data-set,
+in the same data-set is easy.  Typically:
 
 ```julia
-OIFITS.new_XXX(KEY1=VAL1, KEY2=VAL2, ...)
+# Push dependencies for group #1.
+push!(ds, group1_arr)
+push!(ds, group1_ins)
+push!(ds, group1_cor)
+# Push targets for group #1 (reinitializing target_id mapping).
+push!(ds, group1_tgt)
+# Push data for group #1 (using current target_id mapping).
+push!(ds, group1_db1)
+push!(ds, group1_db2)
+...
+# Push dependencies for group #2.
+push!(ds, group2_arr)
+push!(ds, group2_ins)
+push!(ds, group2_cor)
+# Push targets for group #2 (reinitializing target_id mapping).
+push!(ds, group2_tgt)
+# Push data for group #2 (using current target_id mapping).
+push!(ds, group2_db1)
+push!(ds, group2_db2)
+...
 ```
 
-where `XXX` is the type of the data-block and `KEYn=VALn` constructions
-give the fields of the data-block and their values.  The names of the
-fields follow the same convention as for the field accessors.
+Since they are referenced by their names, it is not needed to push `OI_ARRAY`,
+`OI_WAVELENGTH`, and `OI_COORREL` dependencies if they already exist in the
+data-set (according to their name).  It is however mandatory to push an
+`OI_TARGET` instance with all targets and their identifiers as assumed by the
+subsequent data-blocks.
 
-Available data-block constructors are:
 
-* `OIFITS.new_target` => `OI_TARGET`
-* `OIFITS.new_array` => `OI_ARRAY`
-* `OIFITS.new_wavelength` => `OI_WAVELENGTH`
-* `OIFITS.new_vis`  => `OI_VIS`
-* `OIFITS.new_vis2` => `OI_VIS2`
-* `OIFITS.new_t3`   => `OI_T3`
+# Merging of data-sets
 
-When defining a new data-block, all mandatory fields must be provided.
-For instance, to create an `OI_WAVELENGTH` data-block:
+Two OI-FITS data-sets (or more), say `A` and `B`, can be consistently merged
+together by:
 
 ```julia
-µm = 1e-6  # all values are in SI units in OI-FITS
-db = OIFITS.new_wavelength(insname="Amber",
-                           eff_wave=[1.4µm,1.6µm,1.8µm],
-                           eff_band=[0.2µm,0.2µm,0.2µm])
+C = merge(A, B)
 ```
 
-Note that the revision number (`revn=...`) can be omitted; by default, the
-highest defined revision will be used.
+As much as possible, the resulting data-set `C` will share its contents with
+`A` and/or `B` but without affecting `A` and `B` which are guaranteed to remain
+unchanged.  As for pushing data-blocks, the target identifiers (the `target_id`
+field) may be rewritten in the result.
 
-A consistent set of OI-FITS data-blocks is made of: exactly one `OI_TARGET`
-data-block, one or more `OI_WAVELENGTH` data-blocks, one or more `OI_ARRAY`
-data-blocks and any number of data-blocks with interferometric data
-(`OI_VIS`, `OI_VIS2` or `OI_T3`).  These data-blocks must be stored in a
-container created by:
+Merging of data-sets assumes that the two merged data-sets are *consistent* and
+*compatible*.  Here *compatible* means that targets and dependencies with
+matching names must have the same contents.  This is checked during the merge
+operation.
+
+It is also allowed to merge several data-sets and/or merge data-sets *in-place*:
 
 ```julia
-master = OIFITS.new_master()
+ds = merge(ds1, ds2, ds3, ...)  # merge ds1, ds2, ... in new data-set ds
+merge!(ds, ds1, ds2, ds3, ...)  # merge ds1, ds2, ... in existing data-set ds
 ```
 
-Then, call:
+Note that `merge!(ds,...)` yields the destination `ds`.
 
-```julia
-push!(master, db)
-```
-
-to attach all data-block `db` to the OI-FITS container (in any order).
-
-To read OI-FITS data from a Header Data Units (HDU) of a FITS file, call:
-
-```julia
-dat = OIFITS.read_datablock(hdu)
-```
-
-where `hdu` is a FITS HDU.  The result may be `nothing` if the current HDU does
-not contain an OI-FITS data-block; otherwise the result is a 3-tuple `(extname,
-revn, dict)` with the name of the FITS extension, the OI-FITS revision number
-and a dictionary of the OI-FITS keywords and columns. These can be directly
-provided to `OIFITS.build_datablock` to build an instance of `OIDataBlock`:
-
-```julia
-db = OIFITS.build_datablock(extname, revn, dict)
-```
-
-
-## Miscellaneous functions
-
-OI-FITS implements some useful functions which can be used to deal with
-FITS file (not just OI-FITS ones).  These functions could be part of `FITSIO`
-package.
-
-
-### Retrieving information from the header of a FITS HDU
-
-The header of a FITS HDU can be read with the function:
-
-```julia
-fts = FITS(filename)
-hdr = FITSIO.read_header(fts[1])
-```
-
-which returns an indexable and iterable object, here `hdr`.  The keys of
-`hdr` are the FITS keywords of the header.  For instance:
-
-```julia
-keys(hdr)          # yield an iterator on the keys of hdr
-collect(keys(hdr)) # yield all the keys of hdr
-haskey(hdr, key)   # check whether key is present
-hdr[key]           # retrieve the contents associated with the key
-```
-
-For commentary FITS keywords (`"HISTORY"` or `"COMMENT"`), there is no
-value, just a comment but there may be any number of these *commentary*
-keywords.  Other keywords must be unique and thus have a scalar value.  Use
-`get_comment` to retrieve the comment of a FITS keyword:
-
-```julia
-get_comment(hdr, key)keys(hdr)          # yield an iterator on the keys of hdr
-collect(keys(hdr)) # yield all the keys of hdr
-haskey(hdr, key)   # check whether key is present
-hdr[key]           # retrieve the contents associated with the key
-```
-
-*OIFITS* provides method `OIFITS.get_value()` and `OIFITS.get_comment()`
-method to retrieve the value and comment (respectively) of a FITS keyword
-with type checking and, optionaly, let you provide a default value if the
-keyword is absent:
-
-```julia
-val = OIFITS.get_value(hdr, key)
-val = OIFITS.get_value(hdr, key, def)
-com = OIFITS.get_comment(hdr, key)
-com = OIFITS.get_comment(hdr, key, def)
-```
-
-To retrieve a value and make sure it has a specific type, the following
-methods are available:
-
-```julia
-OIFITS.get_logical(hdr, "SIMPLE")
-OIFITS.get_integer(hdr, "BITPIX")
-OIFITS.get_float(hdr, "BSCALE")
-OIFITS.get_string(hdr, "XTENSION")
-```
-
-which throw an error if the keyword is not present and perform type
-checking and conversion if allowed.  It is also possible to supply a
-default value to return if the keyword is not present:
-
-```julia
-bscale = OIFITS.get_float(hdr, "BSCALE", 1.0)
-bzero = OIFITS.get_float(hdr, "BZERO", 0.0)
-xtension = OIFITS.get_string(hdr, "XTENSION", "IMAGE")
-```
-
-The function:
-
-```julia
-OIFITS.get_hdu_type(hdr)
-```
-
-returns the HDU type as a Symbol, `:image_hdu` for an image, `:ascii_table` for
-an ASCII table, `:binary_table` for a binary table, and `:unknown` otherwise.
-The returned symbol should match the result of the low level method
-`FITSIO.Libcfitsio.fits_get_hdu_type`.
-
-
-For a FITS table, the function:
-
-```julia
-OIFITS.get_datablock_type(hdr)
-```
-
-returns the OI-FITS data-block type as a Symbol like `:OI_TARGET`,
-`:OI_WAVELENGTH`, *etc.*
-
-
-### Reading FITS tables
-
-In addition to the method `read(tbl::TableHDU, colname::String)`
-provided by FITSIO for reading a specific column of a FITS table, the
-low-level function:
-
-```julia
-OIFITS.read_column(ff::FITSFile, colnum::Integer)
-```
-
-returns a Julia array with the contents of the `colnum`-th column of the
-current HDU in FITS file handle `ff`.  The current HDU must be a FITS table
-(an ASCII or a binary one).  The last dimension of the result corresponds
-to the rows of the table.  It is also possible to read all the table:
-
-```julia
-OIFITS.read_table(hdu::Union(TableHDU,ASCIITableHDU))
-```
-
-The result is a dictionary whose keys are the names of the columns (in
-uppercase letters and with trailing spaces removed).  If a column has given
-units, the units are stored in the dictionary with suffix `".units"` appended
-to the column name.  For instance, the units for column `"TIME"` are accessible
-with key `"TIME.units"`.  By default, `OIFITS.read_table` returns all columns
-of the table but a selector `sel` may be specified to select a subset of
-columns, it must be a callable object such that `sel(key)` yields `true` if
-column named `key` is to be returned.  For instance:
-
-```julia
-OIFITS.read_table(hdu, key -> key in ("FILTER", "BANDWIDTH"))
-```
-
-to only read columns `"FILTER"` and `"BANDWIDTH"` in table `hdu`.
-
-
-### FITS and Julia types conversion
-
-The functions `cfitsio_datatype()` and `fits_bitpix()` deal with conversion
-between CFITSIO type code or BITPIX value and actual Julia data types.
-They can be used as follows (assuming `T` is a Julia data type, while
-`code` and `bitpix` are integers):
-
-```julia
-cfitsio_datatype(T) --------> code (e.g., TBYTE, TFLOAT, etc.)
-cfitsio_datatype(code) -----> T
-
-fits_bitpix(T) -------------> bitpix (e.g., BYTE_IMG, FLOAT_IMG, etc.)
-fits_bitpix(bitpix) --------> T
-```
-
-The functions `fits_get_coltype()` and `fits_get_eqcoltype()` yield the
-data type, repeat count and width in bytes of a given column, their
-prototypes are:
-
-```julia
-(code, repcnt, width) = fits_get_coltype(ff::FITSFile, colnum::Integer)
-(code, repcnt, width) = fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
-```
-with `colnum` the column number, `code` the CFITSIO column type (call
-`cfitsio_datatype(code)` to convert it to a Julia type) of the elements in
-this column, `repcnt` and `width` the repeat count and width of a cell in
-this column.  The difference between `fits_get_coltype()` and
-`fits_get_eqcoltype()` is that the former yields the column type as it is
-stored in the file, while the latter yields the column type after automatic
-scaling by the values `"TSCALn"` and `"TZEROn"` keywods if present (with
-`n` the column number).  Note that reading the column data with
-`fits_read_col()` or `fitsio_read_column()` automatically apply this kind
-of scaling.
-
-To retrieve the dimensions of the cells in a given column, call the
-function `fits_read_tdim()`, its prototype is:
-
-```julia
-dims = fits_read_tdim(ff::FITSFile, colnum::Integer)
-```
-
-where `dims` is a vector of integer dimensions.
+Also note that, after merging, the internal dictionary used for rewriting
+target identifiers is left with the mapping built from the targets of the last
+merged data-set.
 
 
 ## Credits

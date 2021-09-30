@@ -84,10 +84,11 @@ mutable struct OI_TARGET <: OIDataBlock
     # Header Part
     revn::Int
     # Data Part
-    rows::Vector{OITargetEntry}
-    OI_TARGET(::Undef) = new(0, OITargetEntry[])
-    OI_TARGET(; revn::Integer, rows::AbstractVector{OITargetEntry}) =
-        new(revn, rows)
+    list::Vector{OITargetEntry}
+    function OI_TARGET(list::AbstractVector{OITargetEntry}=OITargetEntry[];
+                       revn::Integer=0)
+        new(revn, list)
+    end
 end
 
 mutable struct OI_ARRAY <: OIDataBlock
@@ -325,9 +326,6 @@ end
 # others).
 const NamedDataBlock = Union{OI_ARRAY,OI_WAVELENGTH,OI_CORR}
 
-# Union of datablocks with dependencies.
-const DataBlocksWithDependencies = Union{OI_VIS,OI_VIS2,OI_T3,OI_FLUX,OI_INSPOL}
-
 """
 
 `OIDataSet` stores the contents of an OI-FITS file.  All data-blocks containing
@@ -366,29 +364,37 @@ The data-set has a number of properties:
     data.correl[corrname] # yields an OI_CORR instance
 
 """
-mutable struct OIDataSet
-    target::OI_TARGET           # OI_TARGET data-block (unique)
-    array::Vector{OI_ARRAY}     # OI_ARRAY data-blocks
-    instr::Vector{OI_WAVELENGTH}# OI_WAVELENGTH data-blocks
-    correl::Vector{OI_CORR}     # OI_CORR data-blocks
-    vis::Vector{OI_VIS}         # OI_VIS data-blocks
-    vis2::Vector{OI_VIS2}       # OI_VIS2 data-blocks
-    t3::Vector{OI_T3}           # OI_T3 data-blocks
-    flux::Vector{OI_FLUX}       # OI_FLUX data-blocks
-    inspol::Vector{OI_INSPOL}   # OI_INSPOL data-blocks
+struct OIDataSet
+    # Named data-blocks and their dictionaries to map names to indices.  The
+    # target identifiers `target_id` are rewritten to match Julia indexing in
+    # the vector of target entries.
+    target::OI_TARGET            # list of targets data-block
+    target_dict::Dict{String,Int}# to map target name to index in `target` list
+    target_id_map::Dict{Int,Int} # to re-write target identifiers
+    array::Vector{OI_ARRAY}      # list of OI_ARRAY data-blocks
+    array_dict::Dict{String,Int} # to map array names to index in `array` list
+    instr::Vector{OI_WAVELENGTH} # list of OI_WAVELENGTH data-blocks
+    instr_dict::Dict{String,Int} # to map instrument names to index in `instr` list
+    correl::Vector{OI_CORR}      # list of OI_CORR data-blocks
+    correl_dict::Dict{String,Int}# to map correlation names to index in `correl` list
+
+    # Measurement data-blocks.
+    vis::Vector{OI_VIS}          # list of OI_VIS data-blocks
+    vis2::Vector{OI_VIS2}        # list of OI_VIS2 data-blocks
+    t3::Vector{OI_T3}            # list of OI_T3 data-blocks
+    flux::Vector{OI_FLUX}        # list of OI_FLUX data-blocks
+    inspol::Vector{OI_INSPOL}    # list of OI_INSPOL data-blocks
 
     # The inner constructor creates an empty structure.  Outer constructors are
     # provided to populate this structure with data-blocks.
-    OIDataSet(::Undef) = begin
-        dat = new()
-        dat.array  = OI_ARRAY[]
-        dat.instr  = OI_WAVELENGTH[]
-        dat.correl = OI_CORR[]
-        dat.vis    = OI_VIS[]
-        dat.vis2   = OI_VIS2[]
-        dat.t3     = OI_T3[]
-        dat.flux   = OI_FLUX[]
-        dat.inspol = OI_INSPOL[]
-        return dat
-    end
+    OIDataSet() = new(
+        OI_TARGET(),     Dict{String,Int}(), Dict{Int,Int}(),
+        OI_ARRAY[],      Dict{String,Int}(),
+        OI_WAVELENGTH[], Dict{String,Int}(),
+        OI_CORR[],       Dict{String,Int}(),
+        OI_VIS[],
+        OI_VIS2[],
+        OI_T3[],
+        OI_FLUX[],
+        OI_INSPOL[])
 end

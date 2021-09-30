@@ -42,10 +42,14 @@ This version introduces major changes.
 
 - `Base.copy` has been extended and replaces `OIFITS.clone`.
 
-- `OIMaster` renamed as `OIData`.
+- `OIMaster` renamed as `OIDataSet`.
 
-- `OIFITS.OIPolarization` and `OIFITS.OICorrelation` renamed `OIFITS.OIInsPol`
-  and `OIFITS.OICorrel` to more closely follow names in OI-FITS specifications.
+- All types renamed to follow the names of the extensions in the OI-FITS
+  specifications.  Thus `OITarget`, `OIArray`, `OIWavelength`, `OICorr` (or
+  `OICorrelation`), `OIVis`, `OIVis`, `OIT`, `OIFlux`, and `OIInsPol` (or
+  `OIPolarization`) renamed as `OI_TARGET`, `OI_ARRAY`, `OI_WAVELENGTH`,
+  `OI_CORR`, `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, and `OI_INSPOL`
+  respectively.
 
 - Use macros `@header` and `@column` to define OI-FITS formats with a syntax
   very close to the tables in OI-FITS specifications.
