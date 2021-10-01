@@ -352,7 +352,7 @@ end
 #    _copy!(getfield(dest, S), getfield(src, S))
 
 #------------------------------------------------------------------------------
-# PUSH IN DATA-SETS
+# PUSH DATA-BLOCKS IN DATA-SETS
 
 # Create empty instance, then push all data-blocks which must be ordered.
 OIDataSet(args::OIDataBlock...) = push!(OIDataSet(), args...)
@@ -401,6 +401,9 @@ shared by `ds`.  Depending on type of `db`, different things can happen:
 
 """
 function push!(ds::OIDataSet, db::OI_TARGET)
+    # Check data-block.
+    check(db)
+
     # Add all new targets found in `db` to those defined in `ds` and build a
     # dictionary to reindex target identifiers in `db` and subsequent
     # data-blocks.
@@ -432,13 +435,15 @@ function push!(ds::OIDataSet, db::OI_TARGET)
         end
         target_id_map[id] = new_id
     end
-    # Fix revision number.
+
+    # Finally fix revision number.
     ds.target.revn = max(ds.target.revn, db.revn)
     return ds
 end
 
 function push!(ds::OIDataSet,
                db::T) where {T<:Union{OI_ARRAY,OI_WAVELENGTH,OI_CORR}}
+    check(db)
     dict = _dict(T, ds)
     list = _list(T, ds)
     name = fix_name(db.name)
@@ -456,6 +461,7 @@ end
 function push!(ds::OIDataSet, db::T;
                rewrite_target_id::Bool = true) where {
                    T<:Union{OI_VIS,OI_VIS2,OI_T3,OI_FLUX,OI_INSPOL}}
+    check(db)
     new_db = copy(db) # make a copy to avoid side effects
     if rewrite_target_id
         new_db.target_id = rewrite_indices(db.target_id,
@@ -596,6 +602,134 @@ assert_identical(A::T, B::T, val::Val{sym}) where {T<:NamedDataBlock,sym} =
 throw_assertion_error(msg::AbstractString) = throw(AssertionError(msg))
 @noinline throw_assertion_error(args...) =
     throw_assertion_error(string(args...))
+
+"""
+    OIFITS.check(db) -> (nchns, nfrms)
+
+checks that mandatory fields of data-block `db` are defined and that defined
+fields have correct sizes.  The number of spectral channels `nchns` and of
+temporal frames `nfrms` are returned (with a value of `-1` if not relevant for
+the type of `db`).
+
+    OIFITS.check(ds)
+
+checks all data-blocks of data-set `ds`.
+
+""" check
+
+function check(ds::OIDataSet)
+    check(ds.target)
+    for db in ds.array
+        check(db)
+    end
+    for db in ds.instr
+        check(db)
+    end
+    for db in ds.correl
+        check(db)
+    end
+    for db in ds.vis
+        check(db)
+    end
+    for db in ds.vis2
+        check(db)
+    end
+    for db in ds.t3
+        check(db)
+    end
+    for db in ds.flux
+        check(db)
+    end
+    for db in ds.inspol
+        check(db)
+    end
+    nothing
+end
+
+function check(db::OIDataBlock)
+    nchns = if isdefined(db, :instr)
+        length(getfield(db, :instr).eff_wave)
+    else
+        -1 # number of spectral channels not yet known
+    end
+    nfrms = -1 # number of temporal frames not yet known
+    for spec in get_format(db; throw_errors=true)
+        nchns, nfrms = _check(db, Val(spec.symb), spec, nchns, nfrms)
+    end
+    return nchns, nfrms
+end
+
+function check(db::OI_TARGET)
+    isdefined(db, :list) || throw_undefined_field(db, :list)
+    return -1, -1
+end
+
+function _check(db::OIDataBlock, ::Val{S}, spec::FieldDefinition,
+                nchns::Int, nfrms::Int) where {S}
+    if !isdefined(db, S)
+        spec.optional || throw_undefined_field(db, S)
+    else
+        val = getfield(db, S)
+        dims = (isa(val, AbstractString) ? () : size(val))
+        ndims_spec = ndims(spec)
+        length(dims) == ndims_spec || error(
+            "field `", S, "` of ", db.extname, " must be a ",
+            (ndims_spec == 0 ? "scalar" : "$ndims_spec-D array"))
+        rank = spec.rank
+        if ndims_spec ≥ 1
+            # Last dimension is number of temporal frames.
+            val_nfrms = dims[end]
+            if nfrms == -1
+                nfrms = val_nfrms
+            else
+                nfrms == val_nfrms || error(
+                    "incompatible number of temporal frames in field `", S,
+                    "` of ", db.extname, " (got ", val_nfrms, ", should be ",
+                    nfrms, ")")
+            end
+        end
+        if rank > 1 &&  ndims_spec == 2 && spec.type !== :A
+            dims[1] == rank || error(
+                "invalid 1st dimension in field `", S,
+                "` of ", db.extname, " (got ", dims[1], ", should be ",
+                rank, ")")
+        elseif rank < 0
+            # All leading dimensions are equal to the number of spectral
+            # channels.
+            val_nchns = dims[1]
+            for i in 2:length(dims)-1
+                dims[i] == val_nchns || error(
+                    "leading dimensions in field `", S, "` of ", db.extname,
+                    " must be all equal to the numeber of spectral channels,",
+                    " size is ", dims)
+            end
+            if nchns == -1
+                nchns = val_nchns
+            else
+                nchns == val_nchns || error(
+                    "incompatible number of spectral channels in field `", S,
+                    "` of ", db.extname, " (got ", val_nchns, ", should be ",
+                    nchns, ")")
+            end
+        end
+    end
+    return nchns, nfrms
+end
+
+const FieldName = Union{AbstractString,Symbol}
+
+@noinline throw_undefined_field(name::FieldName) =
+    throw(ErrorException("undefined field `$name`"))
+
+@noinline throw_undefined_field(obj::T, name::FieldName) where {T} =
+    throw(ErrorException(string(
+        "undefined field `", name, "` in object of type `", nameof(T), "`")))
+
+@noinline throw_undefined_field(obj::OIDataBlock, name::FieldName) =
+    throw(ErrorException(string(
+        "mandatory field `", name, "` undefined in `", obj.extname,
+        "` data-block")))
+
 
 #------------------------------------------------------------------------------
 # MERGE DATA-SETS

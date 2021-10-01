@@ -1,28 +1,5 @@
 # User visible changes in Julia interface to OI-FITS
 
-## Things to be done
-
-`OIFITS` package is *work-in-progress*, it can currently read any compliant
-OI-FITS file and provides easy and fast access to the contents of a set of OI
-data.  In a near future more capabilities will be implemented to meet the
-requirements of data processing softwares:
-
-- Provide filter method to extract sub-sets of OI-FITS data: to select a chosen
-  wavelength range, a given target, etc.
-
-- Enforce column types in written OI-FITS file.
-
-- Automatically rewrite `sta_index`, and indices in correlation matrices so
-  that they match the indices in the related arrays.
-
-- Automatically deal with revision number of `OI_TARGET` instances.
-
-- More fully check data-blocks on `push!`.
-
-- If a data-block has linked dependencies, push them before pushing the
-  data-block itself.
-
-
 ## Versions 1.0
 
 This version introduces major changes.

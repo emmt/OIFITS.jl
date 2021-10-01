@@ -94,13 +94,10 @@ function write(f::FITS, db::OIDataBlock)
     col_names = String[]
     col_data = Any[]
     col_units = Dict{String,String}()
+    check(db) # recheck!
     for spec in get_format(db; throw_errors=true)
-        if !isdefined(db, spec.symb)
-            spec.optional || error(
-                "mandatory field `", spec.symb, "` is not defined in ",
-                db.extname, " data-block")
-            continue
-        end
+        # Skip undefined fields.
+        isdefined(db, spec.symb) || continue
         if ndims(spec) == 0
             # Header keyword.
             push!(hdr_names, spec.name)
@@ -131,6 +128,7 @@ function write(f::FITS, db::OI_TARGET)
     col_names = String[]
     col_data = Any[]
     col_units = Dict{String,String}()
+    check(db) # recheck!
     for spec in get_format(db)
         if ndims(spec) == 0
             # Header keyword.
