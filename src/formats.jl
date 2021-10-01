@@ -7,10 +7,6 @@
 
 module Formats
 
-export
-    FieldDefinition,
-    get_format
-
 """
     def = OIFITS.Formats.FieldDefinition(...)
 

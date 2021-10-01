@@ -134,6 +134,7 @@ type of the result:
     OIFITS.extname(String, db) -> ext::String
 
 """
+extname(hdu::TableHDU) = read_keyword(String, hdu, "EXTNAME", "")
 extname(db::OIDataBlock) = extname(typeof(db))
 extname(T::Type{<:OIDataBlock}) = extname(String, T)
 extname(S::Type{<:Union{String,Symbol}}, db::OIDataBlock) =
@@ -153,6 +154,22 @@ for sym in (:OI_TARGET,
         extname(::Type{Symbol}, ::Type{<:$sym}) = $(QuoteNode(sym))
     end
 end
+
+"""
+    OIFITS.get_format(db,  revn=db.revn; throw_errors=false)
+    OIFITS.get_format(T,   revn;         throw_errors=false)
+    OIFITS.get_format(ext, revn;         throw_errors=false)
+
+all yield OI-FITS definitions for data-block `db`, of data-block type `T`, or
+of OI-FITS extension `ext` (a string or a symbol).
+
+"""
+get_format(::Type{T}, revn::Integer; kwds...) where {T<:OIDataBlock} =
+    get_format(extname(Symbol, T), revn; kwds...)
+get_format(db::OIDataBlock, revn::Integer=db.revn; kwds...) =
+    get_format(extname(Symbol, db), revn; kwds...)
+get_format(extname::Union{Symbol,AbstractString}, revn::Integer; kwds...) =
+    get_format(Symbol(extname), revn; kwds...)
 
 #------------------------------------------------------------------------------
 # PROPERTIES OF DATA-BLOCKS
