@@ -110,7 +110,8 @@ function write(f::FITS, db::OIDataBlock)
         else
             # Column keyword.
             push!(col_names, spec.name)
-            push!(col_data, getfield(db, spec.symb))
+            push!(col_data, with_eltype(column_type(spec.type),
+                                        getfield(db, spec.symb)))
             col_units[spec.name] = spec.units
         end
     end
@@ -153,6 +154,10 @@ function write(f::FITS, db::OI_TARGET)
           header = FITSHeader(hdr_names, hdr_values, hdr_comments),
           units = col_units)
 end
+
+with_eltype(::Type{T}, A::AbstractArray{T,N}) where {T,N} = A
+with_eltype(::Type{T}, A::AbstractArray{<:Any,N}) where {T,N} =
+    convert(Array{T,N}, A)
 
 #------------------------------------------------------------------------------
 # READING OF OI-FITS FILES
