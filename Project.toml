@@ -1,7 +1,7 @@
 name = "OIFITS"
 uuid = "53eb397e-dec1-5dcf-8dc9-2db916067267"
 authors = ["Éric Thiébaut <https://github.com/emmt>"]
-version = "1.0.0a"
+version = "1.0.0-a"
 
 [deps]
 CFITSIO = "3b1b4be9-1499-4b22-8d78-7db3344d1961"

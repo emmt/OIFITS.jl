@@ -147,6 +147,16 @@ end
     @test A.array[lowercase(name*" ")] === A.array[end]
     @test_throws KeyError A.array[" "*name]
     @test get(A.array, " "*name, undef) === undef
+
+    # Check for "private" and non-existing fields.
+    @test_throws ErrorException A.target_dict
+    @test_throws ErrorException A.target_id_map
+    @test_throws ErrorException A.array_dict
+    @test_throws ErrorException A.instr_dict
+    @test_throws ErrorException A.correl_dict
+
+    # Check for fields being read-only.
+    @test_throws ErrorException A.array = A.array
 end
 
 @testset "OI_TARGET methods" begin

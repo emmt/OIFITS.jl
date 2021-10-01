@@ -154,37 +154,8 @@ for sym in (:OI_TARGET,
     end
 end
 
-"""
-    OIFITS.get_list(T, ds)
-
-yields the list (a regular vector) of entries of type `T` stored by the OI-FITS
-data-set `ds`.
-
-"""
-get_list(::Type{OITargetEntry}, ds::OIDataSet) = get_list(ds.target)
-get_list(::Type{OI_ARRAY},      ds::OIDataSet) = ds.array
-get_list(::Type{OI_WAVELENGTH}, ds::OIDataSet) = ds.instr
-get_list(::Type{OI_CORR},       ds::OIDataSet) = ds.correl
-get_list(::Type{OI_VIS},        ds::OIDataSet) = ds.vis
-get_list(::Type{OI_VIS2},       ds::OIDataSet) = ds.vis2
-get_list(::Type{OI_T3},         ds::OIDataSet) = ds.t3
-get_list(::Type{OI_FLUX},       ds::OIDataSet) = ds.flux
-get_list(::Type{OI_INSPOL},     ds::OIDataSet) = ds.inspol
-
-"""
-    OIFITS.get_dict(T, ds)
-
-yields the dictionary associated to entries of type `T` stored by the OI-FITS
-data-set `ds`.
-
-"""
-get_dict(::Type{OITargetEntry}, ds::OIDataSet) = ds.target_dict
-get_dict(::Type{OI_ARRAY},      ds::OIDataSet) = ds.array_dict
-get_dict(::Type{OI_WAVELENGTH}, ds::OIDataSet) = ds.instr_dict
-get_dict(::Type{OI_CORR},       ds::OIDataSet) = ds.correl_dict
-
 #------------------------------------------------------------------------------
-# PROPERTIES
+# PROPERTIES OF DATA-BLOCKS
 #
 # We use the `db.key` syntax to give access to other properties (e.g.,
 # `extname`, `name`, `eff_wave`, or `eff_band`) than the fields of the
@@ -194,14 +165,21 @@ get_dict(::Type{OI_CORR},       ds::OIDataSet) = ds.correl_dict
 # symbol as a `Val(key)` so that each `getproperty` or `setproperty!` method
 # can be specific to the value of `key`.
 
-propertynames(db::OIDataBlock) =
-    (fieldnames(typeof(db))..., :extname)
+# _properties(T) yields public properties for type `T`.
+for T in (OI_TARGET, OI_ARRAY, OI_WAVELENGTH, OI_CORR,
+          OI_VIS, OI_VIS2, OI_T3, OI_FLUX, OI_INSPOL)
+    isconcretetype(T) || continue
+    extra_fields = if T <: Union{OI_ARRAY,OI_WAVELENGTH,OI_CORR}
+        (:extname, :name,)
+    elseif T <: Union{OI_VIS,OI_VIS2,OI_T3,OI_FLUX}
+        (:extname, :eff_wave, :eff_band,)
+    else
+        (:extname,)
+    end
+    @eval _properties(::Type{$T}) = $((fieldnames(T)..., extra_fields...))
+end
 
-propertynames(db::Union{OI_ARRAY,OI_WAVELENGTH,OI_CORR}) =
-    (fieldnames(typeof(db))..., :extname, :name)
-
-propertynames(db::Union{OI_VIS,OI_VIS2,OI_T3,OI_FLUX,OI_INSPOL}) =
-    (fieldnames(typeof(db))..., :extname, :eff_wave, :eff_band)
+propertynames(db::OIDataBlock) = _properties(typeof(db))
 
 getproperty(db::OIDataBlock, sym::Symbol) = getproperty(db, Val(sym))
 getproperty(db::OIDataBlock, ::Val{S}) where {S} = getfield(db, S)
@@ -227,18 +205,20 @@ for (type, name) in ((:OI_ARRAY,      :arrname),
     end
 end
 
+# NOTE: Directly calling `getfield` is necessary to optimize the indirection
+#       (speedup: 1.4ns instead of 370ns).
+_instr(db::Union{OI_VIS,OI_VIS2,OI_T3,OI_FLUX}) = getfield(db, :instr)
+_instr(db::OI_WAVELENGTH) = db
 for type in (:OI_VIS, :OI_VIS2, :OI_T3, :OI_FLUX)
     @eval begin
-        # FIXME: Directly calling `getfield` is necessary to optimize the
-        #        indirection (speedup: 1.4ns instead of 370ns).
         getproperty(db::$type, ::Val{:eff_wave}) =
-            getfield(db, :instr).eff_wave
+            _instr(db).eff_wave
         getproperty(db::$type, ::Val{:eff_band}) =
-            getfield(db, :instr).eff_band
+            _instr(db).eff_band
         setproperty!(db::$type, ::Val{:eff_wave}, val) =
-            getfield(db, :instr).eff_wave = val
+            _instr(db).eff_wave = val
         setproperty!(db::$type, ::Val{:eff_band}, val) =
-            getfield(db, :instr).eff_band = val
+            _instr(db).eff_band = val
     end
 end
 
@@ -251,6 +231,42 @@ end
             sym, "` of structure of type `", T, "`")))
     else
         rethrow(ex)
+    end
+end
+
+#------------------------------------------------------------------------------
+# PROPERTIES OF DATA-SETS
+#
+# Here, we want to make the "private" fields of data-sets (the dictionaries)
+# "hidden" to the user.  They can only be retrieved by getfield(ds,sym).
+
+# Public properties for data-sets.
+_properties(::Type{OIDataSet}) = (:target, :array, :instr, :correl,
+                                  :vis, :vis2, :t3, :flux, :inspol)
+
+# Only the "public" fields of data-sets are part of the properties.
+propertynames(ds::OIDataSet) = _properties(OIDataSet)
+
+# An OIDataSet is immutable so explicitely forbid writing a field is not
+# necessary but the following is to provide a more explicit message.
+@noinline setproperty!(db::OIDataSet, sym::Symbol, val) =
+    error("attempt to ", (sym ∈ propertynames(db) ? "set read-only" :
+                          "access non-existing or private"),
+          " field `", sym, "` in ", nameof(typeof(db)), " instance")
+
+getproperty(db::OIDataSet, sym::Symbol) = getproperty(db, Val(sym))
+
+# By default, accessing any field by the dot notation is forbidden.
+getproperty(db::OIDataSet, ::Val{S}) where {S} =
+    error("attempt to access non-existing or private field `", S,
+          "` in ", nameof(typeof(db)), " instance")
+
+# Each public field is explicitely allowed.
+for sym in _properties(OIDataSet)
+    quoted_sym = QuoteNode(sym)
+    @eval begin
+        getproperty(db::OIDataSet, ::Val{$quoted_sym}) =
+            getfield(db, $quoted_sym)
     end
 end
 
@@ -271,22 +287,22 @@ end
 function copy(A::OIDataSet)
     # Create new instance and copy contents.  Including the dictionary for
     # re-writing target identifiers.  The copy is thus in the same "state" as
-    # the original.
+    # the original.  Note that using `map` is ~ 3.6 times slower here.
     B = OIDataSet()
-    _copy!(B.target,        A.target)
-    _copy!(B.target_dict,   A.target_dict)
-    _copy!(B.target_id_map, A.target_id_map)
-    _copy!(B.array,         A.array)
-    _copy!(B.array_dict,    A.array_dict)
-    _copy!(B.instr,         A.instr)
-    _copy!(B.instr_dict,    A.instr_dict)
-    _copy!(B.correl,        A.correl)
-    _copy!(B.correl_dict,   A.correl_dict)
-    _copy!(B.vis,           A.vis)
-    _copy!(B.vis2,          A.vis2)
-    _copy!(B.t3,            A.t3)
-    _copy!(B.flux,          A.flux)
-    _copy!(B.inspol,        A.inspol)
+    _copy!(B, A, :target)
+    _copy!(B, A, :target_dict)
+    _copy!(B, A, :target_id_map)
+    _copy!(B, A, :array)
+    _copy!(B, A, :array_dict)
+    _copy!(B, A, :instr)
+    _copy!(B, A, :instr_dict)
+    _copy!(B, A, :correl)
+    _copy!(B, A, :correl_dict)
+    _copy!(B, A, :vis)
+    _copy!(B, A, :vis2)
+    _copy!(B, A, :t3)
+    _copy!(B, A, :flux)
+    _copy!(B, A, :inspol)
     return B
 end
 
@@ -307,9 +323,16 @@ end
 
 function _copy!(dest::OI_TARGET, src::OI_TARGET)
     dest.revn = src.revn
-    _copy!(get_list(dest), get_list(src))
+    _copy!(dest.list, src.list)
     return dest
 end
+
+# @inline is needed here to make this as fast as possible.
+# An alternative is to use Val(sym) (without @inline).
+@inline _copy!(dest::T, src::T, sym::Symbol) where {T} =
+    _copy!(getfield(dest, sym), getfield(src, sym))
+#_copy!(dest::T, src::T, ::Val{S}) where {T,S} =
+#    _copy!(getfield(dest, S), getfield(src, S))
 
 #------------------------------------------------------------------------------
 # PUSH IN DATA-SETS
@@ -366,13 +389,13 @@ function push!(ds::OIDataSet, db::OI_TARGET)
     # data-blocks.
     name_set      = Set{String}()    # to check unicity of names in source
     id_set        = Set{Int}()       # to check unicity of identifiers in source
-    target_id_map = ds.target_id_map # to rewrite target_id in source
     target_list   = ds.target.list   # list of unique targets
-    target_dict   = ds.target_dict   # mapping of target names to identifiers
+    target_id_map = getfield(ds, :target_id_map) # to rewrite target_id in source
+    target_dict   = getfield(ds, :target_dict)   # mapping of target names to identifiers
     length(target_list) == length(target_dict) || error(
         "inconsistent list and dictionary of targets")
     empty!(target_id_map) # reset target identifier mapping
-    for tgt in get_list(db)
+    for tgt in db.list
         name = fix_name(tgt.target)
         name ∈ name_set && error(
             "duplicate target name \"", name, "\" in ", db.extname)
@@ -399,8 +422,8 @@ end
 
 function push!(ds::OIDataSet,
                db::T) where {T<:Union{OI_ARRAY,OI_WAVELENGTH,OI_CORR}}
-    dict = get_dict(T, ds)
-    list = get_list(T, ds)
+    dict = _dict(T, ds)
+    list = _list(T, ds)
     name = fix_name(db.name)
     if haskey(dict, name)
         # Make sure the two data-blocks with the same name are
@@ -418,7 +441,8 @@ function push!(ds::OIDataSet, db::T;
                    T<:Union{OI_VIS,OI_VIS2,OI_T3,OI_FLUX,OI_INSPOL}}
     new_db = copy(db) # make a copy to avoid side effects
     if rewrite_target_id
-        new_db.target_id = rewrite_indices(db.target_id, ds.target_id_map)
+        new_db.target_id = rewrite_indices(db.target_id,
+                                           getfield(ds, :target_id_map))
     else
         id_min, id_max = extrema(db.target_id)
         if id_min < 1 || id_max > length(db.target)
@@ -428,19 +452,37 @@ function push!(ds::OIDataSet, db::T;
     end
     if isdefined(new_db, :arrname)
         new_db.array = _find_depencency(
-            ds.array, ds.array_dict, new_db.arrname)
+            ds.array, getfield(ds, :array_dict), new_db.arrname)
     end
     if isdefined(new_db, :insname)
         new_db.instr = _find_depencency(
-            ds.instr, ds.instr_dict, new_db.insname)
+            ds.instr, getfield(ds, :instr_dict), new_db.insname)
     end
     if isdefined(new_db, :corrname)
         new_db.correl = _find_depencency(
-            ds.correl, ds.correl_dict, new_db.corrname)
+            ds.correl, getfield(ds, :correl_dict), new_db.corrname)
     end
-    push!(get_list(T, ds), new_db)
+    push!(_list(T, ds), new_db)
     return ds
 end
+
+# `_list(T,ds)` yields the list of entries of type `T` stored in `ds`.
+_list(::Type{OI_ARRAY},      ds::OIDataSet) = ds.array
+_list(::Type{OI_WAVELENGTH}, ds::OIDataSet) = ds.instr
+_list(::Type{OI_CORR},       ds::OIDataSet) = ds.correl
+_list(::Type{OI_VIS},        ds::OIDataSet) = ds.vis
+_list(::Type{OI_VIS2},       ds::OIDataSet) = ds.vis2
+_list(::Type{OI_T3},         ds::OIDataSet) = ds.t3
+_list(::Type{OI_FLUX},       ds::OIDataSet) = ds.flux
+_list(::Type{OI_INSPOL},     ds::OIDataSet) = ds.inspol
+#_list(::Type{OITargetEntry},ds::OIDataSet) = ds.target.list
+
+# `_dict(T,ds)` yields the dictionary associated to entries of type `T` stored
+# by the OI-FITS data-set `ds`.
+_dict(::Type{OI_ARRAY},      ds::OIDataSet) = getfield(ds, :array_dict)
+_dict(::Type{OI_WAVELENGTH}, ds::OIDataSet) = getfield(ds, :instr_dict)
+_dict(::Type{OI_CORR},       ds::OIDataSet) = getfield(ds, :correl_dict)
+#_dict(::Type{OITargetEntry},ds::OIDataSet) = getfield(ds, :target_dict)
 
 function _find_depencency(dest_list::Vector{T},
                           dest_dict::Dict{String,Int},
@@ -715,16 +757,14 @@ targets of `OI_TARGET` data-block in the form of a vector.
 
 """ OI_TARGET
 
-get_list(db::OI_TARGET) = db.list
-
 # Make OI_TARGET instances iterable and behave more or less like vectors
 # (with properties).
-ndims(db::OI_TARGET)   =  ndims(get_list(db))
-size(db::OI_TARGET)    =   size(get_list(db))
-size(db::OI_TARGET, i) =   size(get_list(db), i)
-axes(db::OI_TARGET)    =   axes(get_list(db))
-axes(db::OI_TARGET, i) =   axes(get_list(db), i)
-length(db::OI_TARGET)  = length(get_list(db))
+ndims(db::OI_TARGET)   =  ndims(db.list)
+size(db::OI_TARGET)    =   size(db.list)
+size(db::OI_TARGET, i) =   size(db.list, i)
+axes(db::OI_TARGET)    =   axes(db.list)
+axes(db::OI_TARGET, i) =   axes(db.list, i)
+length(db::OI_TARGET)  = length(db.list)
 
 IndexStyle(db::OI_TARGET) = IndexStyle(OI_TARGET)
 IndexStyle(::Type{OI_TARGET}) = IndexStyle(fieldtype(OI_TARGET, :list))
@@ -732,7 +772,7 @@ IndexStyle(::Type{OI_TARGET}) = IndexStyle(fieldtype(OI_TARGET, :list))
 eltype(db::OI_TARGET) = eltype(OI_TARGET)
 eltype(::Type{OI_TARGET}) = OITargetEntry
 
-@inline @propagate_inbounds getindex(db::OI_TARGET, i::Integer) = get_list(db)[i]
+@inline @propagate_inbounds getindex(db::OI_TARGET, i::Integer) = db.list[i]
 
 function getindex(db::OI_TARGET, name::AbstractString)
     for tgt in db
@@ -744,9 +784,9 @@ function getindex(db::OI_TARGET, name::AbstractString)
           db.extname, "data-block")
 end
 
-firstindex(db::OI_TARGET) = firstindex(get_list(db))
-lastindex(db::OI_TARGET) = lastindex(get_list(db))
-eachindex(db::OI_TARGET) = eachindex(get_list(db))
+firstindex(db::OI_TARGET) = firstindex(db.list)
+lastindex(db::OI_TARGET) = lastindex(db.list)
+eachindex(db::OI_TARGET) = eachindex(db.list)
 
 function iterate(db::OI_TARGET,
                  state::Tuple{Int,Int} = (firstindex(db),
@@ -755,7 +795,7 @@ function iterate(db::OI_TARGET,
     if i > n
         return nothing
     else
-        return get_list(db)[i], (i + 1, n)
+        return db.list[i], (i + 1, n)
     end
 end
 

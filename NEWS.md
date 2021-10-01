@@ -1,6 +1,5 @@
 # User visible changes in Julia interface to OI-FITS
 
-
 ## Things to be done
 
 `OIFITS` package is *work-in-progress*, it can currently read any compliant
@@ -23,8 +22,6 @@ requirements of data processing softwares:
 - If a data-block has linked dependencies, push them before pushing the
   data-block itself.
 
-- Hide private fields.
-
 
 ## Versions 1.0
 
@@ -42,7 +39,8 @@ This version introduces major changes.
   dependencies have been correctly set, shortcuts are provided so that
   `obj.eff_wave` (or `obj.eff_band`) can be used instead of
   `obj.instr.eff_wave` (or `obj.instr.eff_band`) for any object `obj` storing
-  OI-FITS data.
+  OI-FITS data.  Fields considered as "private" are not accessible by the dot
+  notation (`getfield` and `setfield!` must be explicitely called).
 
 - Building a data-set (that is an instance of `OIDataSet`) by calling `push!`
   automatically takes care of linking dependencies and of verifying the
