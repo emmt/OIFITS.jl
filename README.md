@@ -12,19 +12,19 @@ The `OIFITS.jl` package provides support for OI-FITS data in Julia language.
 
 OI-FITS is a standard to store optical interferometry data as a collection of
 data-blocks.  In the second revision of the standard (see [Ref. 1](#references)
-and [Ref. 2](#references)), an OI-FITS file may provide the following
+and [Ref. 2](#references)), an OI-FITS file may contain the following
 data-blocks:
 
-* an `OI_TARGET` data-block provides a list of observed targets;
-* each `OI_ARRAY` data-block describes a given array of stations;
+* an `OI_TARGET` data-block stores a list of observed targets;
+* each `OI_ARRAY` data-block describes a given array of telescope stations;
 * each `OI_WAVELENGTH` data-block describes a given instrument notably the
   effective wavelengths and bandwidths of its spectral channels;
-* `OI_CORR` data-blocks provide correlation data;
-* `OI_VIS` data-blocks provide complex visibility dat;
-* `OI_VIS2` data-blocks provide squared visibility (powerspectrum) data;
-* `OI_T3` data-blocks provide triple product (bispectrum) data;
-* `OI_FLUX` data-blocks provide spectral flux data;
-* `OI_INSPOL` data-blocks provide instrumental polarization data.
+* `OI_CORR` data-blocks store correlation data;
+* `OI_VIS` data-blocks store complex visibility dat;
+* `OI_VIS2` data-blocks store squared visibility (powerspectrum) data;
+* `OI_T3` data-blocks store triple product (bispectrum) data;
+* `OI_FLUX` data-blocks store spectral flux data;
+* `OI_INSPOL` data-blocks store instrumental polarization data.
 
 These data-blocks, are stored as binary tables in a FITS data file.  The
 support for FITS files is provided by the
@@ -206,17 +206,19 @@ are also accessible via this syntax:
 
 - `db.array` yields the `OI_ARRAY` data-block associated with data-block `db`
   (only for `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, and `OI_INSPOL`
-  data-block);
+  data-block).  Beware that the association with an `OI_ARRAY` is optional, so
+  `db.array` may be actually undefined; this can be checked by
+  `isdefined(db,:array)`.
 
 - `db.instr` yields the `OI_WAVELENGTH` data-block associated with data-block
-  `db` (only for `OI_VIS`, `OI_VIS2`, `OI_T3`, and `OI_FLUX` data-block);
+  `db` (only for `OI_VIS`, `OI_VIS2`, `OI_T3`, and `OI_FLUX` data-block).
 
 - `db.correl` yields the `OI_CORR` data-block associated with data-block `db`
   (only for `OI_VIS`, `OI_VIS2`, `OI_T3`, and `OI_FLUX` data-block).
 
 - `db.name` is an alias for `db.arrname` for `OI_ARRAY` instances, for
   `db.insname` for `OI_WAVELENGTH` instances, and for `db.corrname` for
-  `OI_CORR` instances,
+  `OI_CORR` instances.
 
 Of course, getting a given property must make sense.  For example,
 `db.sta_name` is only possible for an `OI_ARRAY` data-block but not for an
@@ -560,9 +562,9 @@ merged data-set.
 
 ## Credits
 
-The developments of this package has received funding from the European
-Community's Seventh Framework Programme (FP7/2013-2016) under Grant
-Agreement 312430 (OPTICON).
+The development of this package has received funding from the European
+Community's Seventh Framework Programme (FP7/2013-2016) under Grant Agreement
+312430 (OPTICON).
 
 
 ## References
@@ -585,8 +587,8 @@ Agreement 312430 (OPTICON).
 [license-url]: ./LICENSE.md
 [license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
 
-[travis-img]: https://travis-ci.org/emmt/OIFITS.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/emmt/OIFITS.jl
+[travis-img]: https://travis-ci.com/emmt/OIFITS.jl.svg?branch=master
+[travis-url]: https://travis-ci.com/emmt/OIFITS.jl
 
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/OIFITS.jl?branch=master
 [appveyor-url]: https://ci.appveyor.com/project/emmt/OIFITS-jl/branch/master
