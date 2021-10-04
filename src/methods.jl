@@ -515,6 +515,21 @@ end
 function push!(ds::OIDataSet, db::T;
                rewrite_target_id::Bool = true) where {
                    T<:Union{OI_VIS,OI_VIS2,OI_T3,OI_FLUX,OI_INSPOL}}
+    # Define private helper.
+    function find_depencency(dest_list::Vector{T},
+                             dest_dict::Dict{String,Int},
+                             dep::AbstractString,
+                             optional::Bool = false) where {S,T<:OIDataBlock}
+        name = fix_name(dep)
+        if haskey(dest_dict, name)
+            return dest_list[dest_dict[name]]
+        else
+            optional || error(
+                "no extensions ", extname(T), " match name \"", name, "\"")
+            return nothing
+        end
+    end
+
     check(db)
     new_db = copy(db) # make a copy to avoid side effects
     if rewrite_target_id
@@ -528,15 +543,19 @@ function push!(ds::OIDataSet, db::T;
         end
     end
     if isdefined(new_db, :arrname)
-        new_db.array = _find_depencency(
-            ds.array, getfield(ds, :array_dict), new_db.arrname)
+        let dep = find_depencency(ds.array, getfield(ds, :array_dict),
+                                  new_db.arrname, true)
+            if dep !== nothing
+                new_db.array = dep
+            end
+        end
     end
     if isdefined(new_db, :insname)
-        new_db.instr = _find_depencency(
+        new_db.instr = find_depencency(
             ds.instr, getfield(ds, :instr_dict), new_db.insname)
     end
     if isdefined(new_db, :corrname)
-        new_db.correl = _find_depencency(
+        new_db.correl = find_depencency(
             ds.correl, getfield(ds, :correl_dict), new_db.corrname)
     end
     push!(_list(T, ds), new_db)
@@ -560,15 +579,6 @@ _dict(::Type{OI_ARRAY},      ds::OIDataSet) = getfield(ds, :array_dict)
 _dict(::Type{OI_WAVELENGTH}, ds::OIDataSet) = getfield(ds, :instr_dict)
 _dict(::Type{OI_CORR},       ds::OIDataSet) = getfield(ds, :correl_dict)
 #_dict(::Type{OITargetEntry},ds::OIDataSet) = getfield(ds, :target_dict)
-
-function _find_depencency(dest_list::Vector{T},
-                          dest_dict::Dict{String,Int},
-                          dep::AbstractString) where {S,T<:OIDataBlock}
-    name = fix_name(dep)
-    haskey(dest_dict, name) || error(
-        "no extensions ", extname(T), " match name \"", name, "\"")
-    return dest_list[dest_dict[name]]
-end
 
 """
     OIFITS.rewrite_indices(inds, dict) -> inds′
