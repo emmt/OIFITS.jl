@@ -222,7 +222,7 @@ function read_column(T::Type{<:Array}, hdu::TableHDU, col::String,
         return _convert_column(T, col, val)
     catch ex
         if missing_column(ex)
-            def === unspecified && throw(MissingColumn(key, hdu))
+            def === unspecified && throw(MissingColumn(col, hdu))
             return def
         end
         rethrow()
