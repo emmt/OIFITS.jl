@@ -129,6 +129,8 @@ end
         @test isa(B, OIDataSet)
         @test_throws ErrorException write(tempfile, B)
     end
+
+    # Merge several files.
     A = OIDataSet(map(x -> joinpath(dir, x), files)...)
     @test isa(A, OIDataSet)
     @test A.instr[1].name ===  A.instr[1].insname
@@ -157,6 +159,18 @@ end
 
     # Check for fields being read-only.
     @test_throws ErrorException A.array = A.array
+
+    # Access extensions individually.
+    f = FITS(joinpath(dir, "contest-2004-obj1.oifits"))
+    for i in 2:length(f)
+        db = OIDataBlock(f[i])
+        @test extname(f[i]) == db.extname
+    end
+    @test extname(f[2]) == OI_ARRAY(f[2]).extname
+    @test extname(f[3]) == OI_TARGET(f[3]).extname
+    @test extname(f[4]) == OI_WAVELENGTH(f[4]).extname
+    @test extname(f[5]) == OI_VIS2(f[5]).extname
+    @test extname(f[6]) == OI_T3(f[6]).extname
 end
 
 @testset "OI_TARGET methods" begin

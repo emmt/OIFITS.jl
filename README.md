@@ -39,6 +39,8 @@ compliant OI-FITS file.
 
 ## Reading and writing OI-FITS files
 
+### Reading and writing OI-FITS data-sets
+
 Reading an OI-FITS data file in Julia yields a data-set and is done by:
 
 ```julia
@@ -76,6 +78,49 @@ write(filename, ds)
 
 Overwriting is forbidden by default, but the keyword `overwrite=true` may be
 specified to allow for silently overwriting an existing file.
+
+
+### Reading individual OI-FITS data-blocks
+
+It may be useful to read individual OI-FITS data-blocks, to debug or to fix the
+contents of a non-compliant OI-FITS file.  To that end, you must open the FITS
+file and can then read a given HDU as an OI-FITS data-block:
+
+```julia
+using FITSIO, OIFITS
+f = FITS(filename, "r")     # open FITS file for reading
+tgt = OI_TARGET(f[i])       # read OI_TARGET extension in i-th HDU
+tgt = read(OI_TARGET, f[i]) # idem
+db = OI_VIS2(f[j])          # read OI_VIS2 extension in j-th HDU
+db = read(OI_VIS2, f[j])    # idem
+...
+```
+
+any OI-FITS data-block type can be used in that way.  If the type of the `i`-th
+extension is not known, `OIDataBlock` can be used instead but the result is not
+type-stable:
+
+```julia
+db = OIDataBlock(f[i])       # read OI-FITS extension extension in i-th HDU
+db = read(OIDataBlock, f[i]) # idem
+```
+
+Writing individual OI-FITS data-blocks is also possible:
+
+```julia
+using FITSIO, OIFITS
+f = FITS(filename, "w") # open FITS file for writing
+write(f, db)            # write db in the next HDU of f
+```
+
+To fix a non-compliant OI-FITS file (usually dupplicate target or instarument
+names), you can read all the data-blocks, fix those which are wrong and push
+them in **order** in an `OIDataSet` to have a consistent data-set which you can
+then directly use or write in an OI-FITS file for later.  Thanks to the
+automatic rewriting of target identifiers and of the fact that targets (and
+other dependencies) are identified by their name and consistently merged, it is
+possible to push an `OI_TARGET` with multiply defined identical targets (apart
+maybe their identifiers).
 
 
 ## Accessing the contents of data-blocks and data-sets

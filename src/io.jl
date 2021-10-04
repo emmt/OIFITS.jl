@@ -294,17 +294,55 @@ function read(::Type{OIDataSet}, f::FITS; kwds...)
     return ds
 end
 
+# Type-stable methods to read a single HDU.
+for T in (:OI_TARGET, :OI_ARRAY, :OI_WAVELENGTH, :OI_CORR, :OI_VIS,
+          :OI_VIS2, :OI_T3, :OI_FLUX, :OI_INSPOL)
+    @eval begin
+        $T(hdu::HDU; kwds...) = read($T, hdu; kwds...)
+        function read(::Type{$T}, hdu::TableHDU; kwds...)
+            extname(hdu) == extname($T) || error(
+                "FITS table is not an ", extname($T), " extension")
+            return _read($T, hdu; kwds...)
+        end
+    end
+end
+read(T::Type{<:OIDataBlock}, hdu::HDU; kwds...) =
+    error("FITS HDU is not an ", extname(T), " extension")
+
+# Type-instable methods to read a single HDU. For debugging purposes.
+OIDataBlock(hdu::HDU; kwds...) = read(OIDataBlock, hdu; kwds...)
+function read(::Type{OIDataBlock}, hdu::TableHDU; kwds...)
+    extn = extname(hdu)
+    extn == "" && error("FITS HDU has no keyword \"EXTNAME\"")
+    return _read(datablock_type(extn), hdu; kwds...)
+end
+read(::Type{OIDataBlock}, hdu::HDU; kwds...) =
+    error("FITS HDU is not a FITS table")
+
+datablock_type(extn::AbstractString) =
+    (extn == "OI_TARGET"     ? OI_TARGET     :
+     extn == "OI_ARRAY"      ? OI_ARRAY      :
+     extn == "OI_WAVELENGTH" ? OI_WAVELENGTH :
+     extn == "OI_CORR"       ? OI_CORR       :
+     extn == "OI_VIS"        ? OI_VIS        :
+     extn == "OI_VIS2"       ? OI_VIS2       :
+     extn == "OI_T3"         ? OI_T3         :
+     extn == "OI_FLUX"       ? OI_FLUX       :
+     extn == "OI_INSPOL"     ? OI_INSPOL     :
+     error("\"", extn, "\" is not the name of an OI-FITS extension"))
+
 # skip non-table HDUs
 _read!(::OIDataSet, ::HDU, ::Integer; kwds...) = nothing
 
 function _read!(ds::OIDataSet, hdu::TableHDU, pass::Integer; kwds...)
-    extn = read_keyword(String, hdu, "EXTNAME", nothing)
-    if extn !== nothing
+    extn = extname(hdu)
+    if extn != ""
         if pass == 1
             # Read dependencies.
             if extn == "OI_TARGET"
                 isempty(ds.target.list) || error(
-                    "only one OI_TARGET data-block is allowed in an OI-FITS file")
+                    "only one OI_TARGET data-block is allowed in ",
+                    "a compliant OI-FITS file")
                 push!(ds, _read(OI_TARGET, hdu; kwds...))
             elseif extn == "OI_ARRAY"
                 push!(ds, _read(OI_ARRAY, hdu; kwds...))
