@@ -1,7 +1,7 @@
 # Things to be done
 
 `OIFITS` package is *work-in-progress*, the following changes/improvements may
-be impleneted in a near future:
+be implemented in a near future:
 
 - Provide filter method to extract sub-sets of OI-FITS data: to select a chosen
   wavelength range, a given target, etc.
