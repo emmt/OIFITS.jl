@@ -121,20 +121,23 @@ for (type, name) in ((:OI_ARRAY,      :arrname),
 end
 
 """
-    OIFITS.extname(db)
+    OIFITS.extname(arg)
 
-yields the extension name of OI-FITS datablock instance or type `db`.  This
-method is not exported, the same result for a data-block instance is obtained
-by `db.extname`.
+yields the name of the FITS extension for argument `arg` which can be an
+OI-FITS datablock instance or type or a FITS table HDU.  In this latter case,
+an empty string is returned if the `EXTNAME` keyword is not found and the
+extension name is converted to upper case letters and trailing spaces discarded
+otherwise.  This method is not exported, the same result for a data-block
+instance `db` is obtained by `db.extname`.
 
-An optional first argument, `Symbol` or `String`, may be used to specify the
-type of the result:
+For a data-block instance or type `db`, an optional first argument, `Symbol` or
+`String`, may be used to specify the type of the result:
 
     OIFITS.extname(Symbol, db) -> ext::Symbol
     OIFITS.extname(String, db) -> ext::String
 
 """
-extname(hdu::TableHDU) = read_keyword(String, hdu, "EXTNAME", "")
+extname(hdu::TableHDU) = fix_name(read_keyword(String, hdu, "EXTNAME", ""))
 extname(db::OIDataBlock) = extname(typeof(db))
 extname(T::Type{<:OIDataBlock}) = extname(String, T)
 extname(S::Type{<:Union{String,Symbol}}, db::OIDataBlock) =
