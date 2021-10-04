@@ -46,9 +46,9 @@ using OIFITS
 ds = read(OIDataSet, input)
 ```
 
-where `input` it the name of the OI-FITS file or an instance of `FITSIO.FITS` which
-represents an open FITS file.   The above `read` call is equivalent
-to the shortcut:
+where `input` it the name of the OI-FITS file or an instance of `FITSIO.FITS`
+which represents an open FITS file.  The above `read` call is equivalent to the
+shortcut:
 
 ```julia
 ds = OIDataSet(input)
@@ -202,6 +202,112 @@ Some fields of a data-block `db` may however be undefined because:
   with other data-blocks (the *dependencies)* and these links are only defined
   when a data-block is part of a data-set (see [Building of
   data-sets](#building-of-data-sets) below).
+
+
+### `OI_TARGET` data-blocks
+
+For efficiency, instances of `OI_TARGET` data-blocks do not follow the same
+rules as other types of OI-FITS data-blocks whose properties are the columns of
+the corresponding OI-FITS table: in an `OI_TARGET` instance, all parameters
+describing a target are repesented by an `OITargetEntry` structure and all
+targets are stored as a vector of `OITargetEntry`.  An `OI_TARGET` instance,
+say `db`, has the 3 following properties:
+
+```julia
+db.extname # yields "OI_TARGET"
+db.list    # yields a vector of OITargetEntry instances
+db.revn    # yields the revision number
+```
+
+The list of targets `db.list` can be indexed by an integer (as any Julia
+vector) or by the target name (case of letters and trailing spaces are
+irrelevant).
+
+As an `OI_TARGET` data-blocks is essentially a vector of target entries, it can
+be used as an iterable and it can indexed by an integer index or by a target
+name:
+
+```julia
+length(db) # the number of targets, shortcut for `length(db.list)`
+db[i]      # the i-th target, shortcut for `db.list[i]`
+db[key]    # the target whose name matches string `key`, shortcut for `db.list[key]`
+```
+
+Standard methods `get` and `haskey`, applied to `db.list` or directly to `db`,
+work as expected and according to the type (integer or string) of the key.  For
+the `keys` method, the default is to return an iterator over the target names,
+but the type of the expected keys can be specified:
+
+```julia
+get(db,key,def)   # yields `db[key]` or `def` if `key` not found
+keys(db)          # iterator over target names
+keys(String, db)  # idem
+keys(Integer, db) # iterator over target indices
+keys(Int, db)     # idem
+```
+
+The method `OIFITS.get_column` is a helper to recover a single target field as
+a vector:
+
+```julia
+OIFITS.get_column([T,] db, col)
+```
+
+yields the column `col` of an OI-FITS data-block `db`.  Column is identified by
+`col` which is either `sym` or `Val(sym)` where `sym` is the symbolic name of
+the corresponding field in `OITargetEntry`.  Optional argument `T` is to
+specify the element type of the returned array.
+
+To build an `OI_TARGET` instance, you may provide the list of targets and the
+revision number:
+
+```julia
+OI_TARGET(lst=OITargetEntry[]; revn=0)
+```
+
+yields an `OI_TARGET` data-block.  Optional argument `lst` is a vector of
+`OITargetEntry` specifying the targets (none by default).  Keyword `revn`
+specifies the revision number.
+
+A target entry may be constructed by specifying all its fields (there are many)
+by keywords, all of which but `category` are mandatory:
+
+```julia
+x = OITargetEntry(;
+        target_id ::Integer,
+        target    ::AbstractString,
+        raep0     ::AbstractFloat,
+        decep0    ::AbstractFloat,
+        equinox   ::AbstractFloat,
+        ra_err    ::AbstractFloat,
+        dec_err   ::AbstractFloat,
+        sysvel    ::AbstractFloat,
+        veltyp    ::AbstractString,
+        veldef    ::AbstractString,
+        pmra      ::AbstractFloat,
+        pmdec     ::AbstractFloat,
+        pmra_err  ::AbstractFloat,
+        pmdec_err ::AbstractFloat,
+        parallax  ::AbstractFloat,
+        para_err  ::AbstractFloat,
+        spectyp   ::AbstractString,
+        category  ::AbstractString = "")
+```
+
+It is also possible to specify another target entry, say `ref`, which is used
+as a template: any unspecified keyword is assume to have the same value as in
+`ref`:
+
+```julia
+x = OITargetEntry(ref;
+        target_id = ref.target_id,
+        target    = ref.target,
+        ...)
+```
+
+Note that, when an `OI_TARGET` instance is pushed in a data-set, target
+identifiers (field `target_id`) are automatically rewritten to be identical to
+the index in the list of targets of the data-set.
 
 
 ## Building of data-sets
