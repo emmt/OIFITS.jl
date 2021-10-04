@@ -11,10 +11,11 @@
 yields whether `a` and `b` are sufficiently identical for OI-FITS data.  If `a`
 and `b` are strings, trailing spaces and case of letters are irrelevant.  If
 `a` and `b` are arrays, they are compared element-wise.  This operator is used
-in OI-FITS to merge contents.
+in OI-FITS to merge contents.  For an `OITargetEntry`, the target identifier is
+ignored.
 
 """
-is_same(a, b) = false
+is_same(a, b) = (a === a)
 is_same(a::Integer, b::Integer) = (a == b)
 is_same(a::AbstractFloat, b::AbstractFloat) = (a == b)
 is_same(a::Complex{<:AbstractFloat}, b::Complex{<:AbstractFloat}) = (a == b)
@@ -52,6 +53,31 @@ function is_same(A::AbstractString, B::AbstractString)
         end
     end
     return true
+end
+
+function is_same(A::OITargetEntry, B::OITargetEntry)
+    # Private helper.
+    @inline _is_same(A::OITargetEntry, B::OITargetEntry, sym::Symbol) =
+        is_same(getfield(A, sym), getfield(B, sym))
+
+    # Purposely ignore target_id.
+    return (_is_same(A, B, :target   ) &&
+            _is_same(A, B, :raep0    ) &&
+            _is_same(A, B, :decep0   ) &&
+            _is_same(A, B, :equinox  ) &&
+            _is_same(A, B, :ra_err   ) &&
+            _is_same(A, B, :dec_err  ) &&
+            _is_same(A, B, :sysvel   ) &&
+            _is_same(A, B, :veltyp   ) &&
+            _is_same(A, B, :veldef   ) &&
+            _is_same(A, B, :pmra     ) &&
+            _is_same(A, B, :pmdec    ) &&
+            _is_same(A, B, :pmra_err ) &&
+            _is_same(A, B, :pmdec_err) &&
+            _is_same(A, B, :parallax ) &&
+            _is_same(A, B, :para_err ) &&
+            _is_same(A, B, :spectyp  ) &&
+            _is_same(A, B, :category ))
 end
 
 """
@@ -407,36 +433,41 @@ function push!(ds::OIDataSet, db::OI_TARGET)
     # Check data-block.
     check(db)
 
-    # Add all new targets found in `db` to those defined in `ds` and build a
-    # dictionary to reindex target identifiers in `db` and subsequent
-    # data-blocks.
-    name_set      = Set{String}()    # to check unicity of names in source
-    id_set        = Set{Int}()       # to check unicity of identifiers in source
-    target_list   = ds.target.list   # list of unique targets
-    target_id_map = getfield(ds, :target_id_map) # to rewrite target_id in source
-    target_dict   = getfield(ds, :target_dict)   # mapping of target names to identifiers
+    # Get current list of targets in data-set and corresponding mapping of
+    # target names to identifiers.
+    target_list = ds.target.list
+    target_dict = getfield(ds, :target_dict)
     length(target_list) == length(target_dict) || error(
         "inconsistent list and dictionary of targets")
-    empty!(target_id_map) # reset target identifier mapping
+
+    # Get and reset dictionary to reindex target identifiers in this and
+    # subsequent data-blocks.
+    target_id_map = getfield(ds, :target_id_map)
+    empty!(target_id_map)
+
+    # Insert all targets from the data-block to the data-set.
     for tgt in db.list
         name = fix_name(tgt.target)
-        name ∈ name_set && error(
-            "duplicate target name \"", name, "\" in ", db.extname)
-        push!(name_set, name)
         id = Int(tgt.target_id)
-        id ∈ id_set && error(
-            "duplicate target identifier ", id, " in ", db.extname)
-        push!(id_set, id)
+        if haskey(target_id_map, id)
+            is_same(target_list[target_id_map[id]], tgt) || error(
+                "duplicate target identifier ", id, " in ", db.extname,
+                " but for different targets")
+        end
         if haskey(target_dict, name)
-            # The same target already existed in destination.
-            new_id = target_dict[name]
+            # The same target already existed in destination.  Check that they
+            # have the same parameters.
+            index = target_dict[name]
+            is_same(target_list[index], tgt) || error(
+                "target \"", tgt.target, "\" in ", db.extname, " has ",
+                "different parameters than a previous one matching this name")
         else
             # This target is new.
-            new_id = length(target_list) + 1
-            push!(target_list, OITargetEntry(tgt; target_id = new_id))
-            target_dict[name] = new_id
+            index = length(target_list) + 1
+            push!(target_list, OITargetEntry(tgt; target_id = index))
+            target_dict[name] = index
         end
-        target_id_map[id] = new_id
+        target_id_map[id] = index
     end
 
     # Finally fix revision number.
