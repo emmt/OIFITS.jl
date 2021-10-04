@@ -878,8 +878,9 @@ specifies the revision number.
 
 An instance, say `db`, of `OI_TARGET` has the following properties:
 
-    db.revn   # revision number
-    db.list   # list of targets
+    db.extname # OI-FITS extension name
+    db.list    # list of targets
+    db.revn    # revision number
 
 and can be used as an iterable or as an array to access the targets
 individually by their index or by their name:
@@ -890,10 +891,11 @@ individually by their index or by their name:
 
     for tgt in db; ...; end # loop over all targets
 
-Note that target identifiers (field `target_id`) are automatically rewritten to
-be identical to the index in the target list.
+Note that, when an `OI_TARGET` instance is pushed in a data-set, target
+identifiers (field `target_id`) are automatically rewritten to be identical to
+the index in the list of targets of the data-set.
 
-Standard methods `get` and `haskey` work as aexpected and according to the type
+Standard methods `get` and `haskey` work as expected and according to the type
 (integer or string) of the key.  For the `keys` method, the default is to
 return an iterator over the target names, but the type of the expected keys
 can be specified:
@@ -925,14 +927,17 @@ eltype(::Type{OI_TARGET}) = OITargetEntry
 
 @inline @propagate_inbounds getindex(db::OI_TARGET, i::Integer) = db.list[i]
 
-function getindex(db::OI_TARGET, name::AbstractString)
-    for tgt in db
-        if is_same(tgt.target, name)
-            return tgt
-        end
-    end
-    error("no targets named \"", fix_name(name), "\" found in ",
-          db.extname, "data-block")
+getindex(A::AbstractVector{OITargetEntry}, name::AbstractString) = begin
+    x = get(A, name, undef)
+    x === undef && error("no targets named \"", fix_name(name), "\" found")
+    return x
+end
+
+getindex(db::OI_TARGET, name::AbstractString) = begin
+    x = get(db.list, name, undef)
+    x === undef && error( "no targets named \"", fix_name(name),
+                          "\" found in ", db.extname, "data-block")
+    return x
 end
 
 firstindex(db::OI_TARGET) = firstindex(db.list)
@@ -952,8 +957,10 @@ end
 
 haskey(db::OI_TARGET, i::Integer) = (1 ≤ i ≤ length(db))
 
-haskey(db::OI_TARGET, key::AbstractString) = begin
-    for tgt in db
+haskey(db::OI_TARGET, key::AbstractString) = haskey(db.list, key)
+
+haskey(A::AbstractVector{OITargetEntry}, key::AbstractString) = begin
+    for tgt in A
         if is_same(tgt.target, key)
             return true
         end
@@ -968,8 +975,10 @@ get(db::OI_TARGET, i::Integer, def) =
         return def
     end
 
-get(db::OI_TARGET, key::AbstractString, def) = begin
-    for tgt in db
+get(db::OI_TARGET, key::AbstractString, def) = get(db.list, key, def)
+
+get(A::AbstractVector{OITargetEntry}, key::AbstractString, def) = begin
+    for tgt in A
         if is_same(tgt.target, key)
             return tgt
         end
