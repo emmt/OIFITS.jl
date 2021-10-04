@@ -386,6 +386,26 @@ end
 # Create empty instance, then push all data-blocks which must be ordered.
 OIDataSet(args::OIDataBlock...) = push!(OIDataSet(), args...)
 
+function empty!(ds::OIDataSet)
+    @inline _empty!(A, sym::Symbol) = empty!(getfield(A, sym))
+    empty!(ds.target.list)
+    ds.target.revn = 0
+    _empty!(ds, :target_dict)
+    _empty!(ds, :target_id_map)
+    _empty!(ds, :array)
+    _empty!(ds, :array_dict)
+    _empty!(ds, :instr)
+    _empty!(ds, :instr_dict)
+    _empty!(ds, :correl)
+    _empty!(ds, :correl_dict)
+    _empty!(ds, :vis)
+    _empty!(ds, :vis2)
+    _empty!(ds, :t3)
+    _empty!(ds, :flux)
+    _empty!(ds, :inspol)
+    return ds
+end
+
 for (type, pass) in ((:OI_TARGET,     1),
                      (:OI_ARRAY,      1),
                      (:OI_WAVELENGTH, 1),

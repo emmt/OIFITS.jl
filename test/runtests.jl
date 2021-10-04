@@ -160,6 +160,25 @@ end
     # Check for fields being read-only.
     @test_throws ErrorException A.array = A.array
 
+    # Clear contents.
+    empty!(A)
+    @test A.target.revn == 0
+    @test length(A.target) == 0
+    @test length(A.target.list) == 0
+    @test length(A.array) == 0
+    @test length(A.instr) == 0
+    @test length(A.correl) == 0
+    @test length(A.vis) == 0
+    @test length(A.vis2) == 0
+    @test length(A.t3) == 0
+    @test length(A.flux) == 0
+    @test length(A.inspol) == 0
+    @test length(getfield(A, :target_dict)) == 0
+    @test length(getfield(A, :target_id_map)) == 0
+    @test length(getfield(A, :array_dict)) == 0
+    @test length(getfield(A, :instr_dict)) == 0
+    @test length(getfield(A, :correl_dict)) == 0
+
     # Access extensions individually.
     f = FITS(joinpath(dir, "contest-2004-obj1.oifits"))
     for i in 2:length(f)
