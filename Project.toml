@@ -8,7 +8,7 @@ CFITSIO = "3b1b4be9-1499-4b22-8d78-7db3344d1961"
 FITSIO = "525bcba6-941b-5504-bd06-fd0dc1a4d2eb"
 
 [compat]
-julia = "1.3, 1.4"
+julia = "1.3"
 
 [extras]
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"

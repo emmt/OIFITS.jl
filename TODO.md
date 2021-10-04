@@ -13,3 +13,5 @@ be implemented in a near future:
 
 - If a data-block has linked dependencies, push them before pushing the
   data-block itself.
+
+- Optionally, do not copy linked dependencies when copying a data-block.
