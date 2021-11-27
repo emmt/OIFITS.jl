@@ -171,7 +171,7 @@ missing_column(ex::CFITSIO.CFITSIOError) = ex.errcode == 219
 missing_column(ex::Exception) = false
 
 """
-    OIFITS.read_keyword(T, hdu, key [, def]) -> val
+    OIFITS.read_keyword(T, hdu, key, def=OIFITS.unspecified) -> val
 
 yields the value of keyword `key` in FITS header of `hdu` converted to type
 `T`.  If the keyword is not part of the header, then the default value `def` is
@@ -206,7 +206,7 @@ end
           " cannot be converted to type ", T)
 
 """
-    OIFITS.read_column([T,] hdu, col [, def]) -> val
+    OIFITS.read_column(T=Array, hdu, col, def=OIFITS.unspecified) -> val
 
 yields the contents of column `col` in FITS table `hdu` and converted to array
 type `T`.  If the column is not part of the table, then the default value `def`
@@ -215,6 +215,9 @@ This method provides some type-stability and add missing leading dimensions as
 needed.
 
 """
+read_column(hdu::TableHDU, col::String, def = unspecified) =
+    read_column(Array, hdu, col, def)
+
 function read_column(T::Type{<:Array}, hdu::TableHDU, col::String,
                      def = unspecified)
     try
@@ -234,7 +237,8 @@ function _convert_column(::Type{T}, col::String, val::T) where {T}
     return val
 end
 
-for T in (Bool, Integer, AbstractFloat, Complex{<:AbstractFloat}, AbstractString)
+for T in (Bool, Integer, AbstractFloat, Complex{<:AbstractFloat},
+          AbstractString)
     @eval begin
         function _convert_column(::Type{Array{T,N}}, col::String,
                                  val::AbstractArray{<:$T,N}) where {T<:$T,N}

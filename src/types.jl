@@ -6,23 +6,41 @@
 #------------------------------------------------------------------------------
 
 """
+    OIFITS.Undef
 
-`OIFITS.Undef` is the type of `undef`.
+is the type of `undef`.
 
 """
 const Undef = typeof(undef)
 
-# Private singleton type used to indicate unspecified arguments/keywords.
+"""
+    OIFITS.unspecified
+
+is a singleton object (of type `OIFITS.Unspecified`) used to indicate
+unspecified arguments/keywords in `OIFITS` package.
+
+"""
 struct Unspecified; end
 const unspecified = Unspecified()
+@doc @doc(Unspecified) unspecified
 
-# Exception thrown when a keyword is not found in a FITS header.
+"""
+    OIFITS.MissingKeyword
+
+is the type of exceptions thrown when a keyword is not found in a FITS header.
+
+"""
 struct MissingKeyword <: Exception
     key::String
     ext::String
 end
 
-# Exception thrown when a column is not found in a FITS table.
+"""
+    OIFITS.MissingColumn
+
+is the type of exceptions thrown when a column is not found in a FITS table.
+
+"""
 struct MissingColumn <: Exception
     col::String
     ext::String
@@ -32,8 +50,9 @@ end
 const empty_string = ""
 
 """
+    OIDataBlock
 
-`OIDataBlock` is the abstract super-type of any OI-FITS data-block.
+is the abstract super-type of any OI-FITS data-block.
 
 """
 abstract type OIDataBlock end
