@@ -1,9 +1,9 @@
-# OIFITS.jl
+# Support for OI-FITS data in Julia
 
-| **License**                     | **Build Status**                                                | **Code Coverage**                                                   |
-|:--------------------------------|:----------------------------------------------------------------|:--------------------------------------------------------------------|
-| [![][license-img]][license-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] | [![][coveralls-img]][coveralls-url] [![][codecov-img]][codecov-url] |
-
+[![License][license-img]][license-url]
+[![Build Status][github-ci-img]][github-ci-url]
+[![Build Status][appveyor-img]][appveyor-url]
+[![Coverage][codecov-img]][codecov-url]
 
 The `OIFITS.jl` package provides support for OI-FITS data in Julia language.
 
@@ -588,14 +588,11 @@ Community's Seventh Framework Programme (FP7/2013-2016) under Grant Agreement
 [license-url]: ./LICENSE.md
 [license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
 
-[travis-img]: https://travis-ci.com/emmt/OIFITS.jl.svg?branch=master
-[travis-url]: https://travis-ci.com/emmt/OIFITS.jl
+[github-ci-img]: https://github.com/emmt/OIFITS.jl/actions/workflows/CI.yml/badge.svg?branch=master
+[github-ci-url]: https://github.com/emmt/OIFITS.jl/actions/workflows/CI.yml?query=branch%3Amaster
 
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/OIFITS.jl?branch=master
 [appveyor-url]: https://ci.appveyor.com/project/emmt/OIFITS-jl/branch/master
-
-[coveralls-img]: https://coveralls.io/repos/emmt/OIFITS.jl/badge.svg?branch=master&service=github
-[coveralls-url]: https://coveralls.io/github/emmt/OIFITS.jl?branch=master
 
 [codecov-img]: http://codecov.io/github/emmt/OIFITS.jl/coverage.svg?branch=master
 [codecov-url]: http://codecov.io/github/emmt/OIFITS.jl?branch=master
