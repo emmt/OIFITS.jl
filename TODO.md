@@ -15,3 +15,5 @@ be implemented in a near future:
   data-block itself.
 
 - Optionally, do not copy linked dependencies when copying a data-block.
+
+- Use `EasyFITS` package and extend the `write!` method.
