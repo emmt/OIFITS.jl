@@ -565,7 +565,8 @@ merged data-set.
 
 The development of this package has received funding from the European
 Community's Seventh Framework Programme (FP7/2013-2016) under Grant Agreement
-312430 (OPTICON).
+312430 (OPTICON) and is currently supported by the [Jean-Marie Mariotti Center
+(JMMC)](http://www.jmmc.fr/).
 
 
 ## References
