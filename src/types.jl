@@ -68,15 +68,15 @@ abstract type OIDataBlock end
 #   code to ensure that may be provided.
 #
 # The sections called "Header Part" and "Data Part" correspond to the HDU FITS
-# Table.  The section called "Dependencies" consists in additional fields
+# Table. The section called "Dependencies" consists in additional fields
 # managed by the package to keep track of the data-set structure owning the
 # data-block and to links to other data-blocks such as the instrument and the
 # telescope array for complex visibility measurements.
 #
 # There is (to my knowledge) no official means to "undefine" a field in a
 # structure so the OIFITS API does not provide means to pop a data-block out of
-# a data-set.  One has to build another data-set.  Hopefully this is easy (with
-# the API), fast and memory efficient.
+# a data-set. One has to build another data-set. Hopefully this is easy (with
+# the API), fast, and memory efficient.
 
 struct OITargetEntry
     target_id ::Int     # index number
@@ -347,10 +347,10 @@ const NamedDataBlock = Union{OI_ARRAY,OI_WAVELENGTH,OI_CORR}
 
 """
 
-`OIDataSet` stores the contents of an OI-FITS file.  All data-blocks containing
+`OIDataSet` stores the contents of an OI-FITS file. All data-blocks containing
 measurements (`OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX` and `OI_INSPOL`) are
-stored into a vector and thus indexed by an integer.  Named data-blocks
-(`OI_ARRAY`, `OI_WAVELENGTH` and `OI_CORR`) are indexed by their names
+stored into a vector and thus indexed by an integer. Named data-blocks
+(`OI_ARRAY`, `OI_WAVELENGTH` and `OI_CORR`) are indexedby their names
 (converted to upper case letters, with leading and trailing spaces stripped,
 multiple spaces replaced by a single ordinary space).
 
@@ -359,12 +359,12 @@ Reading an OI-FITS file is as simple as one of:
     data = OIDataSet(filename)
     data = read(OIDataSet, filename)
 
-with `filename` the name of the file.  Keyword `hack_revn` can be used to force
+with `filename` the name of the file. Keyword `hack_revn` can be used to force
 the revision number (FITS keyword `OI-REVN`) of all OI-FITS data-blocks;
 `hack_revn` may be set to an integer, the revision number to assume for all
 data-blocks, or to a function that takes 2 arguments, the type and actual
 revision number of the cuurrent data-block, and that returns the revision
-number to assume.  For example, to force revision number 1 for all `OI_VIS`
+number to assume. For example, to force revision number 1 for all `OI_VIS`
 data-blocks and left others unchanged:
 
     data = OIDataSet(filename; hack_revn = (T, revn) -> (T === OI_VIS ? 1 : revn))
@@ -384,7 +384,7 @@ The data-set has a number of properties:
 
 """
 struct OIDataSet
-    # Named data-blocks and their dictionaries to map names to indices.  The
+    # Named data-blocks and their dictionaries to map names to indices. The
     # target identifiers `target_id` are rewritten to match Julia indexing in
     # the vector of target entries.
     target::OI_TARGET            # list of targets data-block

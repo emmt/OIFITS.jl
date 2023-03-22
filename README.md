@@ -11,7 +11,7 @@ The `OIFITS.jl` package provides support for OI-FITS data in Julia language.
 ## OI-FITS types
 
 OI-FITS is a standard to store optical interferometry data as a collection of
-data-blocks.  In the second revision of the standard (see [Ref. 1](#references)
+data-blocks. In the second revision of the standard (see [Ref. 1](#references)
 and [Ref. 2](#references)), an OI-FITS file may contain the following
 data-blocks:
 
@@ -20,21 +20,21 @@ data-blocks:
 * each `OI_WAVELENGTH` data-block describes a given instrument notably the
   effective wavelengths and bandwidths of its spectral channels;
 * `OI_CORR` data-blocks store correlation data;
-* `OI_VIS` data-blocks store complex visibility dat;
+* `OI_VIS` data-blocks store complex visibility data;
 * `OI_VIS2` data-blocks store squared visibility (powerspectrum) data;
 * `OI_T3` data-blocks store triple product (bispectrum) data;
 * `OI_FLUX` data-blocks store spectral flux data;
 * `OI_INSPOL` data-blocks store instrumental polarization data.
 
-These data-blocks, are stored as binary tables in a FITS data file.  The
-support for FITS files is provided by the
+These data-blocks are stored as binary tables in a FITS data file. The support
+for FITS files is provided by the
 [`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package.
 
-The julia type of an OI-FITS data-block is named as the
-corresponding OI-FITS extension. In addition to these types for individual OI-FITS data-blocks, the `OIFITS.jl`
-package provides data-sets (of type `OIDataSet`) that contain several OI-FITS
-data-blocks. Each data-set is an efficient representation of the contents of a
-compliant OI-FITS file.
+The Julia type of an OI-FITS data-block is named as the corresponding OI-FITS
+extension. In addition to these types for individual OI-FITS data-blocks, the
+`OIFITS.jl` package provides data-sets (of type `OIDataSet`) that contain
+several OI-FITS data-blocks. Each data-set is an efficient representation of
+the contents of a compliant OI-FITS file.
 
 
 ## Reading and writing OI-FITS files
@@ -49,7 +49,7 @@ ds = read(OIDataSet, input)
 ```
 
 where `input` it the name of the OI-FITS file or an instance of `FITSIO.FITS`
-which represents an open FITS file.  The above `read` call is equivalent to the
+which represents an open FITS file. The above `read` call is equivalent to the
 shortcut:
 
 ```julia
@@ -83,7 +83,7 @@ specified to allow for silently overwriting an existing file.
 ### Reading individual OI-FITS data-blocks
 
 It may be useful to read individual OI-FITS data-blocks, to debug or to fix the
-contents of a non-compliant OI-FITS file.  To that end, you must open the FITS
+contents of a non-compliant OI-FITS file. To that end, you must open the FITS
 file and can then read a given HDU as an OI-FITS data-block:
 
 ```julia
@@ -113,10 +113,10 @@ f = FITS(filename, "w") # open FITS file for writing
 write(f, db)            # write db in the next HDU of f
 ```
 
-To fix a non-compliant OI-FITS file (usually dupplicate target or instarument
+To fix a non-compliant OI-FITS file (usually duplicate target or instrument
 names), you can read all the data-blocks, fix those which are wrong and push
 them in **order** in an `OIDataSet` to have a consistent data-set which you can
-then directly use or write in an OI-FITS file for later.  Thanks to the
+then directly use or write in an OI-FITS file for later. Thanks to the
 automatic rewriting of target identifiers and of the fact that targets (and
 other dependencies) are identified by their name and consistently merged, it is
 possible to push an `OI_TARGET` with multiply defined identical targets (apart
@@ -145,8 +145,8 @@ consistent set of OI-FITS data-blocks.  The following properties are available:
   ```
 
   Matching of names follows FITS conventions that case of letters and trailing
-  spaces are ignored.  An exception is thrown if the index (integer or name) is
-  not valid.  The `get` method can be used to provide a default value, for
+  spaces are ignored. An exception is thrown if the index (integer or name) is
+  not valid. The `get` method can be used to provide a default value, for
   example:
 
   ```julia
@@ -175,8 +175,8 @@ consistent set of OI-FITS data-blocks.  The following properties are available:
 Other fields of data-sets shall be considered as **private** and not accessed
 directly.
 
-Using the dot notation, it is easy to access to the different data-blocks
-containing measurements.  For instance:
+Using the dot notation, it is easy to access the different data-blocks
+containing measurements. For instance:
 
 ```julia
 for db in ds.vis2
@@ -363,8 +363,8 @@ the index in the list of targets of the data-set.
 
 Reading an OI-FITS file is the easiest way to define a data-set but a new
 OI-FITS data-set may be built by creating an empty data-set with `OIDataSet()`,
-and then pushing OI-FITS data-blocks **in order** with `push!(...)`.  Indeed,
-in order to ensure the consistency of a data-set, it is required to push the
+and then pushing OI-FITS data-blocks **in order** with `push!(...)`. Indeed, in
+order to ensure the consistency of a data-set, it is required to push the
 dependencies (`OI_TARGET`, `OI_ARRAY`, `OI_WAVELENGTH`, and `OI_CORR`
 data-blocks) **before** the data-blocks containing measurements (`OI_VIS`,
 `OI_VIS2`, `OI_T3`, `OI_FLUX`, and `OI_INSPOL`) that may refer to them.
@@ -415,15 +415,15 @@ ds = OIDataSet(arr, ins, cor, tgt, d1, db2, ...)
 
 These two are equivalent to the multi-line example above, but remember that
 pushing data-blocks in order (i.e., dependencies before they may be referenced)
-is required to have a consistent data-set.  Apart from this constraint,
+is required to have a consistent data-set. Apart from this constraint,
 dependencies may be pushed in any order **before** the data-blocks with
-measurements and data-blocks with measurements can be be pushed in any order
+measurements and data-blocks with measurements can be pushed in any order
 **after** dependencies.
 
 As a benefit of the constraint of pushing data-blocks in order, data-blocks
 with dependencies are automatically linked to these dependencies when pushed on
 the data-set (which implies that the dependencies already exist in the
-data-set).  This allows for syntaxic sugar like:
+data-set). This allows for syntactic sugar like:
 
 ```julia
 ds.vis2[i].eff_wave # the wavelengths of the i-th OI_VIS2 data-block in ds
@@ -432,14 +432,14 @@ ds.vis[i].instr     # the instrument used for the i-th OI_VIS data-block in ds
 ```
 
 Without linked dependencies, the first above example would require to (1) find
-in the data-set `ds` the `OI_WAVELENGTH` instance, say `ins`, whose name is
-matching `ds.vi2[i].insname` and (2) extract the field `eff_wave` of `ins`.
-The latter step is as simple as `ins.eff_wave` but the former one has some
+in the data-set `ds` the `OI_WAVELENGTH` instance, say `instr`, whose name is
+matching `ds.vi2[i].insname` and (2) extract the field `eff_wave` of `instr`.
+The latter step is as simple as `instr.eff_wave` but the former one has some
 overheads and scales as `O(n)` with `n` the number of `OI_WAVELENGTH` instances
 in the data-set.
 
 Since an OI-FITS data-set has a single list of targets (an `OI_TARGET` instance
-accessible via `ds.target`), a mean to merge list of targets had to de defined.
+accessible via `ds.target`), a mean to merge list of targets had to be defined.
 The adopted rule is pretty simple:
 
 > The `target_id` field of any data-block that is part of a data-set
@@ -447,8 +447,8 @@ The adopted rule is pretty simple:
 > the data-set.
 
 As a consequence, whenever a data-block is pushed into a data-set, the target
-identifiers of the data-block have to be rewritten according to this rule.  Of
-course this does not apply for data-blocks with no `target_id` field such as
+identifiers of the data-block have to be rewritten according to this rule. Of
+course, this does not apply for data-blocks with no `target_id` field such as
 `OI_ARRAY`, `OI_WAVELENGTH`, and `OI_CORR`.
 
 To summarize, here is what happens under the hood when a data-block `db` is
@@ -457,18 +457,18 @@ pushed into a data-set `ds`:
 - When an `OI_ARRAY`, `OI_WAVELENGTH`, or `OI_CORR` instance `db` is pushed in
   a data-set `ds`, it is appended to the corresponding list (`ds.array`,
   `ds.instr`, or `ds.correl`) unless this list already has an entry with a name
-  matching `db.name`.  In this latter case, nothing is done unless that an
+  matching `db.name`. In this latter case, nothing is done unless that an
   assertion exception is thrown if the two data-blocks whose names are matching
   do not have the same contents (to prevent building inconsistent data-sets).
 
 - When an `OI_TARGET` instance is pushed in a data-set, the new targets
   (according to their names) are appended to the list of targets in the
-  data-set and their identifiers set to their index in this list.  This also
+  data-set and their identifiers set to their index in this list. This also
   re-initializes an internal dictionary used to perform the conversion from all
   the target identifiers of the `OI_TARGET` instance that has been pushed to
-  the target identifiers in the data-set.  Until it is reinitialized (by
-  pushing another `OI_TARGET` instance), this mapping is used to rewrite the
-  target identifiers of subsequent data-blocks pushed in the data-set.
+  the target identifiers in the data-set. Until it is reinitialized (by pushing
+  another `OI_TARGET` instance), this mapping is used to rewrite the target
+  identifiers of subsequent data-blocks pushed in the data-set.
 
 - When an `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, or `OI_INSPOL` instance `db`
   is pushed in a data-set `ds`, it is appended to the corresponding list
@@ -476,18 +476,18 @@ pushed into a data-set `ds`:
   linked to its dependencies (`OI_ARRAY`, `OI_WAVELENGTH`, etc., which must
   already exist in the data-set), and its target identifiers have been
   rewritten according to the mapping defined by the last `OI_TARGET` instance
-  previously pushed to the data-set.  Rewriting of the target identifiers may
-  be avoided by using the keyword `rewrite_target_id=false`, this assumes that
-  the target identifiers in the pushed data-block are already set according to
-  the index in the list of targets `ds.target`.
+  previously pushed to the data-set. Rewriting of the target identifiers may be
+  avoided by using the keyword `rewrite_target_id=false`, this assumes that the
+  target identifiers in the pushed data-block are already set according to the
+  index in the list of targets `ds.target`.
 
 Pushing a data-block in a data-set does check the consistency of the
-data-block.  This is to allow for building the data-blocks step by step so that
+data-block. This is to allow for building the data-blocks step by step so that
 they not need to be consistent at all times (just when pushed into a data-set).
 
-Pushing a data-block in a data-set lefts the data-block unchanged.  A swallow
-copy of it is added to the data-blocks stored by the data-set.  Most members of
-the pushed data-blocks are shared by the one stored by the data-set whith the
+Pushing a data-block in a data-set lefts the data-block unchanged. A swallow
+copy of it is added to the data-blocks stored by the data-set. Most members of
+the pushed data-blocks are shared by the one stored by the data-set with the
 notable exception of the target identifiers which are rewritten and the links
 to the dependencies which are updated.
 
@@ -497,7 +497,7 @@ identifiers just amounts to assuming that the target identifiers of `OI_VIS`,
 refer to the last `OI_TARGET` instance previously pushed on the same data-set.
 
 Pushing several groups of data-blocks, each group making a consistent data-set,
-in the same data-set is easy.  Typically:
+in the same data-set is easy. Typically:
 
 ```julia
 # First push dependencies for group 1.
@@ -522,7 +522,7 @@ push!(ds, group2_db2)
 
 Since they are referenced by their names, it is not necessary to push
 `OI_ARRAY`, `OI_WAVELENGTH`, and `OI_COORREL` dependencies if they already
-exist in the data-set (according to their name), but it doesn't hurt.  It is
+exist in the data-set (according to their name), but it doesn't hurt. It is
 however mandatory to push an `OI_TARGET` instance with all targets and their
 identifiers as assumed by the subsequent data-blocks.
 
@@ -538,15 +538,16 @@ C = merge(A, B)
 
 As much as possible, the resulting data-set `C` will share its contents with
 `A` and/or `B` but without affecting `A` and `B` which are guaranteed to remain
-unchanged.  As for pushing data-blocks, the target identifiers (the `target_id`
+unchanged. As for pushing data-blocks, the target identifiers (the `target_id`
 field) may be rewritten in the result.
 
 Merging of data-sets assumes that the two merged data-sets are *consistent* and
-*compatible*.  Here *compatible* means that targets and dependencies with
-matching names must have the same contents.  This is checked during the merge
+*compatible*. Here *compatible* means that targets and dependencies with
+matching names must have the same contents. This is checked during the merge
 operation.
 
-It is also allowed to merge several data-sets and/or merge data-sets *in-place*:
+It is also allowed to merge several data-sets and/or merge data-sets
+*in-place*:
 
 ```julia
 ds = merge(ds1, ds2, ds3, ...) # merge ds1, ds2, ... in new data-set ds

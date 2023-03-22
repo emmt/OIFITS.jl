@@ -11,20 +11,19 @@ module Formats
     def = OIFITS.Formats.FieldDefinition(...)
 
 yields a field definition of a keyword or column, of an entry of an OI-FITS
-data-block.   The following fields are available:
+data-block. The following properties are available:
 
 - `def.name` specifies the name of the keyword or column in the FITS file.
 
 - `def.symb` specifies the symbolic field name in the corresponding Julia
   structure.
 
-- `def.type` specifies the data type.  It is `:A` for strings, `:C` for
+- `def.type` specifies the data type. It is `:A` for strings, `:C` for
   complexes, `:D` or `:E` for reals (floating-points), `:I` or `:J` for
   integers, and `:L` for booleans.
 
 - `def.rank` is `0` for keywords, `n > 0` for `n` elements per row, `n < 0` for
-  cell of `-n` dimensions of length equal to the number of
-  spectral channels.
+  cell of `-n` dimensions of length equal to the number of spectral channels.
 
 - `def.optional` specifies whether the keyword / column is optional according
   to the standard.
@@ -52,11 +51,11 @@ struct FieldDefinition
 end
 
 Base.ndims(s::FieldDefinition) =
-    (s.rank == 0   ? 0          : # keyword
-     s.type === :A ? 1          : # column of strings
-     s.rank == 1   ? 1          : # column of values
-     s.rank < 0    ? 1 - s.rank : # column of wavelength-wise multi-dim. cells
-     2)                           # column of multiple values
+    s.rank == 0   ? 0          : # keyword
+    s.type === :A ? 1          : # column of strings
+    s.rank == 1   ? 1          : # column of values
+    s.rank < 0    ? 1 - s.rank : # column of wavelength-wise multi-dim. cells
+    2                            # column of multiple values
 
 const FORMATS = Dict{Tuple{Symbol,Int},Vector{FieldDefinition}}()
 
@@ -91,9 +90,20 @@ end
     @header key type descr
 
 yields an instance of `FieldDefinition` for an OI-FITS header keyword `key` (a
-string) with value type and description specified by `type` and `descr`.  The
+string) with value type and description specified by `type` and `descr`. The
 syntax closely follows that of the tables of the papers specifying the OI-FITS
-format.
+format. Arguments `key` and `descr` are strings, `type` is one of the letter
+`I` (for integer), `D` (for floating-point), or `A` (for string). Optional
+keywords have their `type` suffixed by single quote (as the ARRNAME keyword in
+the example below).
+
+Examples:
+
+    @header "OI_REVN"   I   "revision number of the table definition"
+    @header "DATE-OBS"  A   "UTC start date of observations"
+    @header "ARRNAME"   A'  "name of corresponding array"
+    @header "INSNAME"   A   "name of corresponding detector"
+    @header "ARRAYZ"    D   "array center Z-coordinate [m]"
 
 References:
 
@@ -122,8 +132,20 @@ end
 
 yields an instance of `FieldDefinition` for an OI-FITS column `key` (a string
 or symbol) with cell type and dimensions specified by `type` and description
-given by `descr`.  The syntax closely follows that of the tables of the papers
-specifying the OI-FITS format.
+given by `descr`. The syntax closely follows that of the tables of the papers
+specifying the OI-FITS format. Arguments `key` and `descr` are strings, `type`
+is one of the letters `L` (for logical), `I`, `J`, `K` (for 16-,32-,64-bit
+integers), `E`, `D` (for 32-,64-bit floating-point), or `A` (for string),
+followed by the cell dimensions in parenthesis. A wavelength-wise is indicated
+by the letter `W`. Optional columns have their `type` suffixed by single quote.
+
+Examples:
+    @column "VISPHI"           D(W)     "visibility phase [deg]"
+    @column "VISPHIERR"        D(W)     "error in visibility phase [deg]"
+    @column "CORRINDX_VISPHI"  J(1)'    "index into correlation matrix for 1st VISPHI element"
+    @column "VISREFMAP"        L(W,W)'  "true where spectral channels were taken as reference for differential visibility computation"
+    @column "TARGET_ID"        I(1)     "target number as index into OI_TARGET table"
+    @column "TIME"             D(1)     "UTC time of observation [s]"
 
 References:
 
@@ -362,9 +384,9 @@ define("OI_VIS", 1, [
     @column "FLAG"       L(W)  "flag"
 ])
 
-# FIXME: In OI-FITS Rev. 2 only MJD and DATE-OBS must be used to express
-#        time. The TIME column is retained only for backwards compatibility
-#        and must contain zeros.
+# FIXME: In OI-FITS Rev. 2, only MJD and DATE-OBS must be used to express time.
+#        The TIME column is retained only for backwards compatibility and must
+#        contain zeros.
 
 # OI_VIS definition (2nd revision):
 define("OI_VIS", 2, [
