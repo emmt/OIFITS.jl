@@ -519,7 +519,7 @@ function push!(ds::OIDataSet, db::T;
     function find_depencency(dest_list::Vector{T},
                              dest_dict::Dict{String,Int},
                              dep::AbstractString,
-                             optional::Bool = false) where {S,T<:OIDataBlock}
+                             optional::Bool = false) where {T<:OIDataBlock}
         name = fix_name(dep)
         if haskey(dest_dict, name)
             return dest_list[dest_dict[name]]
