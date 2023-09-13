@@ -8,10 +8,10 @@
 """
     OIFITS.is_same(a, b)
 
-yields whether `a` and `b` are sufficiently identical for OI-FITS data.  If `a`
-and `b` are strings, trailing spaces and case of letters are irrelevant.  If
-`a` and `b` are arrays, they are compared element-wise.  This operator is used
-in OI-FITS to merge contents.  For an `OITargetEntry`, the target identifier is
+yields whether `a` and `b` are sufficiently identical for OI-FITS data. If `a`
+and `b` are strings, trailing spaces and case of letters are irrelevant. If `a`
+and `b` are arrays, they are compared element-wise. This operator is used in
+OI-FITS to merge contents. For an `OITargetEntry`, the target identifier is
 ignored.
 
 """
@@ -104,14 +104,14 @@ end
     OIFITS.fix_name(str)
 
 yields string `str` converted to uppercase letters and with trailing spaces
-removed.  This is to follow FITS conventions that names comparisons should be
+removed. This is to follow FITS conventions that names comparisons should be
 done ignoring the case of letters and trailing spaces.
 
 """
 fix_name(str::AbstractString) = uppercase(rstrip(str))
 
 # Extend A[name] syntax to get an OI_ARRAY, OI_WAVELENGTH, or OI_CORR by its
-# name (according to FITS conventions).  The syntax keys(String,A) can be used
+# name (according to FITS conventions). The syntax keys(String,A) can be used
 # to get an iterator over the string keys of A.
 for (type, name) in ((:OI_ARRAY,      :arrname),
                      (:OI_WAVELENGTH, :insname),
@@ -150,10 +150,10 @@ end
     OIFITS.extname(arg)
 
 yields the name of the FITS extension for argument `arg` which can be an
-OI-FITS datablock instance or type or a FITS table HDU.  In this latter case,
-an empty string is returned if the `EXTNAME` keyword is not found and the
+OI-FITS datablock instance or type or a FITS table HDU. In this latter case, an
+empty string is returned if the `EXTNAME` keyword is not found and the
 extension name is converted to upper case letters and trailing spaces discarded
-otherwise.  This method is not exported, the same result for a data-block
+otherwise. This method is not exported, the same result for a data-block
 instance `db` is obtained by `db.extname`.
 
 For a data-block instance or type `db`, an optional first argument, `Symbol` or
@@ -284,7 +284,7 @@ end
 # PROPERTIES OF DATA-SETS
 #
 # Here, we want to make the "private" fields of data-sets (the dictionaries)
-# "hidden" to the user.  They can only be retrieved by getfield(ds,sym).
+# "hidden" to the user. They can only be retrieved by getfield(ds,sym).
 
 # Public properties for data-sets.
 _properties(::Type{OIDataSet}) = (:target, :array, :instr, :correl,
@@ -331,9 +331,9 @@ function copy(A::T) where {T<:OIDataBlock}
 end
 
 function copy(A::OIDataSet)
-    # Create new instance and copy contents.  Including the dictionary for
-    # re-writing target identifiers.  The copy is thus in the same "state" as
-    # the original.  Note that using `map` is ~ 3.6 times slower here.
+    # Create new instance and copy contents. Including the dictionary for
+    # re-writing target identifiers. The copy is thus in the same "state" as
+    # the original. Note that using `map` is ~ 3.6 times slower here.
     B = OIDataSet()
     _copy!(B, A, :target)
     _copy!(B, A, :target_dict)
@@ -426,9 +426,9 @@ end
 """
     push!(ds::OIDataSet, db) -> ds
 
-adds an OI-FITS data-block `db` in the data-set `ds` and returns `ds`.  After
+adds an OI-FITS data-block `db` in the data-set `ds` and returns `ds`. After
 the operation, the contents of `db` is left unchanged but may be partially
-shared by `ds`.  Depending on type of `db`, different things can happen:
+shared by `ds`. Depending on type of `db`, different things can happen:
 
 - If `db` is an `OI_TARGET` instance, the targets from `db` not already in the
   data-set `ds` are added to the list of targets in `ds` and the internal
@@ -437,15 +437,15 @@ shared by `ds`.  Depending on type of `db`, different things can happen:
 
 - If `db` is an `OI_ARRAY`, `OI_WAVELENGTH`, or `OI_CORR` instance, it is added
   to the corresponding list of data-blocks in the data-set `ds` unless an entry
-  with a name matching that of `db` already exists in `ds`.  In this latter
+  with a name matching that of `db` already exists in `ds`. In this latter
   case, nothing is done except checking that the two data-blocks with matching
-  names have the same contents.  This is need to ensure the consistency of the
-  data-set.
+  names have the same contents. This is to ensure the consistency of the
+  data-set `ds`.
 
 - If `db` is an `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, or `OI_INSPOL`
   instance, it is added to the corresponding list of data-blocks in the
   data-set `ds` after having rewritten its target identifiers according to the
-  mapping set by the last `OI_TARGET` pushed into the data-set `ds`.  Add
+  mapping set by the last `OI_TARGET` pushed into the data-set `ds`. Add
   keyword `rewrite_target_id=false` to avoid rewritting target identifiers.
 
 """
@@ -475,7 +475,7 @@ function push!(ds::OIDataSet, db::OI_TARGET)
                 " but for different targets")
         end
         if haskey(target_dict, name)
-            # The same target already existed in destination.  Check that they
+            # The same target already existed in destination. Check that they
             # have the same parameters.
             index = target_dict[name]
             is_same(target_list[index], tgt) || error(
@@ -584,7 +584,7 @@ _dict(::Type{OI_CORR},       ds::OIDataSet) = getfield(ds, :correl_dict)
     OIFITS.rewrite_indices(inds, dict) -> inds′
 
 yields array of indices similar to `inds` and rewritten according to the
-dictionary `dict` used as a mapping from integers to integers.  If the indices
+dictionary `dict` used as a mapping from integers to integers. If the indices
 are left unchanged, the input array is returned.
 
 """
@@ -604,7 +604,7 @@ end
 """
     OIFITS.assert_identical(A, B)
 
-throws an exception if *named* data-blocks `A` and `B` are not identical.  A
+throws an exception if *named* data-blocks `A` and `B` are not identical. A
 *named* data-block is an `OI_ARRAY`, `OI_WAVELENGTH`, or `OI_CORR` extension
 that can be uniquely identifed by its name.
 
@@ -671,7 +671,7 @@ throw_assertion_error(msg::AbstractString) = throw(AssertionError(msg))
     OIFITS.check(db) -> (nchns, nfrms)
 
 checks that mandatory fields of data-block `db` are defined and that defined
-fields have correct sizes.  The number of spectral channels `nchns` and of
+fields have correct sizes. The number of spectral channels `nchns` and of
 temporal frames `nfrms` are returned (with a value of `-1` if not relevant for
 the type of `db`).
 
@@ -849,8 +849,8 @@ end
 """
     OITargetEntry([def::OITargetEntry]; kwds...)
 
-yields an entry of the `OI_TARGET` table in an OI-FITS file.  All fields are
-specified by keywords.  If template entry `def` is specified, keywords have
+yields an entry of the `OI_TARGET` table in an OI-FITS file. All fields are
+specified by keywords. If template entry `def` is specified, keywords have
 default values taken from `def`; otherwise all keywords are mandatory but
 `category` which is assumed to be `""` if unspecified.
 
@@ -936,8 +936,8 @@ end
 """
     OI_TARGET(lst=OITargetEntry[]; revn=0)
 
-yields an `OI_TARGET` data-block.  Optional argument `lst` is a vector of
-`OITargetEntry` specifying the targets (none by default).  Keyword `revn`
+yields an `OI_TARGET` data-block. Optional argument `lst` is a vector of
+`OITargetEntry` specifying the targets (none by default). Keyword `revn`
 specifies the revision number.
 
 An instance, say `db`, of `OI_TARGET` has the following properties:
@@ -960,9 +960,9 @@ identifiers (field `target_id`) are automatically rewritten to be identical to
 the index in the list of targets of the data-set.
 
 Standard methods `get` and `haskey` work as expected and according to the type
-(integer or string) of the key.  For the `keys` method, the default is to
-return an iterator over the target names, but the type of the expected keys
-can be specified:
+(integer or string) of the key. For the `keys` method, the default is to return
+an iterator over the target names, but the type of the expected keys can be
+specified:
 
     keys(db)          # iterator over target names
     keys(String, db)  # idem
@@ -1061,7 +1061,7 @@ keys(::Type{Integer}, db::OI_TARGET) = eachindex(db)
 """
     OIFITS.get_column([T,] db::OI_TARGET, col)
 
-yields the column `col` of an OI-FITS data-block `db`.  Column is identified by
+yields the column `col` of an OI-FITS data-block `db`. Column is identified by
 `col` which is either `sym` or `Val(sym)` where `sym` is the symbolic name of
 the corresponding field in `OITargetEntry`.
 

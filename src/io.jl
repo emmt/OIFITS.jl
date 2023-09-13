@@ -57,7 +57,7 @@ function write(filename::AbstractString, ds::OIDataSet;
     return nothing
 end
 
-# Writing an OI-FITS file is easy: just write all datablocks.  To make reading
+# Writing an OI-FITS file is easy: just write all datablocks. To make reading
 # easier, dependencies are written first.
 function write(f::FITS, ds::OIDataSet; quiet::Bool=false)
     write(f, ds.target)
@@ -174,8 +174,8 @@ missing_column(ex::Exception) = false
     OIFITS.read_keyword(T, hdu, key, def=OIFITS.unspecified) -> val
 
 yields the value of keyword `key` in FITS header of `hdu` converted to type
-`T`.  If the keyword is not part of the header, then the default value `def` is
-returned if specified, otherwise a `MissingKeyword` exception is thrown.  This
+`T`. If the keyword is not part of the header, then the default value `def` is
+returned if specified, otherwise a `MissingKeyword` exception is thrown. This
 method provides some type-stability.
 
 """
@@ -209,9 +209,9 @@ end
     OIFITS.read_column(T=Array, hdu, col, def=OIFITS.unspecified) -> val
 
 yields the contents of column `col` in FITS table `hdu` and converted to array
-type `T`.  If the column is not part of the table, then the default value `def`
-is returned if specified, otherwise a `MissingColumn` exception is thrown.
-This method provides some type-stability and add missing leading dimensions as
+type `T`. If the column is not part of the table, then the default value `def`
+is returned if specified, otherwise a `MissingColumn` exception is thrown. This
+method provides some type-stability and add missing leading dimensions as
 needed.
 
 """
@@ -284,7 +284,7 @@ read(::Type{OIDataSet}, filename::AbstractString; kwds...) =
     end
 
 # Thanks to the implemented methods, reading an OI-FITS file is not too
-# difficult.  The dependencies must however be read first and the OI-FITS file
+# difficult. The dependencies must however be read first and the OI-FITS file
 # must be a consistent data-set in itself.
 function read(::Type{OIDataSet}, f::FITS; kwds...)
     # Starting with an empty data-set, first read all dependencies, then all

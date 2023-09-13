@@ -64,7 +64,7 @@ const FORMATS = Dict{Tuple{Symbol,Int},Vector{FieldDefinition}}()
 
 yields a vector of `OIFITS.Formats.Field` instances corresponding to the FITS
 keywords and columns of an OI-FITS data-block `ext` with revision number
-`revn`.  If `ext` and `revn` do not correspond to any known definition,
+`revn`. If `ext` and `revn` do not correspond to any known definition,
 `nothing` is returned if `throw_errors` is `false` (the default), otherwise an
 exception is thrown.
 

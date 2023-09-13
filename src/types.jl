@@ -27,7 +27,8 @@ const unspecified = Unspecified()
 """
     OIFITS.MissingKeyword
 
-is the type of exceptions thrown when a keyword is not found in a FITS header.
+is the type of exceptions thrown when a keyword is not found in an OI-FITS
+header.
 
 """
 struct MissingKeyword <: Exception
@@ -38,7 +39,8 @@ end
 """
     OIFITS.MissingColumn
 
-is the type of exceptions thrown when a column is not found in a FITS table.
+is the type of exceptions thrown when a column is not found in an OI-FITS
+table.
 
 """
 struct MissingColumn <: Exception
@@ -347,12 +349,12 @@ const NamedDataBlock = Union{OI_ARRAY,OI_WAVELENGTH,OI_CORR}
 
 """
 
-`OIDataSet` stores the contents of an OI-FITS file. All data-blocks containing
-measurements (`OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX` and `OI_INSPOL`) are
-stored into a vector and thus indexed by an integer. Named data-blocks
-(`OI_ARRAY`, `OI_WAVELENGTH` and `OI_CORR`) are indexedby their names
-(converted to upper case letters, with leading and trailing spaces stripped,
-multiple spaces replaced by a single ordinary space).
+`OIDataSet` objects store the contents of an OI-FITS file. All data-blocks
+containing measurements (`OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, and
+`OI_INSPOL`) are stored into a vector and thus indexed by an integer. Named
+data-blocks (`OI_ARRAY`, `OI_WAVELENGTH`, and `OI_CORR`) are indexed by their
+names (converted to upper case letters, with leading and trailing spaces
+stripped, multiple spaces replaced by a single ordinary space).
 
 Reading an OI-FITS file is as simple as one of:
 
@@ -363,9 +365,9 @@ with `filename` the name of the file. Keyword `hack_revn` can be used to force
 the revision number (FITS keyword `OI-REVN`) of all OI-FITS data-blocks;
 `hack_revn` may be set to an integer, the revision number to assume for all
 data-blocks, or to a function that takes 2 arguments, the type and actual
-revision number of the cuurrent data-block, and that returns the revision
-number to assume. For example, to force revision number 1 for all `OI_VIS`
-data-blocks and left others unchanged:
+revision number of the current data-block, and that returns the revision number
+to assume. For example, to force revision number 1 for all `OI_VIS` data-blocks
+and left others unchanged:
 
     data = OIDataSet(filename; hack_revn = (T, revn) -> (T === OI_VIS ? 1 : revn))
 
@@ -375,12 +377,15 @@ Looping over `OI_VIS` data-blocks in the data-set can be done as follows:
         ...
     end
 
-The data-set has a number of properties:
+and similarly for fields `vis2`, `t3`, `flux`, and `inspol` to access
+`OI_VIS2`, `OI_T3`, `OI_FLUX`, and `OI_INSPOL` data-blocks.
 
-    data.target           # yields the OI_TARGET data-block
-    data.instr[insname]   # yields an OI_WAVELENGTH data-block
-    data.array[arrname]   # yields an OI_ARRAY instance
-    data.correl[corrname] # yields an OI_CORR instance
+The data-set has a number of other public properties:
+
+    data.target           # the OI_TARGET data-block
+    data.instr[insname]   # the OI_WAVELENGTH data-block named `insname`
+    data.array[arrname]   # the OI_ARRAY data-block named `arrname`
+    data.correl[corrname] # the OI_CORR data-block named `corrname`
 
 """
 struct OIDataSet
@@ -404,7 +409,7 @@ struct OIDataSet
     flux::Vector{OI_FLUX}        # list of OI_FLUX data-blocks
     inspol::Vector{OI_INSPOL}    # list of OI_INSPOL data-blocks
 
-    # The inner constructor creates an empty structure.  Outer constructors are
+    # The inner constructor creates an empty structure. Outer constructors are
     # provided to populate this structure with data-blocks.
     OIDataSet() = new(
         OI_TARGET(),     Dict{String,Int}(), Dict{Int,Int}(),
