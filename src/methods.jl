@@ -110,12 +110,12 @@ done ignoring the case of letters and trailing spaces.
 """
 fix_name(str::AbstractString) = uppercase(rstrip(str))
 
-# Extend A[name] syntax to get an OI_ARRAY, OI_WAVELENGTH, or OI_CORR by its
+# Extend A[name] syntax to get an OIArray, OIWavelength, or OICorr by its
 # name (according to FITS conventions). The syntax keys(String,A) can be used
 # to get an iterator over the string keys of A.
-for (type, name) in ((:OI_ARRAY,      :arrname),
-                     (:OI_WAVELENGTH, :insname),
-                     (:OI_CORR,       :corrname))
+for (type, name) in ((:OIArray,      :arrname),
+                     (:OIWavelength, :insname),
+                     (:OICorr,       :corrname))
     @eval begin
         getindex(A::AbstractArray{<:$type}, key::AbstractString) = begin
             @inbounds for i in eachindex(A)
@@ -169,18 +169,18 @@ extname(T::Type{<:OIDataBlock}) = extname(String, T)
 extname(S::Type{<:Union{String,Symbol}}, db::OIDataBlock) =
     extname(S, typeof(db))
 
-for sym in (:OI_TARGET,
-            :OI_ARRAY,
-            :OI_WAVELENGTH,
-            :OI_CORR,
-            :OI_VIS,
-            :OI_VIS2,
-            :OI_T3,
-            :OI_FLUX,
-            :OI_INSPOL)
+for (N, T) in ((:OI_TARGET,     OITarget    ),
+               (:OI_ARRAY,      OIArray     ),
+               (:OI_WAVELENGTH, OIWavelength),
+               (:OI_CORR,       OICorr      ),
+               (:OI_VIS,        OIVis       ),
+               (:OI_VIS2,       OIVis2      ),
+               (:OI_T3,         OIT3        ),
+               (:OI_FLUX,       OIFlux      ),
+               (:OI_INSPOL,     OIInsPol    ),)
     @eval begin
-        extname(::Type{String}, ::Type{<:$sym}) = $(String(sym))
-        extname(::Type{Symbol}, ::Type{<:$sym}) = $(QuoteNode(sym))
+        extname(::Type{String}, ::Type{<:$T}) = $(String(N))
+        extname(::Type{Symbol}, ::Type{<:$T}) = $(QuoteNode(N))
     end
 end
 
@@ -212,12 +212,12 @@ get_format(extname::Union{Symbol,AbstractString}, revn::Integer; kwds...) =
 # can be specific to the value of `key`.
 
 # _properties(T) yields public properties for type `T`.
-for T in (OI_TARGET, OI_ARRAY, OI_WAVELENGTH, OI_CORR,
-          OI_VIS, OI_VIS2, OI_T3, OI_FLUX, OI_INSPOL)
+for T in (OITarget, OIArray, OIWavelength, OICorr,
+          OIVis, OIVis2, OIT3, OIFlux, OIInsPol)
     isconcretetype(T) || continue
-    extra_fields = if T <: Union{OI_ARRAY,OI_WAVELENGTH,OI_CORR}
+    extra_fields = if T <: Union{OIArray,OIWavelength,OICorr}
         (:extname, :name,)
-    elseif T <: Union{OI_VIS,OI_VIS2,OI_T3,OI_FLUX}
+    elseif T <: Union{OIVis,OIVis2,OIT3,OIFlux}
         (:extname, :eff_wave, :eff_band,)
     else
         (:extname,)
@@ -242,9 +242,9 @@ setproperty!(db::T, ::Val{S}, val) where {S,T<:OIDataBlock} = begin
     end
 end
 
-for (type, name) in ((:OI_ARRAY,      :arrname),
-                     (:OI_WAVELENGTH, :insname),
-                     (:OI_CORR,       :corrname))
+for (type, name) in ((:OIArray,      :arrname),
+                     (:OIWavelength, :insname),
+                     (:OICorr,       :corrname))
     @eval begin
         getproperty(db::$type, ::Val{:name}) = db.$name
         setproperty!(db::$type, ::Val{:name}, val) = (db.$name = val)
@@ -253,9 +253,9 @@ end
 
 # NOTE: Directly calling `getfield` is necessary to optimize the indirection
 #       (speedup: 1.4ns instead of 370ns).
-_instr(db::Union{OI_VIS,OI_VIS2,OI_T3,OI_FLUX}) = getfield(db, :instr)
-_instr(db::OI_WAVELENGTH) = db
-for type in (:OI_VIS, :OI_VIS2, :OI_T3, :OI_FLUX)
+_instr(db::Union{OIVis,OIVis2,OIT3,OIFlux}) = getfield(db, :instr)
+_instr(db::OIWavelength) = db
+for type in (:OIVis, :OIVis2, :OIT3, :OIFlux)
     @eval begin
         getproperty(db::$type, ::Val{:eff_wave}) =
             _instr(db).eff_wave
@@ -367,7 +367,7 @@ function _copy!(dest::Dict{K,V}, src::Dict{K,V}) where {K,V}
     return dest
 end
 
-function _copy!(dest::OI_TARGET, src::OI_TARGET)
+function _copy!(dest::OITarget, src::OITarget)
     dest.revn = src.revn
     _copy!(dest.list, src.list)
     return dest
@@ -406,15 +406,15 @@ function empty!(ds::OIDataSet)
     return ds
 end
 
-for (type, pass) in ((:OI_TARGET,     1),
-                     (:OI_ARRAY,      1),
-                     (:OI_WAVELENGTH, 1),
-                     (:OI_CORR,       1),
-                     (:OI_VIS,        2),
-                     (:OI_VIS2,       2),
-                     (:OI_T3,         2),
-                     (:OI_FLUX,       2),
-                     (:OI_INSPOL,     2))
+for (type, pass) in ((:OITarget,     1),
+                     (:OIArray,      1),
+                     (:OIWavelength, 1),
+                     (:OICorr,       1),
+                     (:OIVis,        2),
+                     (:OIVis2,       2),
+                     (:OIT3,         2),
+                     (:OIFlux,       2),
+                     (:OIInsPol,     2))
     @eval function _push!(ds::OIDataSet, db::$type, pass::Integer)
         if pass == $pass
             push!(ds, db)
@@ -430,26 +430,26 @@ adds an OI-FITS data-block `db` in the data-set `ds` and returns `ds`. After
 the operation, the contents of `db` is left unchanged but may be partially
 shared by `ds`. Depending on type of `db`, different things can happen:
 
-- If `db` is an `OI_TARGET` instance, the targets from `db` not already in the
+- If `db` is an `OITarget` instance, the targets from `db` not already in the
   data-set `ds` are added to the list of targets in `ds` and the internal
   dictionary in `ds` mapping target identifiers in `db` to those in `ds` is
   reinitialized for subsequent data-blocks.
 
-- If `db` is an `OI_ARRAY`, `OI_WAVELENGTH`, or `OI_CORR` instance, it is added
+- If `db` is an `OIArray`, `OIWavelength`, or `OICorr` instance, it is added
   to the corresponding list of data-blocks in the data-set `ds` unless an entry
   with a name matching that of `db` already exists in `ds`. In this latter
   case, nothing is done except checking that the two data-blocks with matching
   names have the same contents. This is to ensure the consistency of the
   data-set `ds`.
 
-- If `db` is an `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, or `OI_INSPOL`
+- If `db` is an `OIVis`, `OIVis2`, `OIT3`, `OIFlux`, or `OIInsPol`
   instance, it is added to the corresponding list of data-blocks in the
   data-set `ds` after having rewritten its target identifiers according to the
-  mapping set by the last `OI_TARGET` pushed into the data-set `ds`. Add
+  mapping set by the last `OITarget` pushed into the data-set `ds`. Add
   keyword `rewrite_target_id=false` to avoid rewritting target identifiers.
 
 """
-function push!(ds::OIDataSet, db::OI_TARGET)
+function push!(ds::OIDataSet, db::OITarget)
     # Check data-block.
     check(db)
 
@@ -496,7 +496,7 @@ function push!(ds::OIDataSet, db::OI_TARGET)
 end
 
 function push!(ds::OIDataSet,
-               db::T) where {T<:Union{OI_ARRAY,OI_WAVELENGTH,OI_CORR}}
+               db::T) where {T<:Union{OIArray,OIWavelength,OICorr}}
     check(db)
     dict = _dict(T, ds)
     list = _list(T, ds)
@@ -514,7 +514,7 @@ end
 
 function push!(ds::OIDataSet, db::T;
                rewrite_target_id::Bool = true) where {
-                   T<:Union{OI_VIS,OI_VIS2,OI_T3,OI_FLUX,OI_INSPOL}}
+                   T<:Union{OIVis,OIVis2,OIT3,OIFlux,OIInsPol}}
     # Define private helper.
     function find_depencency(dest_list::Vector{T},
                              dest_dict::Dict{String,Int},
@@ -563,21 +563,21 @@ function push!(ds::OIDataSet, db::T;
 end
 
 # `_list(T,ds)` yields the list of entries of type `T` stored in `ds`.
-_list(::Type{OI_ARRAY},      ds::OIDataSet) = ds.array
-_list(::Type{OI_WAVELENGTH}, ds::OIDataSet) = ds.instr
-_list(::Type{OI_CORR},       ds::OIDataSet) = ds.correl
-_list(::Type{OI_VIS},        ds::OIDataSet) = ds.vis
-_list(::Type{OI_VIS2},       ds::OIDataSet) = ds.vis2
-_list(::Type{OI_T3},         ds::OIDataSet) = ds.t3
-_list(::Type{OI_FLUX},       ds::OIDataSet) = ds.flux
-_list(::Type{OI_INSPOL},     ds::OIDataSet) = ds.inspol
+_list(::Type{OIArray},      ds::OIDataSet) = ds.array
+_list(::Type{OIWavelength}, ds::OIDataSet) = ds.instr
+_list(::Type{OICorr},       ds::OIDataSet) = ds.correl
+_list(::Type{OIVis},        ds::OIDataSet) = ds.vis
+_list(::Type{OIVis2},       ds::OIDataSet) = ds.vis2
+_list(::Type{OIT3},         ds::OIDataSet) = ds.t3
+_list(::Type{OIFlux},       ds::OIDataSet) = ds.flux
+_list(::Type{OIInsPol},     ds::OIDataSet) = ds.inspol
 #_list(::Type{OITargetEntry},ds::OIDataSet) = ds.target.list
 
 # `_dict(T,ds)` yields the dictionary associated to entries of type `T` stored
 # by the OI-FITS data-set `ds`.
-_dict(::Type{OI_ARRAY},      ds::OIDataSet) = getfield(ds, :array_dict)
-_dict(::Type{OI_WAVELENGTH}, ds::OIDataSet) = getfield(ds, :instr_dict)
-_dict(::Type{OI_CORR},       ds::OIDataSet) = getfield(ds, :correl_dict)
+_dict(::Type{OIArray},      ds::OIDataSet) = getfield(ds, :array_dict)
+_dict(::Type{OIWavelength}, ds::OIDataSet) = getfield(ds, :instr_dict)
+_dict(::Type{OICorr},       ds::OIDataSet) = getfield(ds, :correl_dict)
 #_dict(::Type{OITargetEntry},ds::OIDataSet) = getfield(ds, :target_dict)
 
 """
@@ -605,7 +605,7 @@ end
     OIFITS.assert_identical(A, B)
 
 throws an exception if *named* data-blocks `A` and `B` are not identical. A
-*named* data-block is an `OI_ARRAY`, `OI_WAVELENGTH`, or `OI_CORR` extension
+*named* data-block is an `OIArray`, `OIWavelength`, or `OICorr` extension
 that can be uniquely identifed by its name.
 
 The variant
@@ -617,7 +617,7 @@ called if `A` and `B` have the same type and the same name.
 
 """ assert_identical
 
-function assert_identical(A::T, B::T) where {T<:Union{OI_ARRAY,OI_WAVELENGTH,OI_CORR}}
+function assert_identical(A::T, B::T) where {T<:Union{OIArray,OIWavelength,OICorr}}
     if !(A === B)
         is_same(A.name, B.name) || throw_assertion_error(
             "two ", extname(T), " data-blocks named \"", A.name,
@@ -626,7 +626,7 @@ function assert_identical(A::T, B::T) where {T<:Union{OI_ARRAY,OI_WAVELENGTH,OI_
     end
 end
 
-function assert_identical(A::OI_ARRAY, B::OI_ARRAY, ::typeof(*))
+function assert_identical(A::OIArray, B::OIArray, ::typeof(*))
     assert_identical(A, B, :revn)
     assert_identical(A, B, :frame)
     assert_identical(A, B, :arrayx)
@@ -641,13 +641,13 @@ function assert_identical(A::OI_ARRAY, B::OI_ARRAY, ::typeof(*))
     assert_identical(A, B, :fovtype)
 end
 
-function assert_identical(A::OI_WAVELENGTH, B::OI_WAVELENGTH, ::typeof(*))
+function assert_identical(A::OIWavelength, B::OIWavelength, ::typeof(*))
     assert_identical(A, B, :revn)
     assert_identical(A, B, :eff_wave)
     assert_identical(A, B, :eff_band)
 end
 
-function assert_identical(A::OI_CORR, B::OI_CORR, ::typeof(*))
+function assert_identical(A::OICorr, B::OICorr, ::typeof(*))
     assert_identical(A, B, :revn)
     assert_identical(A, B, :ndata)
     assert_identical(A, B, :iindx)
@@ -723,7 +723,7 @@ function check(db::OIDataBlock)
     return nchns, nfrms
 end
 
-function check(db::OI_TARGET)
+function check(db::OITarget)
     isdefined(db, :list) || throw_undefined_field(db, :list)
     return -1, -1
 end
@@ -934,13 +934,13 @@ function OITargetEntry(def::OITargetEntry;
 end
 
 """
-    OI_TARGET(lst=OITargetEntry[]; revn=0)
+    OITarget(lst=OITargetEntry[]; revn=0)
 
-yields an `OI_TARGET` data-block. Optional argument `lst` is a vector of
+yields an `OITarget` data-block. Optional argument `lst` is a vector of
 `OITargetEntry` specifying the targets (none by default). Keyword `revn`
 specifies the revision number.
 
-An instance, say `db`, of `OI_TARGET` has the following properties:
+An instance, say `db`, of `OITarget` has the following properties:
 
     db.extname # OI-FITS extension name
     db.list    # list of targets
@@ -955,7 +955,7 @@ individually by their index or by their name:
 
     for tgt in db; ...; end # loop over all targets
 
-Note that, when an `OI_TARGET` instance is pushed in a data-set, target
+Note that, when an `OITarget` instance is pushed in a data-set, target
 identifiers (field `target_id`) are automatically rewritten to be identical to
 the index in the list of targets of the data-set.
 
@@ -970,26 +970,26 @@ specified:
     keys(Int, db)     # idem
 
 Call [`OIFITS.get_column`](@ref) to retrieve a given target field for all
-targets of `OI_TARGET` data-block in the form of a vector.
+targets of `OITarget` data-block in the form of a vector.
 
-""" OI_TARGET
+""" OITarget
 
-# Make OI_TARGET instances iterable and behave more or less like vectors
+# Make OITarget instances iterable and behave more or less like vectors
 # (with properties).
-ndims(db::OI_TARGET)   =  ndims(db.list)
-size(db::OI_TARGET)    =   size(db.list)
-size(db::OI_TARGET, i) =   size(db.list, i)
-axes(db::OI_TARGET)    =   axes(db.list)
-axes(db::OI_TARGET, i) =   axes(db.list, i)
-length(db::OI_TARGET)  = length(db.list)
+ndims(db::OITarget)   =  ndims(db.list)
+size(db::OITarget)    =   size(db.list)
+size(db::OITarget, i) =   size(db.list, i)
+axes(db::OITarget)    =   axes(db.list)
+axes(db::OITarget, i) =   axes(db.list, i)
+length(db::OITarget)  = length(db.list)
 
-IndexStyle(db::OI_TARGET) = IndexStyle(OI_TARGET)
-IndexStyle(::Type{OI_TARGET}) = IndexStyle(fieldtype(OI_TARGET, :list))
+IndexStyle(db::OITarget) = IndexStyle(OITarget)
+IndexStyle(::Type{OITarget}) = IndexStyle(fieldtype(OITarget, :list))
 
-eltype(db::OI_TARGET) = eltype(OI_TARGET)
-eltype(::Type{OI_TARGET}) = OITargetEntry
+eltype(db::OITarget) = eltype(OITarget)
+eltype(::Type{OITarget}) = OITargetEntry
 
-@inline @propagate_inbounds getindex(db::OI_TARGET, i::Integer) = db.list[i]
+@inline @propagate_inbounds getindex(db::OITarget, i::Integer) = db.list[i]
 
 getindex(A::AbstractVector{OITargetEntry}, name::AbstractString) = begin
     x = get(A, name, undef)
@@ -997,18 +997,18 @@ getindex(A::AbstractVector{OITargetEntry}, name::AbstractString) = begin
     return x
 end
 
-getindex(db::OI_TARGET, name::AbstractString) = begin
+getindex(db::OITarget, name::AbstractString) = begin
     x = get(db.list, name, undef)
     x === undef && error( "no targets named \"", fix_name(name),
                           "\" found in ", db.extname, "data-block")
     return x
 end
 
-firstindex(db::OI_TARGET) = firstindex(db.list)
-lastindex(db::OI_TARGET) = lastindex(db.list)
-eachindex(db::OI_TARGET) = eachindex(db.list)
+firstindex(db::OITarget) = firstindex(db.list)
+lastindex(db::OITarget) = lastindex(db.list)
+eachindex(db::OITarget) = eachindex(db.list)
 
-function iterate(db::OI_TARGET,
+function iterate(db::OITarget,
                  state::Tuple{Int,Int} = (firstindex(db),
                                           lastindex(db)))
     i, n = state
@@ -1019,9 +1019,9 @@ function iterate(db::OI_TARGET,
     end
 end
 
-haskey(db::OI_TARGET, i::Integer) = (1 ≤ i ≤ length(db))
+haskey(db::OITarget, i::Integer) = (1 ≤ i ≤ length(db))
 
-haskey(db::OI_TARGET, key::AbstractString) = haskey(db.list, key)
+haskey(db::OITarget, key::AbstractString) = haskey(db.list, key)
 
 haskey(A::AbstractVector{OITargetEntry}, key::AbstractString) = begin
     for tgt in A
@@ -1032,14 +1032,14 @@ haskey(A::AbstractVector{OITargetEntry}, key::AbstractString) = begin
     return false
 end
 
-get(db::OI_TARGET, i::Integer, def) =
+get(db::OITarget, i::Integer, def) =
     if 1 ≤ i ≤ length(db)
         return @inbounds db[i]
     else
         return def
     end
 
-get(db::OI_TARGET, key::AbstractString, def) = get(db.list, key, def)
+get(db::OITarget, key::AbstractString, def) = get(db.list, key, def)
 
 get(A::AbstractVector{OITargetEntry}, key::AbstractString, def) = begin
     for tgt in A
@@ -1051,15 +1051,15 @@ get(A::AbstractVector{OITargetEntry}, key::AbstractString, def) = begin
 end
 
 # Note: this is the default behavior.
-values(db::OI_TARGET) = db
+values(db::OITarget) = db
 
-keys(db::OI_TARGET) = Iterators.map(x -> fix_name(x.target), db)
-keys(::Type{String}, db::OI_TARGET) = keys(db)
-keys(::Type{Int}, db::OI_TARGET) = eachindex(db)
-keys(::Type{Integer}, db::OI_TARGET) = eachindex(db)
+keys(db::OITarget) = Iterators.map(x -> fix_name(x.target), db)
+keys(::Type{String}, db::OITarget) = keys(db)
+keys(::Type{Int}, db::OITarget) = eachindex(db)
+keys(::Type{Integer}, db::OITarget) = eachindex(db)
 
 """
-    OIFITS.get_column([T,] db::OI_TARGET, col)
+    OIFITS.get_column([T,] db::OITarget, col)
 
 yields the column `col` of an OI-FITS data-block `db`. Column is identified by
 `col` which is either `sym` or `Val(sym)` where `sym` is the symbolic name of
@@ -1069,16 +1069,16 @@ Optional argument `T` is to specify the element type of the returned array.
 
 """ get_column
 
-@inline get_column(db::OI_TARGET, sym::Symbol) =
+@inline get_column(db::OITarget, sym::Symbol) =
     get_column(db, Val(sym))
 
-@inline get_column(T::Type, db::OI_TARGET, sym::Symbol) =
+@inline get_column(T::Type, db::OITarget, sym::Symbol) =
     get_column(T, db, Val(sym))
 
-get_column(db::OI_TARGET, ::Val{sym}) where {sym} =
+get_column(db::OITarget, ::Val{sym}) where {sym} =
     get_column(fieldtype(OITargetEntry, sym), db, sym)
 
-function get_column(::Type{T}, db::OI_TARGET, ::Val{sym}) where {T,sym}
+function get_column(::Type{T}, db::OITarget, ::Val{sym}) where {T,sym}
     len = length(db)
     col = Vector{T}(undef, len)
     for i in 1:len

@@ -122,7 +122,7 @@ function write(f::FITS, db::OIDataBlock)
           units = col_units)
 end
 
-function write(f::FITS, db::OI_TARGET)
+function write(f::FITS, db::OITarget)
     hdr_names = String[]
     hdr_values = Any[]
     hdr_comments = String[]
@@ -299,8 +299,8 @@ function read(::Type{OIDataSet}, f::FITS; kwds...)
 end
 
 # Type-stable methods to read a single HDU.
-for T in (:OI_TARGET, :OI_ARRAY, :OI_WAVELENGTH, :OI_CORR, :OI_VIS,
-          :OI_VIS2, :OI_T3, :OI_FLUX, :OI_INSPOL)
+for T in (:OITarget, :OIArray, :OIWavelength, :OICorr, :OIVis,
+          :OIVis2, :OIT3, :OIFlux, :OIInsPol)
     @eval begin
         $T(hdu::HDU; kwds...) = read($T, hdu; kwds...)
         function read(::Type{$T}, hdu::TableHDU; kwds...)
@@ -324,15 +324,15 @@ read(::Type{OIDataBlock}, hdu::HDU; kwds...) =
     error("FITS HDU is not a FITS table")
 
 datablock_type(extn::AbstractString) =
-    (extn == "OI_TARGET"     ? OI_TARGET     :
-     extn == "OI_ARRAY"      ? OI_ARRAY      :
-     extn == "OI_WAVELENGTH" ? OI_WAVELENGTH :
-     extn == "OI_CORR"       ? OI_CORR       :
-     extn == "OI_VIS"        ? OI_VIS        :
-     extn == "OI_VIS2"       ? OI_VIS2       :
-     extn == "OI_T3"         ? OI_T3         :
-     extn == "OI_FLUX"       ? OI_FLUX       :
-     extn == "OI_INSPOL"     ? OI_INSPOL     :
+    (extn == "OI_TARGET"     ? OITarget     :
+     extn == "OI_ARRAY"      ? OIArray      :
+     extn == "OI_WAVELENGTH" ? OIWavelength :
+     extn == "OI_CORR"       ? OICorr       :
+     extn == "OI_VIS"        ? OIVis        :
+     extn == "OI_VIS2"       ? OIVis2       :
+     extn == "OI_T3"         ? OIT3         :
+     extn == "OI_FLUX"       ? OIFlux       :
+     extn == "OI_INSPOL"     ? OIInsPol     :
      error("\"", extn, "\" is not the name of an OI-FITS extension"))
 
 # skip non-table HDUs
@@ -347,26 +347,26 @@ function _read!(ds::OIDataSet, hdu::TableHDU, pass::Integer; kwds...)
                 isempty(ds.target.list) || error(
                     "only one OI_TARGET data-block is allowed in ",
                     "a compliant OI-FITS file")
-                push!(ds, _read(OI_TARGET, hdu; kwds...))
+                push!(ds, _read(OITarget, hdu; kwds...))
             elseif extn == "OI_ARRAY"
-                push!(ds, _read(OI_ARRAY, hdu; kwds...))
+                push!(ds, _read(OIArray, hdu; kwds...))
             elseif extn == "OI_WAVELENGTH"
-                push!(ds, _read(OI_WAVELENGTH, hdu; kwds...))
+                push!(ds, _read(OIWavelength, hdu; kwds...))
             elseif extn == "OI_CORR"
-                push!(ds, _read(OI_CORR, hdu; kwds...))
+                push!(ds, _read(OICorr, hdu; kwds...))
             end
         elseif pass == 2
             # Read data.
             if extn == "OI_VIS"
-                push!(ds, _read(OI_VIS, hdu; kwds...))
+                push!(ds, _read(OIVis, hdu; kwds...))
             elseif extn == "OI_VIS2"
-                push!(ds, _read(OI_VIS2, hdu; kwds...))
+                push!(ds, _read(OIVis2, hdu; kwds...))
             elseif extn == "OI_T3"
-                push!(ds, _read(OI_T3, hdu; kwds...))
+                push!(ds, _read(OIT3, hdu; kwds...))
             elseif extn == "OI_FLUX"
-                push!(ds, _read(OI_FLUX, hdu; kwds...))
+                push!(ds, _read(OIFlux, hdu; kwds...))
             elseif extn == "OI_INSPOL"
-                push!(ds, _read(OI_INSPOL, hdu; kwds...))
+                push!(ds, _read(OIInsPol, hdu; kwds...))
             end
         end
     end
@@ -387,7 +387,7 @@ function _read(T::Type{<:OIDataBlock}, hdu::TableHDU; hack_revn = undef)
     return db
 end
 
-function _read(T::Type{<:OI_TARGET}, hdu::TableHDU; hack_revn = undef)
+function _read(T::Type{<:OITarget}, hdu::TableHDU; hack_revn = undef)
     # Read keywords.
     revn = _read_revn(T, hdu, hack_revn)
     nrows = read_keyword(Int, hdu, "NAXIS2")
@@ -436,7 +436,7 @@ function _read(T::Type{<:OI_TARGET}, hdu::TableHDU; hack_revn = undef)
             (revn ≥ 2 ? category[i] : empty_string),
         )
     end
-    return OI_TARGET(list; revn=revn)
+    return OITarget(list; revn=revn)
 end
 
 # Methods to allow for hacking the revision number.

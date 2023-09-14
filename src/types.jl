@@ -59,7 +59,7 @@ is the abstract super-type of any OI-FITS data-block.
 """
 abstract type OIDataBlock end
 
-# Except for `OI_TARGET`, the data fields are specified as separate arrays,
+# Except for `OITarget`, the data fields are specified as separate arrays,
 # instead of arrays of structures.
 #
 # - Pros: (i) some fields may be absent (optional or not yet defined), (ii)
@@ -101,18 +101,18 @@ struct OITargetEntry
     category  ::String  # "CAL"ibrator or "SCI"ence target
 end
 
-mutable struct OI_TARGET <: OIDataBlock
+mutable struct OITarget <: OIDataBlock
     # Header Part
     revn::Int
     # Data Part
     list::Vector{OITargetEntry}
-    function OI_TARGET(list::AbstractVector{OITargetEntry}=OITargetEntry[];
+    function OITarget(list::AbstractVector{OITargetEntry}=OITargetEntry[];
                        revn::Integer=0)
         new(revn, list)
     end
 end
 
-mutable struct OI_ARRAY <: OIDataBlock
+mutable struct OIArray <: OIDataBlock
     # Header Part
     revn::Int                # revision number of the table definition
     arrname::String          # array name for cross-referencing
@@ -128,7 +128,7 @@ mutable struct OI_ARRAY <: OIDataBlock
     staxyz::Matrix{Float64}  # station coordinates relative to array center [m]
     fov::Vector{Float64}     # photometric field of view [arcsec]
     fovtype::Vector{String}  # model for FOV: "FWHM" or "RADIUS"
-    OI_ARRAY(::Undef) = begin
+    OIArray(::Undef) = begin
         db = new()
         db.revn = 0
         db.arrayx = NaN
@@ -138,21 +138,21 @@ mutable struct OI_ARRAY <: OIDataBlock
     end
 end
 
-mutable struct OI_WAVELENGTH <: OIDataBlock
+mutable struct OIWavelength <: OIDataBlock
     # Header Part
     revn::Int                # revision number of the table definition
     insname::String          # name of detector for cross-referencing
     # Data Part
     eff_wave::Vector{Float64}# effective wavelength of channel [m]
     eff_band::Vector{Float64}# effective bandpass of channel [m]
-    OI_WAVELENGTH(::Undef) = begin
+    OIWavelength(::Undef) = begin
         db = new()
         db.revn = 0
         return db
     end
 end
 
-mutable struct OI_CORR <: OIDataBlock
+mutable struct OICorr <: OIDataBlock
     # Header Part
     revn::Int               # revision number of the table definition
     corrname::String        # name of correlation data-block
@@ -161,7 +161,7 @@ mutable struct OI_CORR <: OIDataBlock
     iindx::Vector{Int}      # 1st index of correlation matrix element
     jindx::Vector{Int}      # 2nd index of correlation matrix element
     corr::Vector{Float64}   # matrix element
-    OI_CORR(::Undef) = begin
+    OICorr(::Undef) = begin
         db = new()
         db.revn = 0
         db.ndata = 0
@@ -173,11 +173,11 @@ end
 #        time. The TIME column is retained only for backwards compatibility
 #        and must contain zeros.
 
-mutable struct OI_VIS <: OIDataBlock
+mutable struct OIVis <: OIDataBlock
     # Dependencies
-    array::OI_ARRAY             # related telescope array
-    instr::OI_WAVELENGTH        # related instrument wavelengths
-    correl::OI_CORR             # related correlation data
+    array::OIArray              # related telescope array
+    instr::OIWavelength         # related instrument wavelengths
+    correl::OICorr              # related correlation data
     # Header Part
     revn::Int                   # revision number of the table definition
     date_obs::String            # UTC start date of observations
@@ -189,7 +189,7 @@ mutable struct OI_VIS <: OIDataBlock
     amporder::Int               # polynomial fit order for differential amplitudes
     phiorder::Int               # polynomial fit order for differential phases
     # Data Part
-    target_id::Vector{Int}      # target number as index into OI_TARGET table
+    target_id::Vector{Int}      # target number as index into OITarget table
     time::Vector{Float64}       # UTC time of observation [s]
     mjd::Vector{Float64}        # modified Julian Day [day]
     int_time::Vector{Float64}   # integration time [s]
@@ -210,7 +210,7 @@ mutable struct OI_VIS <: OIDataBlock
     vcoord::Vector{Float64}     # V coordinate of the data [m]
     sta_index::Matrix{Int}      # station numbers contributing to the data
     flag::Matrix{Bool}          # flags
-    OI_VIS(::Undef) = begin
+    OIVis(::Undef) = begin
         db = new()
         db.revn = 0
         db.amporder = 0
@@ -219,11 +219,11 @@ mutable struct OI_VIS <: OIDataBlock
     end
 end
 
-mutable struct OI_VIS2 <: OIDataBlock
+mutable struct OIVis2 <: OIDataBlock
     # Dependencies
-    array::OI_ARRAY               # related telescope array
-    instr::OI_WAVELENGTH          # related instrument wavelengths
-    correl::OI_CORR               # related correlation data
+    array::OIArray                # related telescope array
+    instr::OIWavelength           # related instrument wavelengths
+    correl::OICorr                # related correlation data
     # Header Part
     revn::Int                     # revision number of the table definition
     date_obs::String              # UTC start date of observations
@@ -242,18 +242,18 @@ mutable struct OI_VIS2 <: OIDataBlock
     vcoord::Vector{Float64}       # V coordinate of the data [m]
     sta_index::Matrix{Int}        # station numbers contributing to the data
     flag::Matrix{Bool}            # flags
-    OI_VIS2(::Undef) = begin
+    OIVis2(::Undef) = begin
         db = new()
         db.revn = 0
         return db
     end
 end
 
-mutable struct OI_T3 <: OIDataBlock
+mutable struct OIT3 <: OIDataBlock
     # Dependencies
-    array::OI_ARRAY            # related telescope array
-    instr::OI_WAVELENGTH       # related instrument wavelengths
-    correl::OI_CORR            # related correlation data
+    array::OIArray             # related telescope array
+    instr::OIWavelength        # related instrument wavelengths
+    correl::OICorr             # related correlation data
     # Header Part
     revn::Int                  # revision number of the table definition
     date_obs::String           # UTC start date of observations
@@ -277,18 +277,18 @@ mutable struct OI_T3 <: OIDataBlock
     v2coord::Vector{Float64}   # V coordinate of baseline BC of the triangle [m]
     sta_index::Matrix{Int}     # station numbers contributing to the data
     flag::Matrix{Bool}         # flags
-    OI_T3(::Undef) = begin
+    OIT3(::Undef) = begin
         db = new()
         db.revn = 0
         return db
     end
 end
 
-mutable struct OI_FLUX <: OIDataBlock
+mutable struct OIFlux <: OIDataBlock
     # Dependencies
-    array::OI_ARRAY               # related telescope array
-    instr::OI_WAVELENGTH          # related instrument wavelengths
-    correl::OI_CORR               # related correlation data
+    array::OIArray                # related telescope array
+    instr::OIWavelength           # related instrument wavelengths
+    correl::OICorr                # related correlation data
     # Header Part
     revn::Int                     # revision number of the table definition
     date_obs::String              # UTC start date of observations
@@ -307,7 +307,7 @@ mutable struct OI_FLUX <: OIDataBlock
     corrindx_fluxdata::Vector{Int}# index into correlation matrix for 1st FLUXDATA element
     sta_index::Vector{Int}        # station number contributing to the data
     flag::Matrix{Bool}            # flags
-    OI_FLUX(::Undef) = begin
+    OIFlux(::Undef) = begin
         db = new()
         db.revn = 0
         db.fov = NaN
@@ -315,9 +315,9 @@ mutable struct OI_FLUX <: OIDataBlock
     end
 end
 
-mutable struct OI_INSPOL <: OIDataBlock
+mutable struct OIInsPol <: OIDataBlock
     # Dependencies
-    array::OI_ARRAY              # related telescope array
+    array::OIArray               # related telescope array
     # Header Part
     revn::Int                    # revision number of the table definition
     date_obs::String             # UTC start date of observations
@@ -335,7 +335,7 @@ mutable struct OI_INSPOL <: OIDataBlock
     jxy::Matrix{Complex{Float64}}# complex Jones Matrix component between Y and X axis
     jyx::Matrix{Complex{Float64}}# complex Jones Matrix component between Y and X axis
     sta_index::Vector{Int}       # station number for the above matrices
-    OI_INSPOL(::Undef) = begin
+    OIInsPol(::Undef) = begin
         db = new()
         db.revn = 0
         db.npol = 0
@@ -345,16 +345,16 @@ end
 
 # Union of types of data-blocks that have a name (and are dependencies of
 # others).
-const NamedDataBlock = Union{OI_ARRAY,OI_WAVELENGTH,OI_CORR}
+const NamedDataBlock = Union{OIArray,OIWavelength,OICorr}
 
 """
 
 `OIDataSet` objects store the contents of an OI-FITS file. All data-blocks
-containing measurements (`OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, and
-`OI_INSPOL`) are stored into a vector and thus indexed by an integer. Named
-data-blocks (`OI_ARRAY`, `OI_WAVELENGTH`, and `OI_CORR`) are indexed by their
-names (converted to upper case letters, with leading and trailing spaces
-stripped, multiple spaces replaced by a single ordinary space).
+containing measurements (`OIVis`, `OIVis2`, `OIT3`, `OIFlux`, and `OIInsPol`)
+are stored into a vector and thus indexed by an integer. Named data-blocks
+(`OIArray`, `OIWavelength`, and `OICorr`) are indexed by their names (converted
+to upper case letters, with leading and trailing spaces stripped, multiple
+spaces replaced by a single ordinary space).
 
 Reading an OI-FITS file is as simple as one of:
 
@@ -366,59 +366,59 @@ the revision number (FITS keyword `OI-REVN`) of all OI-FITS data-blocks;
 `hack_revn` may be set to an integer, the revision number to assume for all
 data-blocks, or to a function that takes 2 arguments, the type and actual
 revision number of the current data-block, and that returns the revision number
-to assume. For example, to force revision number 1 for all `OI_VIS` data-blocks
+to assume. For example, to force revision number 1 for all `OIVis` data-blocks
 and left others unchanged:
 
-    data = OIDataSet(filename; hack_revn = (T, revn) -> (T === OI_VIS ? 1 : revn))
+    data = OIDataSet(filename; hack_revn = (T, revn) -> (T === OIVis ? 1 : revn))
 
-Looping over `OI_VIS` data-blocks in the data-set can be done as follows:
+Looping over `OIVis` data-blocks in the data-set can be done as follows:
 
     for db in data.vis
         ...
     end
 
-and similarly for fields `vis2`, `t3`, `flux`, and `inspol` to access
-`OI_VIS2`, `OI_T3`, `OI_FLUX`, and `OI_INSPOL` data-blocks.
+and similarly for fields `vis2`, `t3`, `flux`, and `inspol` to access `OIVis2`,
+`OIT3`, `OIFlux`, and `OIInsPol` data-blocks.
 
 The data-set has a number of other public properties:
 
-    data.target           # the OI_TARGET data-block
-    data.instr[insname]   # the OI_WAVELENGTH data-block named `insname`
-    data.array[arrname]   # the OI_ARRAY data-block named `arrname`
-    data.correl[corrname] # the OI_CORR data-block named `corrname`
+    data.target           # the OITarget data-block
+    data.instr[insname]   # the OIWavelength data-block named `insname`
+    data.array[arrname]   # the OIArray data-block named `arrname`
+    data.correl[corrname] # the OICorr data-block named `corrname`
 
 """
 struct OIDataSet
     # Named data-blocks and their dictionaries to map names to indices. The
     # target identifiers `target_id` are rewritten to match Julia indexing in
     # the vector of target entries.
-    target::OI_TARGET            # list of targets data-block
+    target::OITarget             # list of targets data-block
     target_dict::Dict{String,Int}# to map target name to index in `target` list
     target_id_map::Dict{Int,Int} # to re-write target identifiers
-    array::Vector{OI_ARRAY}      # list of OI_ARRAY data-blocks
+    array::Vector{OIArray}       # list of OIArray data-blocks
     array_dict::Dict{String,Int} # to map array names to index in `array` list
-    instr::Vector{OI_WAVELENGTH} # list of OI_WAVELENGTH data-blocks
+    instr::Vector{OIWavelength}  # list of OIWavelength data-blocks
     instr_dict::Dict{String,Int} # to map instrument names to index in `instr` list
-    correl::Vector{OI_CORR}      # list of OI_CORR data-blocks
+    correl::Vector{OICorr}       # list of OICorr data-blocks
     correl_dict::Dict{String,Int}# to map correlation names to index in `correl` list
 
     # Measurement data-blocks.
-    vis::Vector{OI_VIS}          # list of OI_VIS data-blocks
-    vis2::Vector{OI_VIS2}        # list of OI_VIS2 data-blocks
-    t3::Vector{OI_T3}            # list of OI_T3 data-blocks
-    flux::Vector{OI_FLUX}        # list of OI_FLUX data-blocks
-    inspol::Vector{OI_INSPOL}    # list of OI_INSPOL data-blocks
+    vis::Vector{OIVis}          # list of OIVis data-blocks
+    vis2::Vector{OIVis2}        # list of OIVis2 data-blocks
+    t3::Vector{OIT3}            # list of OIT3 data-blocks
+    flux::Vector{OIFlux}        # list of OIFlux data-blocks
+    inspol::Vector{OIInsPol}    # list of OIInsPol data-blocks
 
     # The inner constructor creates an empty structure. Outer constructors are
     # provided to populate this structure with data-blocks.
     OIDataSet() = new(
-        OI_TARGET(),     Dict{String,Int}(), Dict{Int,Int}(),
-        OI_ARRAY[],      Dict{String,Int}(),
-        OI_WAVELENGTH[], Dict{String,Int}(),
-        OI_CORR[],       Dict{String,Int}(),
-        OI_VIS[],
-        OI_VIS2[],
-        OI_T3[],
-        OI_FLUX[],
-        OI_INSPOL[])
+        OITarget(),     Dict{String,Int}(), Dict{Int,Int}(),
+        OIArray[],      Dict{String,Int}(),
+        OIWavelength[], Dict{String,Int}(),
+        OICorr[],       Dict{String,Int}(),
+        OIVis[],
+        OIVis2[],
+        OIT3[],
+        OIFlux[],
+        OIInsPol[])
 end
