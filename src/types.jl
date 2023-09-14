@@ -295,7 +295,7 @@ mutable struct OI_FLUX <: OIDataBlock
     insname::String               # name of corresponding detector
     arrname::String               # name of corresponding array
     corrname::String              # name of corresponding correlation table
-    fov::Cdouble                  # area of sky over which flux is integrated [arcsec]
+    fov::Float64                  # area of sky over which flux is integrated [arcsec]
     fovtype::String               # model for FOV: "FWHM" or "RADIUS"
     calstat::String               # "C": spectrum is calibrated, "U": uncalibrated
     # Data Part
