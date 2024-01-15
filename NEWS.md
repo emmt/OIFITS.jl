@@ -9,15 +9,15 @@ This version introduces major changes.
   Accessing the contents of data-blocks is considerably faster.
 
 - An OI-FITS file can be read as a data-set (that is an instance of
-  `OIDataSet`), and a data-set can be written to an OI-FITS file.
+  `OIDataSet`, formerly `OIMaster` in previous versions), and a data-set can be
+  written to an OI-FITS file.
 
 - The `obj.key` syntax is encouraged for any OI-FITS object `obj`. Accessors
-  functions are no longer needed (and have been discarded). Provided
-  dependencies have been correctly set, shortcuts are provided so that
-  `obj.eff_wave` (or `obj.eff_band`) can be used instead of
-  `obj.instr.eff_wave` (or `obj.instr.eff_band`) for any object `obj` storing
-  OI-FITS data. Fields considered as *private* are not accessible by the dot
-  notation (`getfield` and `setfield!` must be explicitly called).
+  functions have been discarded. Provided dependencies have been correctly set,
+  shortcuts are provided so that `obj.eff_wave` (or `obj.eff_band`) can be used
+  instead of `obj.instr.eff_wave` (or `obj.instr.eff_band`) for any object
+  `obj` storing OI-FITS data. Fields considered as *private* are not accessible
+  by the dot notation (`getfield` and `setfield!` must be explicitly called).
 
 - Building a data-set (that is an instance of `OIDataSet`) by calling `push!`
   automatically takes care of linking dependencies and of verifying the
@@ -30,8 +30,6 @@ This version introduces major changes.
 
 - `Base.copy` has been extended and replaces `OIFITS.clone`, it yields a
   swallow copy of a data-block.
-
-- `OIMaster` has been renamed as `OIDataSet`.
 
 - Macros `@header` and `@column` are provided to define OI-FITS formats with a
   syntax very close to the tables in OI-FITS specifications.
