@@ -28,8 +28,8 @@ This version introduces major changes.
 - Calling `using OIFITS` only exports OI-FITS types (all prefixed with `OI*`)
   and no methods other than type constructors.
 
-- `Base.copy` has been extended and replaces `OIFITS.clone`, it yields a
-  swallow copy of a data-block.
+- `Base.copy` has been extended and replaces `OIFITS.clone` to copy a
+  data-block.
 
 - Macros `OIFITS.@header` and `OIFITS.@column` are provided to define OI-FITS
   formats with a syntax very close to the tables in OI-FITS specifications.
