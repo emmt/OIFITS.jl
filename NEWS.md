@@ -31,8 +31,8 @@ This version introduces major changes.
 - `Base.copy` has been extended and replaces `OIFITS.clone`, it yields a
   swallow copy of a data-block.
 
-- Macros `@header` and `@column` are provided to define OI-FITS formats with a
-  syntax very close to the tables in OI-FITS specifications.
+- Macros `OIFITS.@header` and `OIFITS.@column` are provided to define OI-FITS
+  formats with a syntax very close to the tables in OI-FITS specifications.
 
 - The package no longer hacks `FITSIO` and `CFITSIO` packages to handle FITS
   files. As a result, `OIFITS` should be much less sensitive to the evolution
