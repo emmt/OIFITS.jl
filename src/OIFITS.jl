@@ -8,18 +8,18 @@
 module OIFITS
 
 export
-    OIArray,
-    OICorr,
     OIDataBlock,
     OIDataSet,
-    OIFlux,
-    OIInsPol,
-    OIT3,
-    OITarget,
     OITargetEntry,
-    OIVis,
-    OIVis2,
-    OIWavelength
+    OI_ARRAY,
+    OI_CORR,
+    OI_FLUX,
+    OI_INSPOL,
+    OI_T3,
+    OI_TARGET,
+    OI_VIS,
+    OI_VIS2,
+    OI_WAVELENGTH
 
 import Base:
     IndexStyle,

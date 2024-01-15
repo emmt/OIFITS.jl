@@ -57,19 +57,19 @@ end
 end
 
 get_field_type(T::Type{<:OIDataBlock}, sym::Symbol) = fieldtype(T, sym)
-get_field_type(::Type{<:OITarget}, sym::Symbol) =
-    fieldtype((sym === :revn ? OITarget : OITargetEntry), sym)
+get_field_type(::Type{<:OI_TARGET}, sym::Symbol) =
+    fieldtype((sym === :revn ? OI_TARGET : OITargetEntry), sym)
 
 @testset "OI-FITS type definitions and formats" begin
-    for T in (OIArray,
-              OICorr,
-              OIFlux,
-              OIInsPol,
-              OIT3,
-              OITarget,
-              OIVis,
-              OIVis2,
-              OIWavelength)
+    for T in (OI_ARRAY,
+              OI_CORR,
+              OI_FLUX,
+              OI_INSPOL,
+              OI_T3,
+              OI_TARGET,
+              OI_VIS,
+              OI_VIS2,
+              OI_WAVELENGTH)
 
         @testset "$(extname(T))" begin
             for rev in 3:-1:1
@@ -98,9 +98,9 @@ get_field_type(::Type{<:OITarget}, sym::Symbol) =
                         # Column.
                         if s.type === :A
                             @test rank == 1
-                            @test S === (T === OITarget ? String : Vector{String})
+                            @test S === (T === OI_TARGET ? String : Vector{String})
                         else
-                            @test rank == (T === OITarget ? 1 : ndims(S))
+                            @test rank == (T === OI_TARGET ? 1 : ndims(S))
                             if s.type === :C
                                 @test eltype(S) <: Complex{<:AbstractFloat}
                             elseif s.type ∈ (:D, :E)
@@ -136,14 +136,14 @@ end
     @test A.instr[1].name ===  A.instr[1].insname
     @test A.array[1].name ===  A.array[1].arrname
     name = A.instr[end].name
-    @test isa(A.instr[name], OIWavelength)
+    @test isa(A.instr[name], OI_WAVELENGTH)
     @test A.instr[name] === A.instr[end]
     @test A.instr[uppercase(name*" ")] === A.instr[end]
     @test A.instr[lowercase(name*" ")] === A.instr[end]
     @test_throws KeyError A.instr[" "*name]
     @test get(A.instr, " "*name, undef) === undef
     name = A.array[end].name
-    @test isa(A.array[name], OIArray)
+    @test isa(A.array[name], OI_ARRAY)
     @test A.array[name] === A.array[end]
     @test A.array[uppercase(name*" ")] === A.array[end]
     @test A.array[lowercase(name*" ")] === A.array[end]
@@ -185,17 +185,17 @@ end
         db = OIDataBlock(f[i])
         @test extname(f[i]) == db.extname
     end
-    @test extname(f[2]) == OIArray(f[2]).extname
-    @test extname(f[3]) == OITarget(f[3]).extname
-    @test extname(f[4]) == OIWavelength(f[4]).extname
-    @test extname(f[5]) == OIVis2(f[5]).extname
-    @test extname(f[6]) == OIT3(f[6]).extname
+    @test extname(f[2]) == OI_ARRAY(f[2]).extname
+    @test extname(f[3]) == OI_TARGET(f[3]).extname
+    @test extname(f[4]) == OI_WAVELENGTH(f[4]).extname
+    @test extname(f[5]) == OI_VIS2(f[5]).extname
+    @test extname(f[6]) == OI_T3(f[6]).extname
 end
 
-@testset "OITarget methods" begin
+@testset "OI_TARGET methods" begin
     data = OIDataSet(joinpath(dir,files[1]))
     A = data.target
-    @test isa(A, OITarget)
+    @test isa(A, OI_TARGET)
     @test eltype(A) === OITargetEntry
     @test length(A) == length(A.list)
     @test ndims(A) == 1

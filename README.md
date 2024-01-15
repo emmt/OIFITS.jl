@@ -30,23 +30,15 @@ These data-blocks are stored as binary tables in a FITS data file. The support
 for FITS files is provided by the
 [`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package.
 
-The Julia type of an OI-FITS data-block is named after the corresponding
-OI-FITS extension (see table below). In addition to these types for individual
-OI-FITS data-blocks, objects of type `OIDataSet` contain several OI-FITS
+The Julia type of an OI-FITS data-block corresponds to the OI-FITS extension
+(see above list). In addition to these types for individual OI-FITS
+data-blocks, objects of exported type `OIDataSet` contain several OI-FITS
 data-blocks and are efficient representation of the contents of a compliant
 OI-FITS file.
 
-| OI-FITS extension | Julia type     |
-|:------------------|:---------------|
-| `OI_ARRAY`        | `OIArray`      |
-| `OI_CORR`         | `OICorr`       |
-| `OI_FLUX`         | `OIFlux`       |
-| `OI_INSPOL`       | `OIInsPol`     |
-| `OI_T3`           | `OIT3`         |
-| `OI_TARGET`       | `OITarget`     |
-| `OI_VIS2`         | `OIVis2`       |
-| `OI_VIS`          | `OIVis`        |
-| `OI_WAVELENGTH`   | `OIWavelength` |
+Other exported types are `OIDataBlock`, the super-type of all data-block types,
+and `OITargetEntry`, the type of entries in `OI_TARGET` data-blocks.
+
 
 ## Reading and writing OI-FITS files
 
@@ -100,14 +92,14 @@ file and can then read a given HDU as an OI-FITS data-block:
 ```julia
 using FITSIO, OIFITS
 f = FITS(filename, "r")    # open FITS file for reading
-tgt = OITarget(f[i])       # read OI_TARGET extension in i-th HDU
-tgt = read(OITarget, f[i]) # idem
-db = OIVis2(f[j])          # read OI_VIS2 extension in j-th HDU
-db = read(OIVis2, f[j])    # idem
+tgt = OI_TARGET(f[i])       # read OI_TARGET extension in i-th HDU
+tgt = read(OI_TARGET, f[i]) # idem
+db = OI_VIS2(f[j])          # read OI_VIS2 extension in j-th HDU
+db = read(OI_VIS2, f[j])    # idem
 ...
 ```
 
-any OI-FITS data-block type can be used in that way.  If the type of the `i`-th
+any OI-FITS data-block type can be used in that way. If the type of the `i`-th
 extension is not known, `OIDataBlock` can be used instead but the result is not
 type-stable:
 
@@ -130,7 +122,7 @@ them in **order** in an `OIDataSet` to have a consistent data-set which you can
 then directly use or write in an OI-FITS file for later. Thanks to the
 automatic rewriting of target identifiers and of the fact that targets (and
 other dependencies) are identified by their name and consistently merged, it is
-possible to push an `OITarget` with multiply defined identical targets (apart
+possible to push an `OI_TARGET` with multiply defined identical targets (apart
 maybe their identifiers).
 
 
@@ -143,16 +135,16 @@ notation but also by indexation.
 ### Contents of data-sets
 
 The dot notation can be used on a *data-set* object, say `ds`, storing a
-consistent set of OI-FITS data-blocks.  The following properties are available:
+consistent set of OI-FITS data-blocks. The following properties are available:
 
-- `ds.target` is the `OITarget` data-block of the OI-FITS structure.
+- `ds.target` is the `OI_TARGET` data-block of the OI-FITS structure.
 
-- `ds.instr` is a list of `OIWavelength` data-blocks indexed by a regular
+- `ds.instr` is a list of `OI_WAVELENGTH` data-blocks indexed by a regular
   integer index or by the instrument name:
 
   ```julia
-  ds.instr[i]       # yields the i-th OIWavelength data-block
-  ds.instr[insname] # yields the OIWavelength data-block whose name matches insname
+  ds.instr[i]       # yields the i-th OI_WAVELENGTH data-block
+  ds.instr[insname] # yields the OI_WAVELENGTH data-block whose name matches insname
   ```
 
   Matching of names follows FITS conventions that case of letters and trailing
@@ -167,21 +159,21 @@ consistent set of OI-FITS data-blocks.  The following properties are available:
   would yield `nothing` if `insname` is not found in `ds.instr` instead of
   throwing an exception.
 
-- `ds.array` is a list of `OIArray` data-blocks indexed like `ds.instr` except
+- `ds.array` is a list of `OI_ARRAY` data-blocks indexed like `ds.instr` except
   that interferometric array names are assumed.
 
-- `ds.correl` is a list of `OICorr` data-blocks indexed like `ds.instr` except
+- `ds.correl` is a list of `OI_CORR` data-blocks indexed like `ds.instr` except
   that correlation data array names are assumed.
 
-- `ds.vis` is a vector of `OIVis` data-blocks.
+- `ds.vis` is a vector of `OI_VIS` data-blocks.
 
-- `ds.vis2` is a vector of `OIVis2` data-blocks.
+- `ds.vis2` is a vector of `OI_VIS2` data-blocks.
 
-- `ds.t3` is a vector of `OIT3` data-blocks.
+- `ds.t3` is a vector of `OI_T3` data-blocks.
 
-- `ds.flux` is a vector of `OIFlux` data-blocks.
+- `ds.flux` is a vector of `OI_FLUX` data-blocks.
 
-- `ds.inspol` is a vector of `OIInsPol` data-blocks.
+- `ds.inspol` is a vector of `OI_INSPOL` data-blocks.
 
 Other fields of data-sets shall be considered as **private** and not accessed
 directly.
@@ -195,7 +187,7 @@ for db in ds.vis2
 end
 ```
 
-is convenient to loop across all `OIVis2` instances stored by `ds`.
+is convenient to loop over all `OI_VIS2` instances stored by `ds`.
 
 
 ### Contents of data-blocks
@@ -215,23 +207,24 @@ also accessible via this syntax:
 - `db.extname` yields the OI-FITS name of the extension corresponding to the
   data-block `db` (for all data-block types);
 
-- `db.array` yields the `OIArray` data-block associated with data-block `db`
-  (only for `OIVis`, `OIVis2`, `OIT3`, `OIFlux`, and `OIInsPol` data-block).
-  Beware that the association with an `OIArray` is optional, so `db.array` may
-  be actually undefined; this can be checked by `isdefined(db,:array)`.
+- `db.array` yields the `OI_ARRAY` data-block associated with data-block `db`
+  (only for `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, and `OI_INSPOL`
+  data-block). Beware that the association with an `OI_ARRAY` is optional, so
+  `db.array` may be actually undefined; this can be checked by
+  `isdefined(db,:array)`.
 
-- `db.instr` yields the `OIWavelength` data-block associated with data-block
-  `db` (only for `OIVis`, `OIVis2`, `OIT3`, and `OIFlux` data-block).
+- `db.instr` yields the `OI_WAVELENGTH` data-block associated with data-block
+  `db` (only for `OI_VIS`, `OI_VIS2`, `OI_T3`, and `OI_FLUX` data-block).
 
-- `db.correl` yields the `OICorr` data-block associated with data-block `db`
-  (only for `OIVis`, `OIVis2`, `OIT3`, and `OIFlux` data-block).
+- `db.correl` yields the `OI_CORR` data-block associated with data-block `db`
+  (only for `OI_VIS`, `OI_VIS2`, `OI_T3`, and `OI_FLUX` data-block).
 
-- `db.name` is an alias for `db.arrname` for `OIArray` instances, for
-  `db.insname` for `OIWavelength` instances, and for `db.corrname` for `OICorr`
-  instances.
+- `db.name` is an alias for `db.arrname` for `OI_ARRAY` instances, for
+  `db.insname` for `OI_WAVELENGTH` instances, and for `db.corrname` for
+  `OI_CORR` instances.
 
 Of course, getting a given property must make sense. For example, `db.sta_name`
-is only possible for an `OIArray` data-block but not for an `OIWavelength`
+is only possible for an `OI_ARRAY` data-block but not for an `OI_WAVELENGTH`
 data-block. The dot notation can be however be chained and:
 
 ```julia
@@ -239,15 +232,15 @@ db.instr.eff_wave
 ```
 
 can be used to access the effective wavelengths of the measurements in `db` via
-the instrument associated to `db`.  Shortcuts are provided:
+the instrument associated to `db`. Shortcuts are provided:
 
 ```julia
 λ  = db.eff_wave # get effective wavelength
 Δλ = db.eff_band # get effective bandwidth
 ```
 
-for `OIWavelength` data-blocks but also for `OIVis`, `OIVis2`, `OIT3`, and
-`OIFlux` data-blocks.
+for `OI_WAVELENGTH` data-blocks but also for `OI_VIS`, `OI_VIS2`, `OI_T3`, and
+`OI_FLUX` data-blocks.
 
 Some fields of a data-block `db` may however be undefined because:
 
@@ -255,20 +248,20 @@ Some fields of a data-block `db` may however be undefined because:
 
 - the field is optional in the revision `db.revn` of the data-block;
 
-- the field (for example `db.instr` for an `OIVis` data-block) involves links
+- the field (for example `db.instr` for an `OI_VIS` data-block) involves links
   with other data-blocks (the *dependencies)* and these links are only defined
   when a data-block is part of a data-set (see [Building of
   data-sets](#building-of-data-sets) below).
 
 
-### `OITarget` data-blocks
+### `OI_TARGET` data-blocks
 
-For efficiency, instances of `OITarget` data-blocks do not follow the same
+For efficiency, instances of `OI_TARGET` data-blocks do not follow the same
 rules as other types of OI-FITS data-blocks whose properties are the columns of
-the corresponding OI-FITS table: in an `OITarget` instance, all parameters
+the corresponding OI-FITS table: in an `OI_TARGET` instance, all parameters
 describing a target are represented by an `OITargetEntry` structure and all
-targets are stored as a vector of `OITargetEntry`.  An `OITarget` instance,
-say `db`, has the 3 following properties:
+targets are stored as a vector of `OITargetEntry`. An `OI_TARGET` instance, say
+`db`, has the 3 following properties:
 
 ```julia
 db.extname # yields "OI_TARGET"
@@ -280,7 +273,7 @@ The list of targets `db.list` can be indexed by an integer (as any Julia
 vector) or by the target name (case of letters and trailing spaces are
 irrelevant).
 
-As an `OITarget` data-blocks is essentially a vector of target entries, it can
+As an `OI_TARGET` data-blocks is essentially a vector of target entries, it can
 be used as an iterable and it can indexed by an integer index or by a target
 name:
 
@@ -291,7 +284,7 @@ db[key]    # the target whose name matches string `key`, shortcut for `db.list[k
 ```
 
 Standard methods `get` and `haskey`, applied to `db.list` or directly to `db`,
-work as expected and according to the type (integer or string) of the key.  For
+work as expected and according to the type (integer or string) of the key. For
 the `keys` method, the default is to return an iterator over the target names,
 but the type of the expected keys can be specified:
 
@@ -310,20 +303,20 @@ a vector:
 OIFITS.get_column([T,] db, col)
 ```
 
-yields the column `col` of an OI-FITS data-block `db`.  Column is identified by
+yields the column `col` of an OI-FITS data-block `db`. Column is identified by
 `col` which is either `sym` or `Val(sym)` where `sym` is the symbolic name of
-the corresponding field in `OITargetEntry`.  Optional argument `T` is to
-specify the element type of the returned array.
+the corresponding field in `OITargetEntry`. Optional argument `T` is to specify
+the element type of the returned array.
 
-To build an `OITarget` instance, you may provide the list of targets and the
+To build an `OI_TARGET` instance, you may provide the list of targets and the
 revision number:
 
 ```julia
-OITarget(lst=OITargetEntry[]; revn=0)
+OI_TARGET(lst=OITargetEntry[]; revn=0)
 ```
 
-yields an `OITarget` data-block.  Optional argument `lst` is a vector of
-`OITargetEntry` specifying the targets (none by default).  Keyword `revn`
+yields an `OI_TARGET` data-block. Optional argument `lst` is a vector of
+`OITargetEntry` specifying the targets (none by default). Keyword `revn`
 specifies the revision number.
 
 A target entry may be constructed by specifying all its fields (there are many)
@@ -362,7 +355,7 @@ x = OITargetEntry(ref;
         ...)
 ```
 
-Note that, when an `OITarget` instance is pushed in a data-set, target
+Note that, when an `OI_TARGET` instance is pushed in a data-set, target
 identifiers (field `target_id`) are automatically rewritten to be identical to
 the index in the list of targets of the data-set.
 
@@ -375,18 +368,18 @@ Reading an OI-FITS file is the easiest way to define a data-set but a new
 OI-FITS data-set may be built by creating an empty data-set with `OIDataSet()`,
 and then pushing OI-FITS data-blocks **in order** with `push!(...)`. Indeed, in
 order to ensure the consistency of a data-set, it is required to push the
-dependencies (`OITarget`, `OIArray`, `OIWavelength`, and `OICorr`
-data-blocks) **before** the data-blocks containing measurements (`OIVis`,
-`OIVis2`, `OIT3`, `OIFlux`, and `OIInsPol`) that may refer to them.
+dependencies (`OI_TARGET`, `OI_ARRAY`, `OI_WAVELENGTH`, and `OI_CORR`
+data-blocks) **before** the data-blocks containing measurements (`OI_VIS`,
+`OI_VIS2`, `OI_T3`, `OI_FLUX`, and `OI_INSPOL`) that may refer to them.
 
 For example, building a new data-set, say `ds`, looks like:
 
 ```julia
 ds = OIDataSet() # create empty data-set
-push!(ds, arr)   # push OIArray data-block(s)
-push!(ds, ins)   # push OIWavelength data-block(s)
-push!(ds, cor)   # push OICorr data-block(s)
-push!(ds, tgt)   # push OITarget data-block
+push!(ds, arr)   # push OI_ARRAY data-block(s)
+push!(ds, ins)   # push OI_WAVELENGTH data-block(s)
+push!(ds, cor)   # push OI_CORR data-block(s)
+push!(ds, tgt)   # push OI_TARGET data-block
 push!(ds, db1)   # push data
 push!(ds, db2)   # push more data
 push!(ds, db3)   # push even more data
@@ -395,21 +388,21 @@ push!(ds, db3)   # push even more data
 
 with the dependencies:
 
-- `arr` an `OIArray` instance defining the interferometric array (zero or any
+- `arr` an `OI_ARRAY` instance defining the interferometric array (zero or any
    number of such instances may be pushed),
 
-- `ins` an `OIWavelength` instance defining the instrument (several such
+- `ins` an `OI_WAVELENGTH` instance defining the instrument (several such
    instances can be pushed),
 
 - `cor` an `OI_COORREL` instance defining the correlations (zero or any number
    of such instances can be pushed),
 
-- `tgt` an `OITarget` instance defining the list of observed targets (at least
+- `tgt` an `OI_TARGET` instance defining the list of observed targets (at least
   one such instance is required, if more such instances are pushed in the same
   data-set, they are merged in a single one);
 
-and where `db1`, `db2`, `db3`, etc., are instances of `OIVis`, `OIVis2`,
-`OIT3`, `OIFlux`, or `OIInsPol` that provide measurements.
+and where `db1`, `db2`, `db3`, etc., are instances of `OI_VIS`, `OI_VIS2`,
+`OI_T3`, `OI_FLUX`, or `OI_INSPOL` that provide measurements.
 
 You may push all data-blocks in a single `push!` call:
 
@@ -436,19 +429,19 @@ the data-set (which implies that the dependencies already exist in the
 data-set). This allows for syntactic sugar like:
 
 ```julia
-ds.vis2[i].eff_wave # the wavelengths of the i-th OIVis2 data-block in ds
-ds.t3[i].array      # the interferometric array for the i-th OIT3 data-block in ds
-ds.vis[i].instr     # the instrument used for the i-th OIVis data-block in ds
+ds.vis2[i].eff_wave # the wavelengths of the i-th OI_VIS2 data-block in ds
+ds.t3[i].array      # the interferometric array for the i-th OI_T3 data-block in ds
+ds.vis[i].instr     # the instrument used for the i-th OI_VIS data-block in ds
 ```
 
 Without linked dependencies, the first above example would require to (1) find
-in the data-set `ds` the `OIWavelength` instance, say `instr`, whose name is
+in the data-set `ds` the `OI_WAVELENGTH` instance, say `instr`, whose name is
 matching `ds.vi2[i].insname` and (2) extract the field `eff_wave` of `instr`.
 The latter step is as simple as `instr.eff_wave` but the former one has some
-overheads and scales as `O(n)` with `n` the number of `OIWavelength` instances
+overheads and scales as `O(n)` with `n` the number of `OI_WAVELENGTH` instances
 in the data-set.
 
-Since an OI-FITS data-set has a single list of targets (an `OITarget` instance
+Since an OI-FITS data-set has a single list of targets (an `OI_TARGET` instance
 accessible via `ds.target`), a mean to merge list of targets had to be defined.
 The adopted rule is pretty simple:
 
@@ -459,33 +452,33 @@ The adopted rule is pretty simple:
 As a consequence, whenever a data-block is pushed into a data-set, the target
 identifiers of the data-block have to be rewritten according to this rule. Of
 course, this does not apply for data-blocks with no `target_id` field such as
-`OIArray`, `OIWavelength`, and `OICorr`.
+`OI_ARRAY`, `OI_WAVELENGTH`, and `OI_CORR`.
 
 To summarize, here is what happens under the hood when a data-block `db` is
 pushed into a data-set `ds`:
 
-- When an `OIArray`, `OIWavelength`, or `OICorr` instance `db` is pushed in a
-  data-set `ds`, it is appended to the corresponding list (`ds.array`,
+- When an `OI_ARRAY`, `OI_WAVELENGTH`, or `OI_CORR` instance `db` is pushed in
+  a data-set `ds`, it is appended to the corresponding list (`ds.array`,
   `ds.instr`, or `ds.correl`) unless this list already has an entry with a name
   matching `db.name`. In this latter case, nothing is done unless that an
   assertion exception is thrown if the two data-blocks whose names are matching
   do not have the same contents (to prevent building inconsistent data-sets).
 
-- When an `OITarget` instance is pushed in a data-set, the new targets
+- When an `OI_TARGET` instance is pushed in a data-set, the new targets
   (according to their names) are appended to the list of targets in the
   data-set and their identifiers set to their index in this list. This also
   re-initializes an internal dictionary used to perform the conversion from all
-  the target identifiers of the `OITarget` instance that has been pushed to the
-  target identifiers in the data-set. Until it is reinitialized (by pushing
-  another `OITarget` instance), this mapping is used to rewrite the target
+  the target identifiers of the `OI_TARGET` instance that has been pushed to
+  the target identifiers in the data-set. Until it is reinitialized (by pushing
+  another `OI_TARGET` instance), this mapping is used to rewrite the target
   identifiers of subsequent data-blocks pushed in the data-set.
 
-- When an `OIVis`, `OIVis2`, `OIT3`, `OIFlux`, or `OIInsPol` instance `db` is
-  pushed in a data-set `ds`, it is appended to the corresponding list
+- When an `OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, or `OI_INSPOL` instance `db`
+  is pushed in a data-set `ds`, it is appended to the corresponding list
   (`ds.vis`, `ds.vis2`, `db.t3`, `db.flux`, or `ds.inspol`), after it has been
-  linked to its dependencies (`OIArray`, `OIWavelength`, etc., which must
+  linked to its dependencies (`OI_ARRAY`, `OI_WAVELENGTH`, etc., which must
   already exist in the data-set), and its target identifiers have been
-  rewritten according to the mapping defined by the last `OITarget` instance
+  rewritten according to the mapping defined by the last `OI_TARGET` instance
   previously pushed to the data-set. Rewriting of the target identifiers may be
   avoided by using the keyword `rewrite_target_id=false`, this assumes that the
   target identifiers in the pushed data-block are already set according to the
@@ -502,28 +495,28 @@ notable exception of the target identifiers which are rewritten and the links
 to the dependencies which are updated.
 
 While it sounds complicated, the default rule of rewriting the target
-identifiers just amounts to assuming that the target identifiers of `OIVis`,
-`OIVis2`, `OIT3`, `OIFlux`, or `OIInsPol` instances pushed in a data-set refer
-to the last `OITarget` instance previously pushed on the same data-set.
+identifiers just amounts to assuming that the target identifiers of `OI_VIS`,
+`OI_VIS2`, `OI_T3`, `OI_FLUX`, or `OI_INSPOL` instances pushed in a data-set
+refer to the last `OI_TARGET` instance previously pushed on the same data-set.
 
 Pushing several groups of data-blocks, each group making a consistent data-set,
 in the same data-set is easy. Typically:
 
 ```julia
 # First push dependencies for group 1.
-push!(ds, group1_arr) # push OIArray
-push!(ds, group1_ins) # push OIWavelength
-push!(ds, group1_cor) # push OICorr
-push!(ds, group1_tgt) # push OITarget (reinitializing target_id mapping)
+push!(ds, group1_arr) # push OI_ARRAY
+push!(ds, group1_ins) # push OI_WAVELENGTH
+push!(ds, group1_cor) # push OI_CORR
+push!(ds, group1_tgt) # push OI_TARGET (reinitializing target_id mapping)
 # Then push data for group 1 (using current target_id mapping).
 push!(ds, group1_db1)
 push!(ds, group1_db2)
 ...
 # First push dependencies for group 2.
-push!(ds, group2_arr) # push OIArray
-push!(ds, group2_ins) # push OIWavelength
-push!(ds, group2_cor) # push OICorr
-push!(ds, group2_tgt) # push OITarget (reinitializing target_id mapping)
+push!(ds, group2_arr) # push OI_ARRAY
+push!(ds, group2_ins) # push OI_WAVELENGTH
+push!(ds, group2_cor) # push OI_CORR
+push!(ds, group2_tgt) # push OI_TARGET (reinitializing target_id mapping)
 # Then push data for group 2 (using current target_id mapping).
 push!(ds, group2_db1)
 push!(ds, group2_db2)
@@ -531,10 +524,10 @@ push!(ds, group2_db2)
 ```
 
 Since they are referenced by their names, it is not necessary to push
-`OIArray`, `OIWavelength`, and `OICorr` dependencies if they already exist in
-the data-set (according to their name), but it doesn't hurt. It is however
-mandatory to push an `OITarget` instance with all targets and their identifiers
-as assumed by the subsequent data-blocks.
+`OI_ARRAY`, `OI_WAVELENGTH`, and `OI_CORR` dependencies if they already exist
+in the data-set (according to their name), but it doesn't hurt. It is however
+mandatory to push an `OI_TARGET` instance with all targets and their
+identifiers as assumed by the subsequent data-blocks.
 
 
 ## Merging data-sets
