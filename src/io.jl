@@ -8,32 +8,12 @@
 # Union of possible FITS keyword types.
 const KeywordTypes = Union{Bool,Int,Cdouble,String}
 
-"""
-    OIFITS.column_type(sym)
-
-yields the exact element type in a column of a FITS table whose type is
-specified by the letter `sym`.
-
-"""
-column_type(sym::Symbol) = (
-    sym === :A ? String :
-    sym === :I ? Int16 :
-    sym === :J ? Int32 :
-    sym === :K ? Int64 :
-    sym === :L ? Bool :
-    sym === :E ? Float32 :
-    sym === :D ? Float64 :
-    sym === :C ? Complex{Float32} :
-    sym === :M ? Complex{Float64} :
-    error("unknown FITS column type `", sym, "`"))
-
-
 # Exceptions.
 
-MissingColumn(col::AbstractString, src::Union{TableHDU,OIDataBlock}) =
+MissingColumn(col::AbstractString, src::Union{FitsTableHDU,OIDataBlock}) =
     MissingColumn(col, extname(src))
 
-MissingKeyword(key::AbstractString, src::Union{TableHDU,OIDataBlock}) =
+MissingKeyword(key::AbstractString, src::Union{FitsTableHDU,OIDataBlock}) =
     MissingKeyword(key, extname(src))
 
 show(io::IO, ::MIME"text/plain", e::MissingKeyword) =
@@ -51,7 +31,7 @@ function write(filename::AbstractString, ds::OIDataSet;
         error("file \"", filename, "\" already exists, ",
               "use keyword `overwrite=true` to overwrite")
     end
-    FITS(filename, "w") do f
+    FitsFile(filename, "w") do f
         write(f, ds; kwds...)
     end
     return nothing
@@ -59,7 +39,7 @@ end
 
 # Writing an OI-FITS file is easy: just write all datablocks. To make reading
 # easier, dependencies are written first.
-function write(f::FITS, ds::OIDataSet; quiet::Bool=false)
+function write(f::FitsFile, ds::OIDataSet; quiet::Bool=false)
     write(f, ds.target)
     for db in ds.array
         write(f, db)
@@ -87,87 +67,59 @@ function write(f::FITS, ds::OIDataSet; quiet::Bool=false)
     end
 end
 
-function write(f::FITS, db::OIDataBlock)
-    hdr_names = String[]
-    hdr_values = Any[]
-    hdr_comments = String[]
-    col_names = String[]
-    col_data = Any[]
-    col_units = Dict{String,String}()
+push_keyword!(header::Vector{<:Pair{String,<:Any}}, spec::FieldDefinition, value) =
+    push_keyword!(header, spec.name, value, spec.units, spec.descr)
+
+function push_keyword!(header::Vector{<:Pair{String,<:Any}},
+                       name::String, value, units::String, descr::String)
+    push!(header, name => (value, (units == "" ? descr : "["*units*"] "*descr)))
+    return nothing
+end
+
+push_column!(data::Vector{<:Pair{String,<:Any}}, spec::FieldDefinition, value) =
+    push_column!(data, spec.name, value, spec.units)
+
+function push_column!(data::Vector{<:Pair{String,<:Any}},
+                      name::String, value, units::String)
+    if units == ""
+        push!(data, name => value)
+    else
+        push!(data, name => (value, units))
+    end
+    return nothing
+end
+
+function write(f::FitsFile, db::OIDataBlock)
+    header = Pair{String,Any}[]
+    data = Pair{String,Any}[]
     check(db) # recheck!
     for spec in get_format(db; throw_errors=true)
         # Skip undefined fields.
         isdefined(db, spec.symb) || continue
         if ndims(spec) == 0
             # Header keyword.
-            push!(hdr_names, spec.name)
-            push!(hdr_values, getfield(db, spec.symb))
-            if spec.units == ""
-                push!(hdr_comments, spec.descr)
-            else
-                push!(hdr_comments, "["*spec.units*"] "*spec.descr)
-            end
+            push_keyword!(header, spec, getfield(db, spec.symb))
         else
             # Column keyword.
-            push!(col_names, spec.name)
-            push!(col_data, with_eltype(column_type(spec.type),
-                                        getfield(db, spec.symb)))
-            col_units[spec.name] = spec.units
-        end
-    end
-    write(f, col_names, col_data;
-          hdutype = TableHDU,
-          name = db.extname,
-          header = FITSHeader(hdr_names, hdr_values, hdr_comments),
-          units = col_units)
-end
-
-function write(f::FITS, db::OI_TARGET)
-    hdr_names = String[]
-    hdr_values = Any[]
-    hdr_comments = String[]
-    col_names = String[]
-    col_data = Any[]
-    col_units = Dict{String,String}()
-    check(db) # recheck!
-    for spec in get_format(db)
-        if ndims(spec) == 0
-            # Header keyword.
-            push!(hdr_names, spec.name)
-            push!(hdr_values, getfield(db, spec.symb))
-            if spec.units == empty_string
-                push!(hdr_comments, spec.descr)
+            if db isa OI_TARGET
+                push_column!(data, spec, get_column(column_type(spec.type), db, spec.symb))
             else
-                push!(hdr_comments, "["*spec.units*"] "*spec.descr)
+                push_column!(data, spec, getfield(db, spec.symb))
             end
-        else
-            # Column keyword.
-            push!(col_names, spec.name)
-            push!(col_data, get_column(column_type(spec.type),
-                                       db, spec.symb))
-            col_units[spec.name] = spec.units
         end
     end
-    write(f, col_names, col_data;
-          hdutype = TableHDU,
-          name = db.extname,
-          header = FITSHeader(hdr_names, hdr_values, hdr_comments),
-          units = col_units)
+    write(f, header, data)
 end
-
-with_eltype(::Type{T}, A::AbstractArray{T,N}) where {T,N} = A
-with_eltype(::Type{T}, A::AbstractArray{<:Any,N}) where {T,N} =
-    convert(Array{T,N}, A)
 
 #------------------------------------------------------------------------------
 # READING OF OI-FITS FILES
 
 # Yields whether an exception was due to a missing FITS keyword.
-missing_keyword(ex::CFITSIO.CFITSIOError) = ex.errcode == 202
+missing_keyword(ex::FitsError) = ex.code == 202
 missing_keyword(ex::Exception) = false
 
 # Yields whether an exception was due to a missing FITS column.
-missing_column(ex::CFITSIO.CFITSIOError) = ex.errcode == 219
+missing_column(ex::FitsError) = ex.code == 219
 missing_column(ex::Exception) = false
 
 """
@@ -179,30 +131,27 @@ returned if specified, otherwise a `MissingKeyword` exception is thrown. This
 method provides some type-stability.
 
 """
-function read_keyword(T::Type{<:KeywordTypes}, hdu::HDU, key::String,
+function read_keyword(T::Type{<:KeywordTypes}, hdu::FitsHDU, key::String,
                       def = unspecified)
-    try
-        val, com = FITSIO.read_key(hdu, key)
-        return _convert_keyword(T, key, val)
-    catch ex
-        if missing_keyword(ex)
-            def === unspecified && throw(MissingKeyword(key, hdu))
-            return def
-        end
-        rethrow()
+    card = get(hdu, key, missing)
+    if card === missing
+        def === unspecified && throw(MissingKeyword(key, hdu))
+        return def
     end
+    if T <: Bool
+        card.type == FITS_LOGICAL && return convert(T, card.logical)::T
+    elseif T <: Integer
+        card.type == FITS_INTEGER && return convert(T, card.integer)::T
+    elseif T <: AbstractFloat
+        card.type == FITS_FLOAT && return convert(T, card.float)::T
+    elseif T <: AbstractString
+        card.type == FITS_STRING && return convert(T, card.string)::T
+    end
+    bad_keyword_type(T, card)
 end
 
-for (T, S) in ((Bool, Bool),
-               (Int, Integer),
-               (Cdouble, AbstractFloat),
-               (String, AbstractString))
-    @eval _convert_keyword(::Type{T}, key::String, val::$S) where {T<:$T} =
-        convert(T, val)
-end
-
-@noinline _convert_keyword(::Type{T}, key::String, val::S) where {T,S} =
-    error("FITS keyword \"", key, "\" of type ", S,
+@noinline bad_keyword_type(::Type{T}, card::FitsCard) where {T} =
+    error("FITS keyword \"", card.name, "\" of type ", valtype(card),
           " cannot be converted to type ", T)
 
 """
@@ -215,20 +164,17 @@ method provides some type-stability and add missing leading dimensions as
 needed.
 
 """
-read_column(hdu::TableHDU, col::String, def = unspecified) =
+read_column(hdu::FitsTableHDU, col::String, def = unspecified) =
     read_column(Array, hdu, col, def)
 
-function read_column(T::Type{<:Array}, hdu::TableHDU, col::String,
-                     def = unspecified)
+function read_column(::Type{T}, hdu::FitsTableHDU, col::String,
+                     def = unspecified) where {T<:Array}
     try
-        val = read(hdu, col; case_sensitive=false)
-        return _convert_column(T, col, val)
+        return read(T, hdu, col; case=false)
     catch ex
-        if missing_column(ex)
-            def === unspecified && throw(MissingColumn(col, hdu))
-            return def
-        end
-        rethrow()
+        missing_column(ex) || rethrow()
+        def === unspecified && throw(MissingColumn(col, hdu))
+        return def
     end
 end
 
@@ -263,30 +209,30 @@ end
 
 # To read into an existing data-set, first read the OI-FITS file (to make sure
 # it is a consistent data-set), then merge.
-function read!(ds::OIDataSet, args::Union{AbstractString,FITS}...; kwds...)
+function read!(ds::OIDataSet, args::Union{AbstractString,FitsFile}...; kwds...)
     for arg in args
         merge!(ds, read(OIDataSet, arg; kwds...))
     end
     return ds
 end
 
-OIDataSet(args::Union{AbstractString,FITS}...; kwds...) =
+OIDataSet(args::Union{AbstractString,FitsFile}...; kwds...) =
     read(OIDataSet, args...; kwds...)
 
-function read(::Type{OIDataSet}, arg::Union{AbstractString,FITS},
-              args::Union{AbstractString,FITS}...; kwds...)
+function read(::Type{OIDataSet}, arg::Union{AbstractString,FitsFile},
+              args::Union{AbstractString,FitsFile}...; kwds...)
     read!(read(OIDataSet, arg; kwds...),  args...; kwds...)
 end
 
 read(::Type{OIDataSet}, filename::AbstractString; kwds...) =
-    FITS(filename, "r") do f
+    FitsFile(filename, "r") do f
         read(OIDataSet, f; kwds...)
     end
 
 # Thanks to the implemented methods, reading an OI-FITS file is not too
 # difficult. The dependencies must however be read first and the OI-FITS file
 # must be a consistent data-set in itself.
-function read(::Type{OIDataSet}, f::FITS; kwds...)
+function read(::Type{OIDataSet}, f::FitsFile; kwds...)
     # Starting with an empty data-set, first read all dependencies, then all
     # data.
     ds = OIDataSet()
@@ -302,25 +248,25 @@ end
 for T in (:OI_TARGET, :OI_ARRAY, :OI_WAVELENGTH, :OI_CORR, :OI_VIS,
           :OI_VIS2, :OI_T3, :OI_FLUX, :OI_INSPOL)
     @eval begin
-        $T(hdu::HDU; kwds...) = read($T, hdu; kwds...)
-        function read(::Type{$T}, hdu::TableHDU; kwds...)
+        $T(hdu::FitsHDU; kwds...) = read($T, hdu; kwds...)
+        function read(::Type{$T}, hdu::FitsTableHDU; kwds...)
             extname(hdu) == extname($T) || error(
                 "FITS table is not an ", extname($T), " extension")
             return _read($T, hdu; kwds...)
         end
     end
 end
-read(T::Type{<:OIDataBlock}, hdu::HDU; kwds...) =
+read(T::Type{<:OIDataBlock}, hdu::FitsHDU; kwds...) =
     error("FITS HDU is not an ", extname(T), " extension")
 
 # Type-instable methods to read a single HDU. For debugging purposes.
-OIDataBlock(hdu::HDU; kwds...) = read(OIDataBlock, hdu; kwds...)
-function read(::Type{OIDataBlock}, hdu::TableHDU; kwds...)
+OIDataBlock(hdu::FitsHDU; kwds...) = read(OIDataBlock, hdu; kwds...)
+function read(::Type{OIDataBlock}, hdu::FitsTableHDU; kwds...)
     extn = extname(hdu)
     extn == "" && error("FITS HDU has no keyword \"EXTNAME\"")
     return _read(datablock_type(extn), hdu; kwds...)
 end
-read(::Type{OIDataBlock}, hdu::HDU; kwds...) =
+read(::Type{OIDataBlock}, hdu::FitsHDU; kwds...) =
     error("FITS HDU is not a FITS table")
 
 datablock_type(extn::AbstractString) =
@@ -336,9 +282,9 @@ datablock_type(extn::AbstractString) =
      error("\"", extn, "\" is not the name of an OI-FITS extension"))
 
 # skip non-table HDUs
-_read!(::OIDataSet, ::HDU, ::Integer; kwds...) = nothing
+_read!(::OIDataSet, ::FitsHDU, ::Integer; kwds...) = nothing
 
-function _read!(ds::OIDataSet, hdu::TableHDU, pass::Integer; kwds...)
+function _read!(ds::OIDataSet, hdu::FitsTableHDU, pass::Integer; kwds...)
     extn = extname(hdu)
     if extn != ""
         if pass == 1
@@ -372,7 +318,7 @@ function _read!(ds::OIDataSet, hdu::TableHDU, pass::Integer; kwds...)
     end
 end
 
-function _read(T::Type{<:OIDataBlock}, hdu::TableHDU; hack_revn = undef)
+function _read(T::Type{<:OIDataBlock}, hdu::FitsTableHDU; hack_revn = undef)
     db = T(undef)
     db.revn = _read_revn(T, hdu, hack_revn)
     for spec in get_format(db)
@@ -387,7 +333,7 @@ function _read(T::Type{<:OIDataBlock}, hdu::TableHDU; hack_revn = undef)
     return db
 end
 
-function _read(T::Type{<:OI_TARGET}, hdu::TableHDU; hack_revn = undef)
+function _read(T::Type{<:OI_TARGET}, hdu::FitsTableHDU; hack_revn = undef)
     # Read keywords.
     revn = _read_revn(T, hdu, hack_revn)
     nrows = read_keyword(Int, hdu, "NAXIS2")
@@ -440,17 +386,17 @@ function _read(T::Type{<:OI_TARGET}, hdu::TableHDU; hack_revn = undef)
 end
 
 # Methods to allow for hacking the revision number.
-_read_revn(T::Type{<:OIDataBlock}, hdu::TableHDU, hack::Integer) = hack
-_read_revn(T::Type{<:OIDataBlock}, hdu::TableHDU, ::typeof(undef)) =
+_read_revn(T::Type{<:OIDataBlock}, hdu::FitsTableHDU, hack::Integer) = hack
+_read_revn(T::Type{<:OIDataBlock}, hdu::FitsTableHDU, ::typeof(undef)) =
    read_keyword(Int, hdu, "OI_REVN")
-_read_revn(T::Type{<:OIDataBlock}, hdu::TableHDU, hack) =
+_read_revn(T::Type{<:OIDataBlock}, hdu::FitsTableHDU, hack) =
     if applicable(hack, hdu)
         hack(hdu)
     else
         hack(T, read_keyword(Int, hdu, "OI_REVN"))
     end
 
-function _read_keyword!(db::T, ::Val{S}, hdu::TableHDU,
+function _read_keyword!(db::T, ::Val{S}, hdu::FitsTableHDU,
                         spec::FieldDefinition) where {T<:OIDataBlock,S}
     try
         val = read_keyword(fieldtype(T, S), hdu, spec.name)
@@ -461,7 +407,7 @@ function _read_keyword!(db::T, ::Val{S}, hdu::TableHDU,
     nothing
 end
 
-function _read_column!(db::T, ::Val{S}, hdu::TableHDU,
+function _read_column!(db::T, ::Val{S}, hdu::FitsTableHDU,
                        spec::FieldDefinition) where {T<:OIDataBlock,S}
     try
         val = read_column(fieldtype(T, S), hdu, spec.name)

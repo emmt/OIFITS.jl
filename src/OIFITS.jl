@@ -56,9 +56,7 @@ import Base:
 
 using Base: @propagate_inbounds
 
-import FITSIO
-import CFITSIO
-using FITSIO: FITS, HDU, TableHDU, FITSHeader
+using EasyFITS
 
 include("types.jl")
 include("formats.jl")

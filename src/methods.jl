@@ -163,7 +163,7 @@ For a data-block instance or type `db`, an optional first argument, `Symbol` or
     OIFITS.extname(String, db) -> ext::String
 
 """
-extname(hdu::TableHDU) = fix_name(read_keyword(String, hdu, "EXTNAME", ""))
+extname(hdu::FitsTableHDU) = fix_name(read_keyword(String, hdu, "EXTNAME", ""))
 extname(db::OIDataBlock) = extname(typeof(db))
 extname(T::Type{<:OIDataBlock}) = extname(String, T)
 extname(S::Type{<:Union{String,Symbol}}, db::OIDataBlock) =

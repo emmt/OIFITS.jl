@@ -34,10 +34,8 @@ This version introduces major changes.
 - Macros `OIFITS.@header` and `OIFITS.@column` are provided to define OI-FITS
   formats with a syntax very close to the tables in OI-FITS specifications.
 
-- The package no longer hacks `FITSIO` and `CFITSIO` packages to handle FITS
-  files. As a result, `OIFITS` should be much less sensitive to the evolution
-  of these dependencies.
-
+- The `OIFITS` package depends on `EasyFITS` for the support of FITS files and
+  no longer depends on `FITSIO`.
 
 ## Versions 0.4
 
