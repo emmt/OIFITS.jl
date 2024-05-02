@@ -1,5 +1,12 @@
 # User visible changes in Julia interface to OI-FITS
 
+## Versions 1.1.0
+
+This version exploits `EasyFITS` for the support of FITS files and no longer
+depends on `FITSIO`. As a consequence, Julia < 1.6 is no longer supported. This
+solves a crash with Julia 1.11 due to a segmentation fault with `FITSIO` (see
+https://github.com/JuliaAstro/FITSIO.jl/issues/194).
+
 ## Versions 1.0
 
 This version introduces major changes.
@@ -34,9 +41,9 @@ This version introduces major changes.
 - Macros `OIFITS.@header` and `OIFITS.@column` are provided to define OI-FITS
   formats with a syntax very close to the tables in OI-FITS specifications.
 
-- The `OIFITS` package depends on `EasyFITS` for the support of FITS files and
-  no longer depends on `FITSIO`. As a consequence, Julia < 1.6 is no longer
-  supported.
+- The package no longer hacks `FITSIO` and `CFITSIO` packages to handle FITS
+  files. As a result, `OIFITS` should be much less sensitive to the evolution
+  of these dependencies.
 
 ## Versions 0.4
 
