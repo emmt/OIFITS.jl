@@ -35,7 +35,8 @@ This version introduces major changes.
   formats with a syntax very close to the tables in OI-FITS specifications.
 
 - The `OIFITS` package depends on `EasyFITS` for the support of FITS files and
-  no longer depends on `FITSIO`.
+  no longer depends on `FITSIO`. As a consequence, Julia < 1.6 is no longer
+  supported.
 
 ## Versions 0.4
 
