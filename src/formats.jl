@@ -5,6 +5,12 @@
 #
 #------------------------------------------------------------------------------
 
+"""
+    OIFITS.Formats
+
+This module provides definitions of OI-FITS tables.
+
+"""
 module Formats
 
 """
