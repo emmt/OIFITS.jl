@@ -26,8 +26,8 @@ data-blocks:
 * `OI_INSPOL` data-blocks store instrumental polarization data.
 
 These data-blocks are stored as binary tables in a FITS data file. The support
-for FITS files is provided by the
-[`FITSIO.jl`](https://github.com/JuliaAstro/FITSIO.jl) package.
+for FITS files is provided by [`EasyFITS`](https://github.com/emmt/EasyFITS.jl)
+and [`FITSHeaders`](https://github.com/emmt/FITSHeaders.jl).
 
 The Julia type of an OI-FITS data-block corresponds to the OI-FITS extension
 (see above list). In addition to these types for individual OI-FITS
@@ -50,9 +50,9 @@ using OIFITS
 ds = read(OIDataSet, input)
 ```
 
-where `input` it the name of the OI-FITS file or an instance of `FITSIO.FITS`
-which represents an open FITS file. The above `read` call is equivalent to the
-shortcut:
+where `input` it the name of the OI-FITS file or an instance of
+`EasyFITS.FitsFile` which represents an open FITS file. The above `read` call
+is equivalent to the shortcut:
 
 ```julia
 ds = OIDataSet(input)
@@ -89,8 +89,8 @@ contents of a non-compliant OI-FITS file. To that end, you must open the FITS
 file and can then read a given HDU as an OI-FITS data-block:
 
 ```julia
-using FITSIO, OIFITS
-f = FITS(filename, "r")    # open FITS file for reading
+using EasyFITS, OIFITS
+f = FitsFile(filename, "r") # open FITS file for reading
 tgt = OI_TARGET(f[i])       # read OI_TARGET extension in i-th HDU
 tgt = read(OI_TARGET, f[i]) # idem
 db = OI_VIS2(f[j])          # read OI_VIS2 extension in j-th HDU
@@ -110,9 +110,9 @@ db = read(OIDataBlock, f[i]) # idem
 Writing individual OI-FITS data-blocks is also possible:
 
 ```julia
-using FITSIO, OIFITS
-f = FITS(filename, "w") # open FITS file for writing
-write(f, db)            # write db in the next HDU of f
+using EasyFITS, OIFITS
+f = FitsFile(filename, "w") # open FITS file for writing
+write(f, db)                # write db in the next HDU of f
 ```
 
 To fix a non-compliant OI-FITS file (usually duplicate target or instrument

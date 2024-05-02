@@ -3,9 +3,15 @@
 ## Versions 1.1.0
 
 This version exploits `EasyFITS` for the support of FITS files and no longer
-depends on `FITSIO`. As a consequence, Julia < 1.6 is no longer supported. This
-solves a crash with Julia 1.11 due to a segmentation fault with `FITSIO` (see
-https://github.com/JuliaAstro/FITSIO.jl/issues/194).
+depends on `FITSIO`. This solves a crash with Julia 1.11 due to a segmentation
+fault with `FITSIO` (see https://github.com/JuliaAstro/FITSIO.jl/issues/194).
+
+There are just a few changes for the end-user:
+
+- Use/import `EasyFITS` instead of `FITSIO` and call `FitsFile(...)` or
+  `openfits(...)` instead of `FITS(...)` to open a FITS file.
+
+- As a consequence, Julia < 1.6 is no longer supported.
 
 ## Versions 1.0
 
