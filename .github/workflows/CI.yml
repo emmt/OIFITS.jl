@@ -27,10 +27,10 @@ jobs:
           arch: ${{ matrix.arch }}
       - name: Add dependencies
         run:
-          julia --project -e 'import Pkg;
-                              Pkg.develop(url = "https://github.com/emmt/FITSHeaders.jl");'
-          julia --project -e 'import Pkg;
-                              Pkg.develop(url = "https://github.com/emmt/EasyFITS.jl");'
+          julia -e 'import Pkg;
+                    Pkg.add(url = "https://github.com/emmt/FITSHeaders.jl");'
+          julia -e 'import Pkg;
+                    Pkg.add(url = "https://github.com/emmt/EasyFITS.jl");'
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
