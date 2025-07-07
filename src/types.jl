@@ -48,9 +48,6 @@ struct MissingColumn <: Exception
     ext::String
 end
 
-# An empty string.
-const empty_string = ""
-
 """
     OIDataBlock
 

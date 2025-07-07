@@ -873,7 +873,7 @@ function OITargetEntry(;
                        parallax  ::AbstractFloat,
                        para_err  ::AbstractFloat,
                        spectyp   ::AbstractString,
-                       category  ::AbstractString = empty_string)
+                       category  ::AbstractString = "")
     return OITargetEntry(target_id,
                          target,
                          raep0,

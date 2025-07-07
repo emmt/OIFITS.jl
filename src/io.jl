@@ -379,7 +379,7 @@ function _read(T::Type{<:OI_TARGET}, hdu::FitsTableHDU; hack_revn = undef)
             parallax[i],
             para_err[i],
             spectyp[i],
-            (revn ≥ 2 ? category[i] : empty_string),
+            (revn ≥ 2 ? category[i] : ""),
         )
     end
     return OI_TARGET(list; revn=revn)
