@@ -1,7 +1,7 @@
 module TestingOIFITS
 
 using Test, Printf
-using EasyFITS, OIFITS
+using Aqua, EasyFITS, OIFITS
 using OIFITS: extname, get_format, is_same, fix_name
 
 const dir = @__DIR__
@@ -40,7 +40,7 @@ get_field_type(T::Type{<:OIDataBlock}, sym::Symbol) = fieldtype(T, sym)
 get_field_type(::Type{<:OI_TARGET}, sym::Symbol) =
     fieldtype((sym === :revn ? OI_TARGET : OITargetEntry), sym)
 
-@testset "OIFITS.jl" begin
+@testset "OIFITS package" begin
     @testset "Strings" begin
         @test  is_same("", "")
         @test  is_same("", " ")
@@ -230,6 +230,9 @@ get_field_type(::Type{<:OI_TARGET}, sym::Symbol) =
                 @test get(A, key*"+", nothing) === nothing
             end
         end
+    end
+    @testset "Quality with `Aqua`" begin
+        Aqua.test_all(OIFITS)
     end
 end
 

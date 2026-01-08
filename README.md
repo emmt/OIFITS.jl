@@ -3,6 +3,7 @@
 [![License][license-img]][license-url]
 [![Build Status][github-ci-img]][github-ci-url]
 [![Coverage][codecov-img]][codecov-url]
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 The `OIFITS.jl` package provides support for OI-FITS data in Julia language.
 
@@ -547,12 +548,6 @@ supported by the [Jean-Marie Mariotti Center (JMMC)](http://www.jmmc.fr/).
 2. Duvert, G., Young, J., & Hummel, C. "OIFITS 2: the 2nd version of the Data Exchange
    Standard for Optical (Visible/IR) Interferometry." arXiv preprint
    [[arXiv:1510.04556v2.04556]](http://arxiv.org/abs/1510.04556v2).
-
-[doc-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
-[doc-stable-url]: https://emmt.github.io/OIFITS.jl/stable
-
-[doc-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
-[doc-dev-url]: https://emmt.github.io/OIFITS.jl/dev
 
 [license-url]: ./LICENSE.md
 [license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat

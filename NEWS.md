@@ -1,5 +1,15 @@
 # User visible changes in Julia interface to OI-FITS
 
+## Unreleased
+
+### Added
+
+- Pass all quality tests by [`Aqua`](https://github.com/JuliaTesting/Aqua.jl).
+
+### Fixed
+
+- Optional columns in OI-FITS data-blocks are correctly skipped.
+
 ## Versions 1.1.0
 
 This version exploits `EasyFITS` for the support of FITS files and no longer depends on
