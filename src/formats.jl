@@ -3,7 +3,7 @@
 #
 # Definitions of OI-FITS tables.
 #
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------
 
 """
     OIFITS.Formats
@@ -16,32 +16,30 @@ module Formats
 """
     def = OIFITS.Formats.FieldDefinition(...)
 
-yields a field definition of a keyword or column, of an entry of an OI-FITS
-data-block. The following properties are available:
+Return the definition of a keyword or column of a OI-FITS data-block. The following
+properties are available:
 
 - `def.name` specifies the name of the keyword or column in the FITS file.
 
-- `def.symb` specifies the symbolic field name in the corresponding Julia
-  structure.
+- `def.symb` specifies the symbolic field name in the corresponding Julia structure.
 
-- `def.type` specifies the data type. It is `:A` for strings, `:C` for
-  complexes, `:D` or `:E` for reals (floating-points), `:I` or `:J` for
-  integers, and `:L` for booleans.
+- `def.type` specifies the data type. It is `:A` for strings, `:C` for complexes, `:D` or
+  `:E` for reals (floating-points), `:I` or `:J` for integers, and `:L` for booleans.
 
-- `def.rank` is `0` for keywords, `n > 0` for `n` elements per row, `n < 0` for
-  cell of `-n` dimensions of length equal to the number of spectral channels.
+- `def.rank` is `0` for keywords, `n > 0` for `n` elements per row, `n < 0` for cell of `-n`
+  dimensions of length equal to the number of spectral channels.
 
-- `def.optional` specifies whether the keyword / column is optional according
-  to the standard.
+- `def.optional` specifies whether the keyword / column is optional according to the
+  standard.
 
 - `def.descr` is a string describing the keyword / column.
 
 These instances are built by the macros [`OIFITS.Formats.@header`](@ref) and
 [`OIFITS.Formats.@column`](@ref) for a FITS keyword and column respectively.
 
-Base method `ndims(def)` yields the dimensionality of `def`, that is `0` for a
-FITS keyword, `1` for a column of scalar cells and `n ≥ 2` for a column of
-wavelength-wise multi-dimensional cells.
+Base method `ndims(def)` yields the dimensionality of `def`, that is `0` for a FITS keyword,
+`1` for a column of scalar cells and `n ≥ 2` for a column of wavelength-wise
+multi-dimensional cells.
 
 """
 struct FieldDefinition
@@ -68,11 +66,10 @@ const FORMATS = Dict{Tuple{Symbol,Int},Vector{FieldDefinition}}()
 """
     OIFITS.get_format(ext, revn; throw_errors=false) -> A
 
-yields a vector of `OIFITS.Formats.Field` instances corresponding to the FITS
-keywords and columns of an OI-FITS data-block `ext` with revision number
-`revn`. If `ext` and `revn` do not correspond to any known definition,
-`nothing` is returned if `throw_errors` is `false` (the default), otherwise an
-exception is thrown.
+Return a vector of [`OIFITS.Formats.Field`](@ref) instances corresponding to the FITS
+keywords and columns of an OI-FITS data-block `ext` with revision number `revn`. If `ext`
+and `revn` do not correspond to any known definition, `nothing` is returned if
+`throw_errors` is `false` (the default), otherwise an exception is thrown.
 
 For example:
 
@@ -91,35 +88,33 @@ function get_format(ext::Symbol, rev::Integer; throw_errors::Bool=false)
     return spec
 end
 
-
 """
     @header key type descr
 
-yields an instance of `FieldDefinition` for an OI-FITS header keyword `key` (a
-string) with value type and description specified by `type` and `descr`. The
-syntax closely follows that of the tables of the papers specifying the OI-FITS
-format. Arguments `key` and `descr` are strings, `type` is one of the letter
-`I` (for integer), `D` (for floating-point), or `A` (for string). Optional
-keywords have their `type` suffixed by single quote (as the ARRNAME keyword in
-the example below).
+Expand as an instance of [`OIFITS.Formats.FieldDefinition`](@ref) for an OI-FITS header
+keyword `key` (a string) with value type and description specified by `type` and `descr`.
+The syntax closely follows that of the tables of the papers specifying the OI-FITS format.
+Arguments `key` and `descr` are strings, `type` is one of the letter `I` (for integer), `D`
+(for floating-point), or `A` (for string). Optional keywords have their `type` suffixed by a
+single quote (as the `ARRNAME` keyword in the example below).
 
-Examples:
+# Examples
 
-    @header "OI_REVN"   I   "revision number of the table definition"
-    @header "DATE-OBS"  A   "UTC start date of observations"
-    @header "ARRNAME"   A'  "name of corresponding array"
-    @header "INSNAME"   A   "name of corresponding detector"
-    @header "ARRAYZ"    D   "array center Z-coordinate [m]"
+```julia
+@header "OI_REVN"   I   "revision number of the table definition"
+@header "DATE-OBS"  A   "UTC start date of observations"
+@header "ARRNAME"   A'  "name of corresponding array"
+@header "INSNAME"   A   "name of corresponding detector"
+@header "ARRAYZ"    D   "array center Z-coordinate [m]"
+```
 
-References:
+# References
 
-- G. Duvert, J. S. Young & Ch. A. Hummel: "*OIFITS 2: the 2nd version of the
-  data exchange standard for optical interferometry*", Astron. & Astrophys.,
-  **597**, A8 (2017).
+- G. Duvert, J. S. Young & Ch. A. Hummel: "*OIFITS 2: the 2nd version of the data exchange
+  standard for optical interferometry*", Astron. & Astrophys., **597**, A8 (2017).
 
-- T. A. Pauls, J. S. Young, W. D. Cotton & J. D. Monnier: "*A Data Exchange
-  Standard for Optical (Visible/IR) Interferometry*", PASP **117**, 1255-1262
-  (2005).
+- T. A. Pauls, J. S. Young, W. D. Cotton & J. D. Monnier: "*A Data Exchange Standard for
+  Optical (Visible/IR) Interferometry*", PASP **117**, 1255-1262 (2005).
 
 """
 macro header(key, type, str)
@@ -136,32 +131,33 @@ end
 """
     @column key type descr
 
-yields an instance of `FieldDefinition` for an OI-FITS column `key` (a string
-or symbol) with cell type and dimensions specified by `type` and description
-given by `descr`. The syntax closely follows that of the tables of the papers
-specifying the OI-FITS format. Arguments `key` and `descr` are strings, `type`
-is one of the letters `L` (for logical), `I`, `J`, `K` (for 16-,32-,64-bit
-integers), `E`, `D` (for 32-,64-bit floating-point), or `A` (for string),
-followed by the cell dimensions in parenthesis. A wavelength-wise is indicated
-by the letter `W`. Optional columns have their `type` suffixed by single quote.
+Expand as an instance of [`OIFITS.Formats.FieldDefinition`](@ref) for an OI-FITS column
+`key` (a string or symbol) with cell type and dimensions specified by `type` and description
+given by `descr`. The syntax closely follows that of the tables of the papers specifying the
+OI-FITS format. Arguments `key` and `descr` are strings, `type` is one of the letters `L`
+(for logical), `I`, `J`, `K` (for 16-,32-,64-bit integers), `E`, `D` (for 32-,64-bit
+floating-point), or `A` (for string), followed by the cell dimensions in parenthesis. A
+wavelength-wise is indicated by the letter `W`. Optional columns have their `type` suffixed
+by single quote.
 
-Examples:
-    @column "VISPHI"           D(W)     "visibility phase [deg]"
-    @column "VISPHIERR"        D(W)     "error in visibility phase [deg]"
-    @column "CORRINDX_VISPHI"  J(1)'    "index into correlation matrix for 1st VISPHI element"
-    @column "VISREFMAP"        L(W,W)'  "true where spectral channels were taken as reference for differential visibility computation"
-    @column "TARGET_ID"        I(1)     "target number as index into OI_TARGET table"
-    @column "TIME"             D(1)     "UTC time of observation [s]"
+# Examples
 
-References:
+```julia
+@column "VISPHI"           D(W)     "visibility phase [deg]"
+@column "VISPHIERR"        D(W)     "error in visibility phase [deg]"
+@column "CORRINDX_VISPHI"  J(1)'    "index into correlation matrix for 1st VISPHI element"
+@column "VISREFMAP"        L(W,W)'  "true where spectral channels were taken as reference for differential visibility computation"
+@column "TARGET_ID"        I(1)     "target number as index into OI_TARGET table"
+@column "TIME"             D(1)     "UTC time of observation [s]"
+```
 
-- G. Duvert, J. S. Young & Ch. A. Hummel: "*OIFITS 2: the 2nd version of the
-  data exchange standard for optical interferometry*", Astron. & Astrophys.,
-  **597**, A8 (2017).
+# References
 
-- T. A. Pauls, J. S. Young, W. D. Cotton & J. D. Monnier: "*A Data Exchange
-  Standard for Optical (Visible/IR) Interferometry*", PASP **117**, 1255-1262
-  (2005).
+- G. Duvert, J. S. Young & Ch. A. Hummel: "*OIFITS 2: the 2nd version of the data exchange
+  standard for optical interferometry*", Astron. & Astrophys., **597**, A8 (2017).
+
+- T. A. Pauls, J. S. Young, W. D. Cotton & J. D. Monnier: "*A Data Exchange Standard for
+  Optical (Visible/IR) Interferometry*", PASP **117**, 1255-1262 (2005).
 
 """
 macro column(key, type, str)
@@ -178,17 +174,15 @@ end
 to_field_name(str::AbstractString) =
     Symbol(lowercase(replace(replace(str, r"^OI_" => ""), '-' => '_')))
 
-
 """
     parse_description(str) -> (descr, units)
 
-yields a 2-tuple of strings extracted from string `str` which shall have the
-form:
+Return a 2-tuple of strings extracted from string `str` which shall have the form:
 
     str = "\$descr [\$units]"
 
-with any leading/trailing spaces and where the units part is optional
-(returned as an empty string if not specified).
+with any leading/trailing spaces and where the units part is optional (returned as an empty
+string if not specified).
 
 """
 function parse_description(str::String)
@@ -213,10 +207,9 @@ parse_description(x::Any) = error("description must be a string")
 """
      parse_type(x) -> (opt, sym, rank)
 
-parses type `x` in OI-FITS format specification and yields a 3-tuple
-`(opt,type,dims)` where `opt` is a boolean indicating whether the field is
-optional, `sym` is a single letter symbol corresponding to the type of the
-field and `rank` specifies the dimensions.
+Parse type `x` in OI-FITS format specification and yields a 3-tuple `(opt,type,dims)` where
+`opt` is a boolean indicating whether the field is optional, `sym` is a single letter symbol
+corresponding to the type of the field and `rank` specifies the dimensions.
 
 Argument `x` is a symbol or an expression.
 
@@ -390,9 +383,8 @@ define("OI_VIS", 1, [
     @column "FLAG"       L(W)  "flag"
 ])
 
-# FIXME: In OI-FITS Rev. 2, only MJD and DATE-OBS must be used to express time.
-#        The TIME column is retained only for backwards compatibility and must
-#        contain zeros.
+# FIXME: In OI-FITS Rev. 2, only MJD and DATE-OBS must be used to express time. The TIME
+#        column is retained only for backwards compatibility and must contain zeros.
 
 # OI_VIS definition (2nd revision):
 define("OI_VIS", 2, [

@@ -3,7 +3,7 @@
 #
 # Read and write OI-FITS files.
 #
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------
 
 # Union of possible FITS keyword types.
 const KeywordTypes = Union{Bool,Int,Cdouble,String}
@@ -22,23 +22,20 @@ show(io::IO, ::MIME"text/plain", e::MissingKeyword) =
 show(io::IO, ::MIME"text/plain", e::MissingColumn) =
     print(io, "column \"", e.col, "\" not found in FITS extension ", e.ext)
 
-#------------------------------------------------------------------------------
-# WRITING OF OI-FITS FILES
+#---------------------------------------------------------------- Writing of OI-FITS files -
 
 function write(filename::AbstractString, ds::OIDataSet;
                overwrite::Bool=false, kwds...)
-    if !overwrite && isfile(filename)
-        error("file \"", filename, "\" already exists, ",
-              "use keyword `overwrite=true` to overwrite")
-    end
+    !overwrite && isfile(filename) && error(
+        "file \"", filename, "\" already exists, use keyword `overwrite=true` to overwrite")
     FitsFile(filename, "w") do f
         write(f, ds; kwds...)
     end
     return nothing
 end
 
-# Writing an OI-FITS file is easy: just write all datablocks. To make reading
-# easier, dependencies are written first.
+# Writing an OI-FITS file is easy: just write all datablocks. To make reading easier,
+# dependencies are written first.
 function write(f::FitsFile, ds::OIDataSet; quiet::Bool=false)
     write(f, ds.target)
     for db in ds.array
@@ -111,8 +108,7 @@ function write(f::FitsFile, db::OIDataBlock)
     write(f, header, data)
 end
 
-#------------------------------------------------------------------------------
-# READING OF OI-FITS FILES
+#---------------------------------------------------------------- Reading of OI-FITS files -
 
 # Yields whether an exception was due to a missing FITS keyword.
 missing_keyword(ex::FitsError) = ex.code == EasyFITS.CFITSIO.KEY_NO_EXIST
@@ -126,10 +122,10 @@ missing_column(ex::Exception) = false
 """
     OIFITS.read_keyword(T, hdu, key, def=OIFITS.unspecified) -> val
 
-yields the value of keyword `key` in FITS header of `hdu` converted to type
-`T`. If the keyword is not part of the header, then the default value `def` is
-returned if specified, otherwise a `MissingKeyword` exception is thrown. This
-method provides some type-stability.
+Return the value of keyword `key` in FITS header of `hdu` converted to type `T`. If the
+keyword is not part of the header, then the default value `def` is returned if specified,
+otherwise a [`OIFITS.MissingKeyword`](@ref) exception is thrown. This method provides some
+type-stability.
 
 """
 function read_keyword(T::Type{<:KeywordTypes}, hdu::FitsHDU, key::String,
@@ -158,11 +154,10 @@ end
 """
     OIFITS.read_column(T=Array, hdu, col, def=OIFITS.unspecified) -> val
 
-yields the contents of column `col` in FITS table `hdu` and converted to array
-type `T`. If the column is not part of the table, then the default value `def`
-is returned if specified, otherwise a `MissingColumn` exception is thrown. This
-method provides some type-stability and add missing leading dimensions as
-needed.
+Return the content of column `col` in FITS table `hdu` and converted to array type `T`. If
+the column is not part of the table, then the default value `def` is returned if specified,
+otherwise a [`OIFITS.MissingColumn`](@ref)` exception is thrown. This method provides some
+type-stability and add missing leading dimensions as needed.
 
 """
 read_column(hdu::FitsTableHDU, col::String, def = unspecified) =
@@ -208,8 +203,8 @@ end
     error("FITS table column \"", col, "\" of type ", S,
           " cannot be converted to type ", T)
 
-# To read into an existing data-set, first read the OI-FITS file (to make sure
-# it is a consistent data-set), then merge.
+# To read into an existing data-set, first read the OI-FITS file (to make sure it is a
+# consistent data-set), then merge.
 function read!(ds::OIDataSet, args::Union{AbstractString,FitsFile}...; kwds...)
     for arg in args
         merge!(ds, read(OIDataSet, arg; kwds...))
@@ -230,9 +225,9 @@ read(::Type{OIDataSet}, filename::AbstractString; kwds...) =
         read(OIDataSet, f; kwds...)
     end
 
-# Thanks to the implemented methods, reading an OI-FITS file is not too
-# difficult. The dependencies must however be read first and the OI-FITS file
-# must be a consistent data-set in itself.
+# Thanks to the implemented methods, reading an OI-FITS file is not too difficult. The
+# dependencies must however be read first and the OI-FITS file must be a consistent data-set
+# in itself.
 function read(::Type{OIDataSet}, f::FitsFile; kwds...)
     # Starting with an empty data-set, first read all dependencies, then all
     # data.

@@ -3,12 +3,12 @@
 #
 # Definitions of OI-FITS data types.
 #
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------
 
 """
     OIFITS.Undef
 
-is the type of `undef`.
+Type of `undef`, an alias for `UndefInitializer`.
 
 """
 const Undef = typeof(undef)
@@ -16,8 +16,8 @@ const Undef = typeof(undef)
 """
     OIFITS.unspecified
 
-is a singleton object (of type `OIFITS.Unspecified`) used to indicate
-unspecified arguments/keywords in `OIFITS` package.
+Singleton object (of type `OIFITS.Unspecified`) used to indicate unspecified
+arguments/keywords in `OIFITS` package.
 
 """
 struct Unspecified; end
@@ -25,10 +25,10 @@ const unspecified = Unspecified()
 @doc @doc(Unspecified) unspecified
 
 """
-    OIFITS.MissingKeyword
+    OIFITS.MissingKeyword(key, ext)
 
-is the type of exceptions thrown when a keyword is not found in an OI-FITS
-header.
+Return an exception to be thrown when keyword `key` is not found in the header of a FITS
+HDU (Header Data Unit) whose extension name is `ext`.
 
 """
 struct MissingKeyword <: Exception
@@ -37,10 +37,10 @@ struct MissingKeyword <: Exception
 end
 
 """
-    OIFITS.MissingColumn
+    OIFITS.MissingColumn(col, ext)
 
-is the type of exceptions thrown when a column is not found in an OI-FITS
-table.
+Return an exception to be thrown when column `col` is not found in the table of a FITS
+Table extension whose name is `ext`.
 
 """
 struct MissingColumn <: Exception
@@ -51,31 +51,29 @@ end
 """
     OIDataBlock
 
-is the abstract super-type of any OI-FITS data-block.
+Abstract super-type of any OI-FITS data-block.
 
 """
 abstract type OIDataBlock end
 
-# Except for `OI_TARGET`, the data fields are specified as separate arrays,
-# instead of arrays of structures.
+# Except for `OI_TARGET`, the data fields are specified as separate arrays, instead of
+# arrays of structures.
 #
-# - Pros: (i) some fields may be absent (optional or not yet defined), (ii)
-#   easier to write simple code, (iii) some fields are multi-dimensional, (iv)
-#   it is possible to check for defined fields in Julia.
+# - Pros: (i) some fields may be absent (optional or not yet defined), (ii) easier to write
+#   simple code, (iii) some fields are multi-dimensional, (iv) it is possible to check for
+#   defined fields in Julia.
 #
-# - Cons: It is not certain that the sizes of the fields are compatible, but
-#   code to ensure that may be provided.
+# - Cons: It is not certain that the sizes of the fields are compatible, but code to ensure
+#   that may be provided.
 #
-# The sections called "Header Part" and "Data Part" correspond to the HDU FITS
-# Table. The section called "Dependencies" consists in additional fields
-# managed by the package to keep track of the data-set structure owning the
-# data-block and to links to other data-blocks such as the instrument and the
-# telescope array for complex visibility measurements.
+# The sections called "Header Part" and "Data Part" correspond to the HDU FITS Table. The
+# section called "Dependencies" consists in additional fields managed by the package to keep
+# track of the data-set structure owning the data-block and to links to other data-blocks
+# such as the instrument and the telescope array for complex visibility measurements.
 #
-# There is (to my knowledge) no official means to "undefine" a field in a
-# structure so the OIFITS API does not provide means to pop a data-block out of
-# a data-set. One has to build another data-set. Hopefully this is easy (with
-# the API), fast, and memory efficient.
+# There is (to my knowledge) no official means to "undefine" a field in a structure so the
+# OIFITS API does not provide means to pop a data-block out of a data-set. One has to build
+# another data-set. Hopefully this is easy (with the API), fast, and memory efficient.
 
 struct OITargetEntry
     target_id ::Int     # index number
@@ -166,9 +164,8 @@ mutable struct OI_CORR <: OIDataBlock
     end
 end
 
-# FIXME: In OI-FITS Rev. 2 only MJD and DATE-OBS must be used to express time.
-#        The TIME column is retained only for backwards compatibility and must
-#        contain zeros.
+# FIXME: In OI-FITS Rev. 2 only MJD and DATE-OBS must be used to express time. The TIME
+#        column is retained only for backwards compatibility and must contain zeros.
 
 mutable struct OI_VIS <: OIDataBlock
     # Dependencies
@@ -345,26 +342,25 @@ end
 const NamedDataBlock = Union{OI_ARRAY,OI_WAVELENGTH,OI_CORR}
 
 """
+    OIDDataSet
 
-`OIDataSet` objects store the contents of an OI-FITS file. All data-blocks
-containing measurements (`OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, and `OI_INSPOL`)
-are stored into a vector and thus indexed by an integer. Named data-blocks
-(`OI_ARRAY`, `OI_WAVELENGTH`, and `OI_CORR`) are indexed by their names (converted
-to upper case letters, with leading and trailing spaces stripped, multiple
-spaces replaced by a single ordinary space).
+Type of objects storing the content of an OI-FITS file. All data-blocks containing
+measurements (`OI_VIS`, `OI_VIS2`, `OI_T3`, `OI_FLUX`, and `OI_INSPOL`) are stored into a
+vector and thus indexed by an integer. Named data-blocks (`OI_ARRAY`, `OI_WAVELENGTH`, and
+`OI_CORR`) are indexed by their names (converted to upper case letters, with leading and
+trailing spaces stripped, multiple spaces replaced by a single ordinary space).
 
 Reading an OI-FITS file is as simple as one of:
 
     data = OIDataSet(filename)
     data = read(OIDataSet, filename)
 
-with `filename` the name of the file. Keyword `hack_revn` can be used to force
-the revision number (FITS keyword `OI-REVN`) of all OI-FITS data-blocks;
-`hack_revn` may be set to an integer, the revision number to assume for all
-data-blocks, or to a function that takes 2 arguments, the type and actual
-revision number of the current data-block, and that returns the revision number
-to assume. For example, to force revision number 1 for all `OI_VIS` data-blocks
-and left others unchanged:
+with `filename` the name of the file. Keyword `hack_revn` can be used to force the revision
+number (FITS keyword `OI-REVN`) of all OI-FITS data-blocks; `hack_revn` may be set to an
+integer, the revision number to assume for all data-blocks, or to a function that takes 2
+arguments, the type and actual revision number of the current data-block, and that returns
+the revision number to assume. For example, to force revision number 1 for all `OI_VIS`
+data-blocks and left others unchanged:
 
     data = OIDataSet(filename; hack_revn = (T, revn) -> (T === OI_VIS ? 1 : revn))
 
@@ -374,8 +370,8 @@ Looping over `OI_VIS` data-blocks in the data-set can be done as follows:
         ...
     end
 
-and similarly for fields `vis2`, `t3`, `flux`, and `inspol` to access `OI_VIS2`,
-`OI_T3`, `OI_FLUX`, and `OI_INSPOL` data-blocks.
+and similarly for fields `vis2`, `t3`, `flux`, and `inspol` to access `OI_VIS2`, `OI_T3`,
+`OI_FLUX`, and `OI_INSPOL` data-blocks.
 
 The data-set has a number of other public properties:
 
@@ -386,9 +382,9 @@ The data-set has a number of other public properties:
 
 """
 struct OIDataSet
-    # Named data-blocks and their dictionaries to map names to indices. The
-    # target identifiers `target_id` are rewritten to match Julia indexing in
-    # the vector of target entries.
+    # Named data-blocks and their dictionaries to map names to indices. The target
+    # identifiers `target_id` are rewritten to match Julia indexing in the vector of target
+    # entries.
     target::OI_TARGET            # list of targets data-block
     target_dict::Dict{String,Int}# to map target name to index in `target` list
     target_id_map::Dict{Int,Int} # to re-write target identifiers
