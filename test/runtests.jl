@@ -1,7 +1,7 @@
 module TestingOIFITS
 
 using Test, Printf
-using Aqua, EasyFITS, OIFITS
+using Aqua, AstroFITS, OIFITS
 using OIFITS: extname, get_format, is_same, fix_name
 
 const dir = @__DIR__

@@ -111,12 +111,12 @@ end
 #---------------------------------------------------------------- Reading of OI-FITS files -
 
 # Yields whether an exception was due to a missing FITS keyword.
-missing_keyword(ex::FitsError) = ex.code == EasyFITS.CFITSIO.KEY_NO_EXIST
+missing_keyword(ex::FitsError) = ex.code == AstroFITS.CFITSIO.KEY_NO_EXIST
 missing_keyword(ex::KeyError) = true
 missing_keyword(ex::Exception) = false
 
 # Yields whether an exception was due to a missing FITS column.
-missing_column(ex::FitsError) = ex.code == EasyFITS.CFITSIO.COL_NOT_FOUND
+missing_column(ex::FitsError) = ex.code == AstroFITS.CFITSIO.COL_NOT_FOUND
 missing_column(ex::Exception) = false
 
 """

@@ -56,7 +56,7 @@ import Base:
 
 using Base: @propagate_inbounds
 
-using EasyFITS
+using AstroFITS
 
 include("types.jl")
 include("formats.jl")

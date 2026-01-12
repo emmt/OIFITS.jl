@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+This version exploits [`AstroFITS`](https://github.com/emmt/AstroFITS.jl) for the support of
+FITS files and no longer depends on [`FITSIO`](https://github.com/JuliaAstro/FITSIO.jl).
+
+### Breaking Changes
+
+There are just a few changes for the end-user:
+
+- Use/import `AstroFITS` instead of `FITSIO` and call `FitsFile(...)` or `openfits(...)`
+  instead of `FITS(...)` to open a FITS file.
+
+- Julia < 1.6 is no longer supported.
+
+### Changed
+
+- [`AstroFITS`](https://github.com/emmt/AstroFITS.jl) replaces
+  [`FITSIO`](https://github.com/JuliaAstro/FITSIO.jl) for reading/writing FITS files. longer
+  depends on
+
 ### Added
 
 - Pass all quality tests by [`Aqua`](https://github.com/JuliaTesting/Aqua.jl).
@@ -10,20 +28,12 @@
 
 - Optional columns in OI-FITS data-blocks are correctly skipped.
 
-## Versions 1.1.0
+- Using [`AstroFITS`](https://github.com/emmt/AstroFITS.jl) instead of
+  [`FITSIO`](https://github.com/JuliaAstro/FITSIO.jl) solves a crash with Julia 1.11 due to
+  a segmentation fault with `FITSIO` (see
+  https://github.com/JuliaAstro/FITSIO.jl/issues/194).
 
-This version exploits `EasyFITS` for the support of FITS files and no longer depends on
-`FITSIO`. This solves a crash with Julia 1.11 due to a segmentation fault with `FITSIO` (see
-https://github.com/JuliaAstro/FITSIO.jl/issues/194).
-
-There are just a few changes for the end-user:
-
-- Use/import `EasyFITS` instead of `FITSIO` and call `FitsFile(...)` or `openfits(...)`
-  instead of `FITS(...)` to open a FITS file.
-
-- As a consequence, Julia < 1.6 is no longer supported.
-
-## Versions 1.0
+## Version 1.0.0
 
 This version introduces major changes.
 
