@@ -3,6 +3,7 @@
 
 # Specific files/directories
 Manifest.toml
+/.Manifest*.toml
 work/
 
 # Backup files
