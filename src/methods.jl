@@ -161,7 +161,7 @@ may be used to specify the type of the result:
     OIFITS.extname(String, db) -> ext::String
 
 """
-extname(hdu::FitsTableHDU) = fix_name(read_keyword(String, hdu, "EXTNAME", ""))
+extname(hdu::FitsTableHDU) = fix_name(get(String, hdu, "EXTNAME", ""))
 extname(db::OIDataBlock) = extname(typeof(db))
 extname(T::Type{<:OIDataBlock}) = extname(String, T)
 extname(S::Type{<:Union{String,Symbol}}, db::OIDataBlock) =

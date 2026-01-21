@@ -1,14 +1,14 @@
 name = "OIFITS"
 uuid = "53eb397e-dec1-5dcf-8dc9-2db916067267"
+version = "2.0.0"
 authors = ["Éric Thiébaut <https://github.com/emmt>"]
-version = "1.1.0"
 
 [deps]
 AstroFITS = "34e54ef0-c5bf-48ab-9e5d-cca51f35ed77"
 
 [compat]
 Aqua = "0.8.14"
-AstroFITS = "1"
+AstroFITS = "1.1"
 Printf = "<0.0.1, 1"
 Random = "<0.0.1, 1"
 Test = "<0.0.1, 1"

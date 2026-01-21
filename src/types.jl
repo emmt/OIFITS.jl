@@ -25,18 +25,6 @@ const unspecified = Unspecified()
 @doc @doc(Unspecified) unspecified
 
 """
-    OIFITS.MissingKeyword(key, ext)
-
-Return an exception to be thrown when keyword `key` is not found in the header of a FITS
-HDU (Header Data Unit) whose extension name is `ext`.
-
-"""
-struct MissingKeyword <: Exception
-    key::String
-    ext::String
-end
-
-"""
     OIFITS.MissingColumn(col, ext)
 
 Return an exception to be thrown when column `col` is not found in the table of a FITS

@@ -13,12 +13,6 @@ const KeywordTypes = Union{Bool,Int,Cdouble,String}
 MissingColumn(col::AbstractString, src::Union{FitsTableHDU,OIDataBlock}) =
     MissingColumn(col, extname(src))
 
-MissingKeyword(key::AbstractString, src::Union{FitsTableHDU,OIDataBlock}) =
-    MissingKeyword(key, extname(src))
-
-show(io::IO, ::MIME"text/plain", e::MissingKeyword) =
-    print(io, "keyword \"", e.key, "\" not found in FITS extension ", e.ext)
-
 show(io::IO, ::MIME"text/plain", e::MissingColumn) =
     print(io, "column \"", e.col, "\" not found in FITS extension ", e.ext)
 
@@ -118,38 +112,6 @@ missing_keyword(ex::Exception) = false
 # Yields whether an exception was due to a missing FITS column.
 missing_column(ex::FitsError) = ex.code == AstroFITS.CFITSIO.COL_NOT_FOUND
 missing_column(ex::Exception) = false
-
-"""
-    OIFITS.read_keyword(T, hdu, key, def=OIFITS.unspecified) -> val
-
-Return the value of keyword `key` in FITS header of `hdu` converted to type `T`. If the
-keyword is not part of the header, then the default value `def` is returned if specified,
-otherwise a [`OIFITS.MissingKeyword`](@ref) exception is thrown. This method provides some
-type-stability.
-
-"""
-function read_keyword(T::Type{<:KeywordTypes}, hdu::FitsHDU, key::String,
-                      def = unspecified)
-    card = get(hdu, key, missing)
-    if card === missing
-        def === unspecified && throw(MissingKeyword(key, hdu))
-        return def
-    end
-    if T <: Bool
-        card.type == FITS_LOGICAL && return convert(T, card.logical)::T
-    elseif T <: Integer
-        card.type == FITS_INTEGER && return convert(T, card.integer)::T
-    elseif T <: AbstractFloat
-        card.type == FITS_FLOAT && return convert(T, card.float)::T
-    elseif T <: AbstractString
-        card.type == FITS_STRING && return convert(T, card.string)::T
-    end
-    bad_keyword_type(T, card)
-end
-
-@noinline bad_keyword_type(::Type{T}, card::FitsCard) where {T} =
-    error("FITS keyword \"", card.name, "\" of type ", valtype(card),
-          " cannot be converted to type ", T)
 
 """
     OIFITS.read_column(T=Array, hdu, col, def=OIFITS.unspecified) -> val
@@ -332,7 +294,7 @@ end
 function _read(T::Type{<:OI_TARGET}, hdu::FitsTableHDU; hack_revn = undef)
     # Read keywords.
     revn = _read_revn(T, hdu, hack_revn)
-    nrows = read_keyword(Int, hdu, "NAXIS2")
+    nrows = get(Int, hdu, "NAXIS2")
 
     # Read columns.
     target_id = read_column(Vector{Int16  }, hdu, "TARGET_ID")
@@ -384,21 +346,21 @@ end
 # Methods to allow for hacking the revision number.
 _read_revn(T::Type{<:OIDataBlock}, hdu::FitsTableHDU, hack::Integer) = hack
 _read_revn(T::Type{<:OIDataBlock}, hdu::FitsTableHDU, ::typeof(undef)) =
-   read_keyword(Int, hdu, "OI_REVN")
+   get(Int, hdu, "OI_REVN")
 _read_revn(T::Type{<:OIDataBlock}, hdu::FitsTableHDU, hack) =
     if applicable(hack, hdu)
         hack(hdu)
     else
-        hack(T, read_keyword(Int, hdu, "OI_REVN"))
+        hack(T, get(Int, hdu, "OI_REVN"))
     end
 
 function _read_keyword!(db::T, ::Val{S}, hdu::FitsTableHDU,
                         spec::FieldDefinition) where {T<:OIDataBlock,S}
     try
-        val = read_keyword(fieldtype(T, S), hdu, spec.name)
+        val = get(fieldtype(T, S), hdu, spec.name)
         setfield!(db, S, val)
     catch ex
-        (spec.optional && isa(ex, MissingKeyword)) || rethrow()
+        (spec.optional && isa(ex, KeyError)) || rethrow(ex)
     end
     nothing
 end
