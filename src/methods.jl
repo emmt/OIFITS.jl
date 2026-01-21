@@ -167,18 +167,18 @@ extname(T::Type{<:OIDataBlock}) = extname(String, T)
 extname(S::Type{<:Union{String,Symbol}}, db::OIDataBlock) =
     extname(S, typeof(db))
 
-for (N, T) in ((:OI_TARGET,     OI_TARGET    ),
-               (:OI_ARRAY,      OI_ARRAY     ),
-               (:OI_WAVELENGTH, OI_WAVELENGTH),
-               (:OI_CORR,       OI_CORR      ),
-               (:OI_VIS,        OI_VIS       ),
-               (:OI_VIS2,       OI_VIS2      ),
-               (:OI_T3,         OI_T3        ),
-               (:OI_FLUX,       OI_FLUX      ),
-               (:OI_INSPOL,     OI_INSPOL    ),)
+for sym in (:OI_TARGET,
+            :OI_ARRAY,
+            :OI_WAVELENGTH,
+            :OI_CORR,
+            :OI_VIS,
+            :OI_VIS2,
+            :OI_T3,
+            :OI_FLUX,
+            :OI_INSPOL)
     @eval begin
-        extname(::Type{String}, ::Type{<:$T}) = $(String(N))
-        extname(::Type{Symbol}, ::Type{<:$T}) = $(QuoteNode(N))
+        extname(::Type{String}, ::Type{<:$sym}) = $(String(sym))
+        extname(::Type{Symbol}, ::Type{<:$sym}) = $(QuoteNode(sym))
     end
 end
 
