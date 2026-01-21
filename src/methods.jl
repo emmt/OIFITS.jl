@@ -55,37 +55,35 @@ function is_same(A::AbstractString, B::AbstractString)
 end
 
 function is_same(A::OITargetEntry, B::OITargetEntry)
-    # Private helper.
-    @inline _is_same(A::OITargetEntry, B::OITargetEntry, sym::Symbol) =
-        is_same(getfield(A, sym), getfield(B, sym))
-
     # Purposely ignore target_id.
-    return (_is_same(A, B, :target   ) &&
-            _is_same(A, B, :raep0    ) &&
-            _is_same(A, B, :decep0   ) &&
-            _is_same(A, B, :equinox  ) &&
-            _is_same(A, B, :ra_err   ) &&
-            _is_same(A, B, :dec_err  ) &&
-            _is_same(A, B, :sysvel   ) &&
-            _is_same(A, B, :veltyp   ) &&
-            _is_same(A, B, :veldef   ) &&
-            _is_same(A, B, :pmra     ) &&
-            _is_same(A, B, :pmdec    ) &&
-            _is_same(A, B, :pmra_err ) &&
-            _is_same(A, B, :pmdec_err) &&
-            _is_same(A, B, :parallax ) &&
-            _is_same(A, B, :para_err ) &&
-            _is_same(A, B, :spectyp  ) &&
-            _is_same(A, B, :category ))
+    return (is_same(A, B, :target   ) &&
+            is_same(A, B, :raep0    ) &&
+            is_same(A, B, :decep0   ) &&
+            is_same(A, B, :equinox  ) &&
+            is_same(A, B, :ra_err   ) &&
+            is_same(A, B, :dec_err  ) &&
+            is_same(A, B, :sysvel   ) &&
+            is_same(A, B, :veltyp   ) &&
+            is_same(A, B, :veldef   ) &&
+            is_same(A, B, :pmra     ) &&
+            is_same(A, B, :pmdec    ) &&
+            is_same(A, B, :pmra_err ) &&
+            is_same(A, B, :pmdec_err) &&
+            is_same(A, B, :parallax ) &&
+            is_same(A, B, :para_err ) &&
+            is_same(A, B, :spectyp  ) &&
+            is_same(A, B, :category ))
 end
 
 """
     OIFITS.is_same(A, B, sym)
 
-Return whether field `sym` of data-blocks `A` and `B` are sufficiently identical for OI-FITS
-data.
+Return whether field `sym` of `A` and `B` are sufficiently identical for OI-FITS data.
 
 """
+@inline is_same(A::OITargetEntry, B::OITargetEntry, sym::Symbol) =
+    is_same(getfield(A, sym), getfield(B, sym))
+
 @inline is_same(A::T, B::T, sym::Symbol) where {T<:OIDataBlock} =
     is_same(A, B, Val(sym))
 
