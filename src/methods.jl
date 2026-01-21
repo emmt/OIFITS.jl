@@ -380,7 +380,6 @@ end
 OIDataSet(args::OIDataBlock...) = push!(OIDataSet(), args...)
 
 function empty!(ds::OIDataSet)
-    @inline _empty!(A, sym::Symbol) = empty!(getfield(A, sym))
     empty!(ds.target.list)
     ds.target.revn = 0
     _empty!(ds, :target_dict)
@@ -398,6 +397,8 @@ function empty!(ds::OIDataSet)
     _empty!(ds, :inspol)
     return ds
 end
+
+@inline _empty!(ds::OIDataSet, sym::Symbol) = empty!(getfield(ds, sym))
 
 for (type, pass) in ((:OI_TARGET,     1),
                      (:OI_ARRAY,      1),
