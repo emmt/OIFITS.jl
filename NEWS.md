@@ -33,6 +33,8 @@ There are just a few changes for the end-user:
   a segmentation fault with `FITSIO` (see
   https://github.com/JuliaAstro/FITSIO.jl/issues/194).
 
+- Overwrite mode in `write(...)`.
+
 ## Version 1.0.0
 
 This version introduces major changes.

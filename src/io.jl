@@ -20,9 +20,7 @@ show(io::IO, ::MIME"text/plain", e::MissingColumn) =
 
 function write(filename::AbstractString, ds::OIDataSet;
                overwrite::Bool=false, kwds...)
-    !overwrite && isfile(filename) && error(
-        "file \"", filename, "\" already exists, use keyword `overwrite=true` to overwrite")
-    FitsFile(filename, "w") do f
+    FitsFile(filename, overwrite ? "w!" : "w") do f
         write(f, ds; kwds...)
     end
     return nothing

@@ -128,7 +128,7 @@ get_field_type(::Type{<:OI_TARGET}, sym::Symbol) =
             write(tempfile, A)
             B = read(OIDataSet, tempfile)
             @test isa(B, OIDataSet)
-            @test_throws ErrorException write(tempfile, B)
+            @test_throws Exception write(tempfile, B)
         end
 
         # Merge several files.
