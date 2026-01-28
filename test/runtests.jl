@@ -120,7 +120,7 @@ get_field_type(::Type{<:OI_TARGET}, sym::Symbol) =
     end
 
     @testset "Read/write OI-FITS files" begin
-        # Each file infdividually.
+        # Each file individually.
         for file in files
             A = OIDataSet(joinpath(dir, file))
             @test isa(A, OIDataSet)
@@ -128,6 +128,7 @@ get_field_type(::Type{<:OI_TARGET}, sym::Symbol) =
             write(tempfile, A)
             B = read(OIDataSet, tempfile)
             @test isa(B, OIDataSet)
+            @test B.target.list == A.target.list
             @test_throws Exception write(tempfile, B)
         end
 

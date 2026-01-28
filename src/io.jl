@@ -85,17 +85,17 @@ function write(f::FitsFile, db::OIDataBlock)
     header = Pair{String,Any}[]
     data = Pair{String,Any}[]
     check(db) # recheck!
+    push!(header, "EXTNAME" => (extname(typeof(db)), "OI-FITS datablock extension"))
     for spec in get_format(db; throw_errors=true)
         # Skip undefined fields.
-        isdefined(db, spec.symb) || continue
         if ndims(spec) == 0
             # Header keyword.
             push_keyword!(header, spec, getfield(db, spec.symb))
         else
             # Column keyword.
             if db isa OI_TARGET
-                push_column!(data, spec, get_column(column_type(spec.type), db, spec.symb))
-            else
+                push_column!(data, spec, get_column(db, spec.symb))
+            elseif isdefined(db, spec.symb)
                 push_column!(data, spec, getfield(db, spec.symb))
             end
         end

@@ -37,6 +37,8 @@ There are just a few changes for the end-user:
 
 - Optional floating-point keywords (like `FOV` in `OI_FLUX`) are not written if `NaN`.
 
+- Writing of `OI_TARGET`.
+
 ## Version 1.0.0
 
 This version introduces major changes.
