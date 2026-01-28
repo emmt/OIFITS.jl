@@ -89,8 +89,10 @@ function write(f::FitsFile, db::OIDataBlock)
     for spec in get_format(db; throw_errors=true)
         # Skip undefined fields.
         if ndims(spec) == 0
-            # Header keyword.
-            push_keyword!(header, spec, getfield(db, spec.symb))
+            # Header keyword unless not defined.
+            if isdefined(db, spec.symb)
+                push_keyword!(header, spec, getfield(db, spec.symb))
+            end
         else
             # Column keyword.
             if db isa OI_TARGET
