@@ -517,7 +517,7 @@ define("OI_FLUX", 1, [
     @header "INSNAME"            A      "name of corresponding detector"
     @header "ARRNAME"            A'     "name of corresponding array"
     @header "CORRNAME"           A'     "name of corresponding correlation table"
-    @header "FOV"                D'     "area of sky over which flux is integrated [arcsec]"
+    @header "FOV"                D'     "size of sky over which flux is integrated [arcsec]"
     @header "FOVTYPE"            A'     "model for FOV: 'FWHM' or 'RADIUS'"
     @header "CALSTAT"            A      "'C': spectrum is calibrated, 'U': uncalibrated"
     #------------------------------------------------------------
