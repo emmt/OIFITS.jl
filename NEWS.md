@@ -35,6 +35,8 @@ There are just a few changes for the end-user:
 
 - Overwrite mode in `write(...)`.
 
+- Optional floating-point keywords (like `FOV` in `OI_FLUX`) are not written if `NaN`.
+
 ## Version 1.0.0
 
 This version introduces major changes.

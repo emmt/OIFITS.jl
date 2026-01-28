@@ -56,8 +56,11 @@ function write(f::FitsFile, ds::OIDataSet; quiet::Bool=false)
     end
 end
 
-push_keyword!(header::Vector{<:Pair{String,<:Any}}, spec::FieldDefinition, value) =
+function push_keyword!(header::Vector{<:Pair{String,<:Any}}, spec::FieldDefinition, value)
+    spec.optional && isa(value, AbstractFloat) && isnan(value) && return nothing
     push_keyword!(header, spec.name, value, spec.units, spec.descr)
+    return nothing
+end
 
 function push_keyword!(header::Vector{<:Pair{String,<:Any}},
                        name::String, value, units::String, descr::String)
