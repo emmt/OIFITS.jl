@@ -1,7 +1,7 @@
 name = "OIFITS"
 uuid = "53eb397e-dec1-5dcf-8dc9-2db916067267"
-version = "2.0.0"
 authors = ["Éric Thiébaut <https://github.com/emmt>"]
+version = "2.0.0"
 
 [deps]
 AstroFITS = "34e54ef0-c5bf-48ab-9e5d-cca51f35ed77"
@@ -21,4 +21,4 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Random", "Printf"]
+test = ["Test", "Aqua", "Random", "Printf"]
