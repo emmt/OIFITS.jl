@@ -317,8 +317,16 @@ function _read(T::Type{<:OI_TARGET}, hdu::FitsTableHDU; hack_revn = undef)
     parallax  = read_column(Vector{Float32}, hdu, "PARALLAX")
     para_err  = read_column(Vector{Float32}, hdu, "PARA_ERR")
     spectyp   = read_column(Vector{String }, hdu, "SPECTYP")
+    have_category = false
+    local category::Vector{String}
     if revn ≥ 2
-        category = read_column(Vector{String}, hdu, "CATEGORY")
+        # Read optional CATEGORY column.
+        try
+            category = read_column(Vector{String}, hdu, "CATEGORY")
+            have_category = true
+        catch ex
+            isa(ex, MissingColumn) || rethrow()
+        end
     end
     list = Vector{OITargetEntry}(undef, nrows)
     for i in 1:nrows
@@ -340,7 +348,7 @@ function _read(T::Type{<:OI_TARGET}, hdu::FitsTableHDU; hack_revn = undef)
             parallax[i],
             para_err[i],
             spectyp[i],
-            (revn ≥ 2 ? category[i] : ""),
+            (have_category ? category[i] : ""),
         )
     end
     return OI_TARGET(list; revn=revn)

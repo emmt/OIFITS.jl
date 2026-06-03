@@ -25,6 +25,9 @@ There are just a few breaking changes for the end-user:
 
 ### Fixed
 
+- Optional column `CATEGORY` in `OI_TARGET` is read as a vector of empty strings if not
+  present in OI-FITS file with `OI_REVN = 2`.
+
 - Optional columns in OI-FITS data-blocks are correctly skipped.
 
 - Using [`AstroFITS`](https://github.com/emmt/AstroFITS.jl) instead of
