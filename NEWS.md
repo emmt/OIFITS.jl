@@ -25,6 +25,9 @@ There are just a few breaking changes for the end-user:
 
 ### Fixed
 
+- Column data are saved in the element type specified by OI-FITS standard (e.g, `E` as
+ `Float32`, `I` as `Int16`, `J` as `Int32`, etc.). This fixes issue [#20](https://github.com/emmt/OIFITS.jl/issues/20).
+
 - Optional column `CATEGORY` in `OI_TARGET` is read as a vector of empty strings if not
   present in OI-FITS file with `OI_REVN = 2`.
 

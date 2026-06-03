@@ -68,8 +68,34 @@ function push_keyword!(header::Vector{<:Pair{String,<:Any}},
     return nothing
 end
 
-push_column!(data::Vector{<:Pair{String,<:Any}}, spec::FieldDefinition, value) =
-    push_column!(data, spec.name, value, spec.units)
+function push_column!(data::Vector{<:Pair{String,<:Any}}, spec::FieldDefinition, value)
+    if spec.type == :I
+        push_column!(data, spec.name, Int16,            value, spec.units)
+    elseif spec.type == :J
+        push_column!(data, spec.name, Int32,            value, spec.units)
+    elseif spec.type == :K
+        push_column!(data, spec.name, Int64,            value, spec.units)
+    elseif spec.type == :E
+        push_column!(data, spec.name, Float32,          value, spec.units)
+    elseif spec.type == :D
+        push_column!(data, spec.name, Float64,          value, spec.units)
+    elseif spec.type == :C
+        push_column!(data, spec.name, Complex{Float32}, value, spec.units)
+    elseif spec.type == :M
+        push_column!(data, spec.name, Complex{Float64}, value, spec.units)
+    elseif spec.type == :L
+        push_column!(data, spec.name, Bool,             value, spec.units)
+    elseif spec.type == :A
+        push_column!(data, spec.name, String,           value, spec.units)
+    else
+        throw(ArgumentError("unsupported element type: `$(spec.type)`"))
+    end
+end
+
+function push_column!(data::Vector{<:Pair{String,<:Any}}, name::String,
+                      ::Type{T}, value,  units::String) where {T}
+    push_column!(data, name, convert_eltype(T, value), units)
+end
 
 function push_column!(data::Vector{<:Pair{String,<:Any}},
                       name::String, value, units::String)
