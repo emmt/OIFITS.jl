@@ -7,7 +7,7 @@ FITS files and no longer depends on [`FITSIO`](https://github.com/JuliaAstro/FIT
 
 ### Breaking Changes
 
-There are just a few changes for the end-user:
+There are just a few breaking changes for the end-user:
 
 - Use/import `AstroFITS` instead of `FITSIO` and call `FitsFile(...)` or `openfits(...)`
   instead of `FITS(...)` to open a FITS file.
@@ -17,8 +17,7 @@ There are just a few changes for the end-user:
 ### Changed
 
 - [`AstroFITS`](https://github.com/emmt/AstroFITS.jl) replaces
-  [`FITSIO`](https://github.com/JuliaAstro/FITSIO.jl) for reading/writing FITS files. longer
-  depends on
+  [`FITSIO`](https://github.com/JuliaAstro/FITSIO.jl) for reading/writing FITS files.
 
 ### Added
 
