@@ -1,6 +1,6 @@
 # User visible changes in Julia interface to OI-FITS
 
-## Unreleased
+## Version 2.0.0 (2026-06-03)
 
 This version exploits [`AstroFITS`](https://github.com/emmt/AstroFITS.jl) for the support of
 FITS files and no longer depends on [`FITSIO`](https://github.com/JuliaAstro/FITSIO.jl).
