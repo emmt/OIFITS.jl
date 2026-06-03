@@ -552,8 +552,8 @@ supported by the [Jean-Marie Mariotti Center (JMMC)](http://www.jmmc.fr/).
 [license-url]: ./LICENSE.md
 [license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
 
-[github-ci-img]: https://github.com/emmt/OIFITS.jl/actions/workflows/CI.yml/badge.svg?branch=master
-[github-ci-url]: https://github.com/emmt/OIFITS.jl/actions/workflows/CI.yml?query=branch%3Amaster
+[github-ci-img]: https://github.com/emmt/OIFITS.jl/actions/workflows/CI.yml/badge.svg?branch=main
+[github-ci-url]: https://github.com/emmt/OIFITS.jl/actions/workflows/CI.yml?query=branch%3Amain
 
-[codecov-img]: http://codecov.io/github/emmt/OIFITS.jl/coverage.svg?branch=master
-[codecov-url]: http://codecov.io/github/emmt/OIFITS.jl?branch=master
+[codecov-img]: http://codecov.io/github/emmt/OIFITS.jl/coverage.svg?branch=main
+[codecov-url]: http://codecov.io/github/emmt/OIFITS.jl?branch=main
